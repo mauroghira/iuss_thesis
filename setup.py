@@ -1,5 +1,6 @@
 # file for basic functions and parameters for various models
 import numpy as np
+import pandas as pd
 import inspect
 
 #let's set the parameters
@@ -117,7 +118,7 @@ def create_param_grid(param_dict, mesh=True, flatten=False):
 
 # --------------------------------------------------------
 # GENERAL FUNCTION TO FIND MATCHES
-def find_param_matches(mesh_arrays, labels, param_vectors, freq_func):
+def find_matches(mesh_arrays, labels, param_vectors, frq_fun):
     """
     N-dimensional match finder with automatic rISCO constraints.
     
@@ -133,44 +134,61 @@ def find_param_matches(mesh_arrays, labels, param_vectors, freq_func):
         freq = freq_func(param_dict)
     """
 
-    # Assemble parameter dictionary (each is an N-D meshgrid array)
+    # Parametri N-D (meshgrid)
     param_dict = {lab: arr for lab, arr in zip(labels, mesh_arrays)}
 
-    # ---- Compute frequency on full grid ----
+    # Frequenze sul reticolo
+    freq_func = frq_wrap(frq_fun)
     freq = freq_func(param_dict)
 
-    # ---- Master mask ----
-    mask = np.ones_like(freq, dtype=bool)
+    # Maschera del match in frequenza
+    mask_freq = np.abs(freq - NU0) < TOL
 
-    # ---- Automatic rISCO constraint ----
-    # 1) Get the 1D vector of a-values
-    a_vec = param_vectors["a"]                  # shape (N_a,)
-    r_isco_vec = r_isco(a_vec)                  # shape (N_a,)
+    # ------- rISCO positive & negative -------
+    a_vec = param_vectors["a"]          # 1D array
+    r_isco_pos = r_isco(a_vec)
+    r_isco_neg = r_isco(-a_vec)
 
-    # 2) Create broadcastable version
-    r_isco_nd = r_isco_vec.reshape(-1, *[1]*(freq.ndim - 1))
+    # broadcasting
+    r_isco_pos_nd = r_isco_pos.reshape(-1, *[1]*(freq.ndim - 1))
+    r_isco_neg_nd = r_isco_neg.reshape(-1, *[1]*(freq.ndim - 1))
 
-    # 3) Apply to all r-parameters
+    # maschere complete
+    mask_pos = np.ones_like(freq, bool)
+    mask_neg = np.ones_like(freq, bool)
+
+    # applica il vincolo solo ai parametri che contengono "r"
     for lab, arr in param_dict.items():
-        if "r" in lab:                          # <-- automatic detection
-            mask &= arr >= r_isco_nd
+        if "r" in lab:
+            mask_pos &= (arr >= r_isco_pos_nd)
+            mask_neg &= (arr >= r_isco_neg_nd)
 
-    # ---- Apply frequency matching ----
-    mask &= np.abs(freq - NU0) < TOL
+    # maschere finali
+    mask_match_pos = mask_freq & mask_pos
+    mask_match_neg = mask_freq & mask_neg
 
-    # ---- Collect matches ----
-    idxs = np.argwhere(mask)   # shape (N_matches, ndim)
-    results = []
+    # ------- raccogli risultati -------
+    rows = []
 
-    for idx in idxs:
-        params = {lab: arr[tuple(idx)] for lab, arr in param_dict.items()}
+    # POSITIVE SPIN (a rimane positivo)
+    idxs_pos = np.argwhere(mask_match_pos)
+    for idx in idxs_pos:
+        row = {lab: arr[tuple(idx)] for lab, arr in param_dict.items()}
+        row["freq"] = freq[tuple(idx)]
+        rows.append(row)
 
-        results.append({
-            "params": params,
-            "freq": freq[tuple(idx)]
-        })
+    # NEGATIVE SPIN (invertiamo il segno di 'a')
+    idxs_neg = np.argwhere(mask_match_neg)
+    for idx in idxs_neg:
+        row = {lab: arr[tuple(idx)] for lab, arr in param_dict.items()}
+        row["a"] = -row["a"]     # ⬅⬅ salva direttamente il valore negativo
+        row["freq"] = freq[tuple(idx)]
+        rows.append(row)
 
-    return results
+    # ---- DataFrame finale ----
+    df = pd.DataFrame(rows)
+    return df
+
 
 # --------------------------------------------------------
 # GENERAL WRAPPER TO MAKE FREQUENCY FUNCTIONS
@@ -188,6 +206,128 @@ def frq_wrap(freq_callable):
         return freq_callable(*args)
 
     return wrapper
+
+
+# --------------------------------------------------------
+#FUNCTION TO PLOT FREQUENCY LEVEL CURVES
+def plot_param_contour(mesh_arrays, labels, freq_grid, x_param, y_param, title=None, 
+    levels=None, colormap="inferno", log_x=False, log_y=False, apply_isco=True,):
+    """
+    Generic contour plot from N-dimensional parameter grids.
+    Extracts a 2D slice along (x_param, y_param).
+    If spin a is one of the axes, automatically adds the mirrored (-a) branch.
+    """
+
+    # -----------------------------------------
+    # 1) IDENTIFICAZIONE ASSI SELEZIONATI
+    # -----------------------------------------
+    try:
+        ix = labels.index(x_param)
+        iy = labels.index(y_param)
+    except ValueError:
+        raise ValueError("x_param or y_param not in labels")
+
+    ndim = len(labels)
+    all_axes = list(range(ndim))
+
+    # Assi da bloccare (tutti gli altri)
+    frozen_axes = [ax for ax in all_axes if ax not in (ix, iy)]
+
+    # Slice: usiamo 0 per assi congelati, slice(None) per i due assi selezionati
+    slicer = [0] * ndim
+    slicer[ix] = slice(None)
+    slicer[iy] = slice(None)
+    slicer = tuple(slicer)
+
+    # Estraggo la griglia 2D
+    X = mesh_arrays[ix][slicer]
+    Y = mesh_arrays[iy][slicer]
+    F = freq_grid[slicer]
+
+    # -----------------------------------------
+    # 2) SE a È UNO DEI DUE ASSI → DUPLICA GRIGLIA
+    # -----------------------------------------
+    spin_on_x = (x_param == "a")
+    spin_on_y = (y_param == "a")
+
+    if spin_on_x or spin_on_y:
+        # Identifica dove sta A e dove sta R
+        if spin_on_x:
+            A = X
+            other = Y
+        else:
+            A = Y
+            other = X
+
+        # Parte negativa a -> -a
+        A_neg = -A
+
+        # Riutilizziamo però esattamente la stessa frequenza (simmetria),
+        # ma la ISCO sarà diversa e la maschera finale lo rifletterà.
+        F_neg = F.copy()
+
+        # Ricombino in un’unica griglia (asse spin raddoppiato)
+        if spin_on_x:
+            X = np.concatenate([A_neg, A], axis=1)
+            Y = np.concatenate([other, other], axis=1)
+            F = np.concatenate([F_neg, F], axis=1)
+        else:
+            X = np.concatenate([other, other], axis=0)
+            Y = np.concatenate([A_neg, A], axis=0)
+            F = np.concatenate([F_neg, F], axis=0)
+
+    # -----------------------------------------
+    # 3) MASCHERA ISCO
+    # -----------------------------------------
+    mask = np.ones_like(F, dtype=bool)
+
+    if apply_isco and (
+        ("r" in x_param and "a" in y_param) or ("a" in x_param and "r" in y_param)
+    ):
+        if "a" in x_param:
+            A = X
+            R = Y
+        else:
+            A = Y
+            R = X
+
+        # Calcolo ISCO per ogni spin (positivo o negativo)
+        a_vals = np.unique(A)
+        risco_vals = np.array([r_isco(a) for a in a_vals])
+        risco_map = dict(zip(a_vals, risco_vals))
+
+        risco_grid = np.vectorize(risco_map.get)(A)
+        mask &= (R >= risco_grid)
+
+    F_masked = np.ma.masked_where(~mask, F)
+
+    # -----------------------------------------
+    # 4) CONTOUR
+    # -----------------------------------------
+    plt.figure(figsize=(9, 6))
+
+    if levels is None:
+        valid = F_masked[F_masked > 0]
+        levels = np.logspace(np.log10(valid.min()),
+                             np.log10(valid.max()), 25)
+
+    cs = plt.contour(X, Y, F_masked, levels=levels, cmap=colormap)
+    plt.colorbar(cs, label="frequency")
+
+    # Highlight target band
+    plt.contour(X, Y, F_masked, levels=[NU0-10*TOL], colors='red', linewidths=5)
+    plt.contour(X, Y, F_masked, levels=[NU0+10*TOL], colors='blue', linewidths=5)
+
+    if log_x:
+        plt.xscale("log")
+    if log_y:
+        plt.yscale("log")
+
+    plt.xlabel(x_param)
+    plt.ylabel(y_param)
+    plt.title(title or f"Contour of frequency vs {x_param}, {y_param}")
+    plt.tight_layout()
+    plt.show()
 
 
 # --------------------------------------------------------
