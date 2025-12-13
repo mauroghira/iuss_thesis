@@ -24,46 +24,6 @@ TARGET_MAX = 1e-4
 
 
 # --------------------------------------------------------
-# KERR METRIC BASIC FUNCTIONS
-# Kerr frequencies in Hz
-# i compute Rg separating M because I'll may try some different value
-def nu_phi(r, a, M=M_BH):
-    r = np.asarray(r)
-    a = np.asarray(a)
-    M = np.asarray(M)
-
-    # r in units of GM/c^2, a dimensionless (0–1), M in solar masses
-    Rg = Rg_SUN * M  # in cm
-    return C / (2*np.pi * Rg*(r**1.5 + abs(a)))
-
-def nu_theta(r, a, M=M_BH):
-    r = np.asarray(r)
-    a = np.asarray(a)
-    M = np.asarray(M)
-    vphi = nu_phi(r, a, M)
-    factor = np.sqrt(1 - (4*abs(a))/r**1.5 + (3*a**2)/r**2)
-    return vphi * factor
-
-def nu_r(r, a, M=M_BH):
-    r = np.asarray(r)
-    a = np.asarray(a)
-    M = np.asarray(M)
-    vphi = nu_phi(r, a, M)
-    factor = np.sqrt(1 - (6)/r + (8*abs(a))/r**1.5 - (3*a**2)/r**2)
-    return vphi * factor
-
-# Kerr ISCO radius
-def r_isco(a):
-    a = np.asarray(a)
-    # sign(a) but safe for vectorization (returns 0 if a=0)
-    sgn = np.sign(a)
-
-    Z1 = 1 + (1 - a**2)**(1/3) * ((1 + a)**(1/3) + (1 - a)**(1/3))
-    Z2 = np.sqrt(3*a**2 + Z1**2)
-    return 3 + Z2 - sgn*np.sqrt((3 - Z1)*(3 + Z1 + 2*Z2))
-
-
-# --------------------------------------------------------
 # GENERAL FUNCTION TO CREATE GRIDS
 def create_param_grid(param_dict, mesh=True, flatten=False):
     """
@@ -151,42 +111,28 @@ def find_matches(mesh_arrays, labels, param_vectors, frq_fun):
 
     # ------- rISCO positive & negative -------
     a_vec = param_vectors["a"]          # 1D array
-    r_isco_pos = r_isco(a_vec)
-    r_isco_neg = r_isco(-a_vec)
+    isco = r_isco(a_vec)
 
     # broadcasting
-    r_isco_pos_nd = r_isco_pos.reshape(-1, *[1]*(freq.ndim - 1))
-    r_isco_neg_nd = r_isco_neg.reshape(-1, *[1]*(freq.ndim - 1))
+    r_isco_nd = isco.reshape(-1, *[1]*(freq.ndim - 1))
 
     # maschere complete
-    mask_pos = np.ones_like(freq, bool)
-    mask_neg = np.ones_like(freq, bool)
+    mask = np.ones_like(freq, bool)
 
     # applica il vincolo solo ai parametri che contengono "r"
     for lab, arr in param_dict.items():
         if "r" in lab:
-            mask_pos &= (arr >= r_isco_pos_nd)
-            mask_neg &= (arr >= r_isco_neg_nd)
+            mask &= (arr >= r_isco_nd)
 
     # maschere finali
-    mask_match_pos = mask_freq & mask_pos
-    mask_match_neg = mask_freq & mask_neg
+    mask_match = mask_freq & mask
 
     # ------- raccogli risultati -------
     rows = []
 
-    # POSITIVE SPIN (a rimane positivo)
-    idxs_pos = np.argwhere(mask_match_pos)
+    idxs_pos = np.argwhere(mask_match)
     for idx in idxs_pos:
         row = {lab: arr[tuple(idx)] for lab, arr in param_dict.items()}
-        row["freq"] = freq[tuple(idx)]
-        rows.append(row)
-
-    # NEGATIVE SPIN (invertiamo il segno di 'a')
-    idxs_neg = np.argwhere(mask_match_neg)
-    for idx in idxs_neg:
-        row = {lab: arr[tuple(idx)] for lab, arr in param_dict.items()}
-        row["a"] = -row["a"]     # ⬅⬅ salva direttamente il valore negativo
         row["freq"] = freq[tuple(idx)]
         rows.append(row)
 
@@ -214,14 +160,54 @@ def frq_wrap(freq_callable):
 
 
 # --------------------------------------------------------
+# KERR METRIC BASIC FUNCTIONS
+# Kerr frequencies in Hz
+# i compute Rg separating M because I'll may try some different value
+def nu_phi(r, a, M=M_BH):
+    r = np.asarray(r)
+    a = np.asarray(a)
+    M = np.asarray(M)
+
+    # r in units of GM/c^2, a dimensionless (0–1), M in solar masses
+    Rg = Rg_SUN * M  # in cm
+    return C / (2*np.pi * Rg*(r**1.5 + a))
+
+def nu_theta(r, a, M=M_BH):
+    r = np.asarray(r)
+    a = np.asarray(a)
+    M = np.asarray(M)
+    vphi = nu_phi(r, a, M)
+    factor = np.sqrt(1 - (4*a)/r**1.5 + (3*a**2)/r**2)
+    return vphi * factor
+
+def nu_r(r, a, M=M_BH):
+    r = np.asarray(r)
+    a = np.asarray(a)
+    M = np.asarray(M)
+    vphi = nu_phi(r, a, M)
+    factor = np.sqrt(1 - (6)/r + (8*a)/r**1.5 - (3*a**2)/r**2)
+    return vphi * factor
+
+# Kerr ISCO radius
+def r_isco(a):
+    a = np.asarray(a)
+    # sign(a) but safe for vectorization (returns 0 if a=0)
+    sgn = np.sign(a)
+
+    Z1 = 1 + (1 - a**2)**(1/3) * ((1 + a)**(1/3) + (1 - a)**(1/3))
+    Z2 = np.sqrt(3*a**2 + Z1**2)
+    return 3 + Z2 - sgn*np.sqrt((3 - Z1)*(3 + Z1 + 2*Z2))
+
+
+# --------------------------------------------------------
 # RELATIVISTIC PRECESSION MODEL FREQUENCIES
 # lense-thirring precession frequency
 def nu_LT(r, a, M=M_BH):
-    return nu_phi(r, a, M) - nu_theta(r, a, M)
+    return np.abs(nu_phi(r, a, M) - nu_theta(r, a, M))
 
 #periastron precession frequency
 def nu_per(r, a, M=M_BH):
-    return nu_phi(r, a, M) - nu_r(r, a, M)
+    return np.abs(nu_phi(r, a, M) - nu_r(r, a, M))
 
 
 # --------------------------------------------------------

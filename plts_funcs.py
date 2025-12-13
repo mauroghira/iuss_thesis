@@ -8,6 +8,8 @@ from setup import *
 
 # --------------------------------------------------------
 # FUNCTIONS TO PLOT FREQUENCY LEVEL CURVES
+
+# useless now
 def spin_double(X, Y, F, spin_on_x, spin_on_y):
     # Identifica dove sta A e dove sta R
     if spin_on_x:
@@ -59,7 +61,7 @@ def mask_radii(x_param, y_param, X, Y, F, mesh_arrays, labels, idx_fix):
         risco_vals = r_isco(a_vals)
         risco_map = dict(zip(a_vals, risco_vals))
         risco_grid = np.vectorize(risco_map.get)(A)
-        mask &= (R >= risco_grid)
+        mask &= (R >= risco_grid - 1)
 
     else:
         spin_param = "a"
@@ -116,15 +118,15 @@ def add_isco(x_param, y_param, X, Y, mesh_arrays, labels, idx_fix):
         if x_param == "r":
             y_vals = np.unique(Y)
             isco = np.ones_like(y_vals) * r_isco(a_fixed)
-            isco_neg = np.ones_like(y_vals) * r_isco(-a_fixed)
+            # isco_neg = np.ones_like(y_vals) * r_isco(-a_fixed)
             plt.plot(isco, y_vals, "--", color="purple", lw=2, label="ISCO")
-            plt.plot(isco_neg, y_vals, ":", color="purple", lw=2, label="ISCO (-a)")
+            #plt.plot(isco_neg, y_vals, ":", color="purple", lw=2, label="ISCO (-a)")
         elif y_param == "r":
             x_vals = np.unique(X)
             isco = np.ones_like(x_vals) * r_isco(a_fixed)
-            isco_neg= np.ones_like(x_vals) * r_isco(-a_fixed)
+            # isco_neg= np.ones_like(x_vals) * r_isco(-a_fixed)
             plt.plot(x_vals, isco, "--", color="purple", lw=2, label="ISCO")
-            plt.plot(x_vals, isco_neg, ":", color="purple", lw=2, label="ISCO (-a)")
+            # plt.plot(x_vals, isco_neg, ":", color="purple", lw=2, label="ISCO (-a)")
 
 def plot_param_colormap(mesh_arrays, labels, freq_grid,
                         x_param, y_param, idx_fix=-1,
@@ -171,6 +173,7 @@ def plot_param_colormap(mesh_arrays, labels, freq_grid,
     Y = mesh_arrays[iy][slicer]
     F = freq_grid[slicer]
 
+    """
     # -----------------------------------------
     # 2) SE a È UNO DEI DUE ASSI → DUPLICA GRIGLIA
     # -----------------------------------------
@@ -179,28 +182,30 @@ def plot_param_colormap(mesh_arrays, labels, freq_grid,
 
     if spin_on_x or spin_on_y:
         X, Y, F = spin_double(X, Y, F, spin_on_x, spin_on_y)
+    """
 
     # -----------------------------------------
-    # 3) MASCHERA ISCO
-    # -----------------------------------------
-    mask = np.ones_like(F, dtype=bool)
-    if apply_isco and ("r" in x_param or "r" in y_param):
-        mask = mask_radii(x_param, y_param, X, Y, F, mesh_arrays, labels, idx_fix)
-
-    F_masked = np.ma.masked_where(~mask, F)
-
-    # -----------------------------------------
-    # 4) COLORMAP (pcolormesh)
+    # 3) COLORMAP (pcolormesh)
     # -----------------------------------------
 
     pcm = plt.pcolormesh(
-        X, Y, F_masked,
+        X, Y, F,
         shading="auto",
         cmap=colormap,
         norm=LogNorm()
     )
     cbar = plt.colorbar(pcm, label="frequency")
 
+
+    # -----------------------------------------
+    # 4) MASCHERA ISCO
+    # -----------------------------------------
+    mask = np.ones_like(F, dtype=bool)
+    if apply_isco and ("r" in x_param or "r" in y_param):
+        mask = mask_radii(x_param, y_param, X, Y, F, mesh_arrays, labels, idx_fix)
+
+    F_masked = np.ma.masked_where(~mask, F)
+    
     # -----------------------------------------
     # 5) Target frequency NU0 (opzionale)
     # -----------------------------------------
@@ -208,7 +213,7 @@ def plot_param_colormap(mesh_arrays, labels, freq_grid,
         plt.contour(
             X, Y, F_masked,
             levels=[TARGET_MIN, NU0, TARGET_MAX],
-            colors=["red", "green", "darkblue"],
+            colors=["red", "darkgreen", "darkblue"],
             linewidths=[2, 4, 2]
         )
     # Aggiungi il handle manualmente
@@ -217,17 +222,18 @@ def plot_param_colormap(mesh_arrays, labels, freq_grid,
     max_habdle = plt.Line2D([], [], color="darkblue", linewidth=2, label=f"{TARGET_MAX} Hz")
     isco_handle = plt.Line2D([], [], color="purple", linestyle="--", label="ISCO")
 
-
     # -----------------------------------------
     # 6) Aggiungi curva ISCO (se r vs a)
     # -----------------------------------------
     if apply_isco and ("r" in y_param or "r" in x_param):
         add_isco(x_param, y_param, X, Y, mesh_arrays, labels, idx_fix)
+        """
         if("a" not in y_param and "a" not in x_param):
             isco_neg_handle = plt.Line2D([], [], color="purple", linestyle=":", label="ISCO (-a)")
         else:
             isco_neg_handle = plt.Line2D([], [], color="purple", linestyle=":", label="")
-
+        """
+            
     # -----------------------------------------
     # 7) Scaling assi
     # -----------------------------------------
@@ -236,7 +242,7 @@ def plot_param_colormap(mesh_arrays, labels, freq_grid,
     if log_y:
         plt.yscale("log")
 
-    plt.legend(handles=[target_handle, min_habdle, max_habdle, isco_handle, isco_neg_handle], loc="upper right")
+    plt.legend(handles=[target_handle, min_habdle, max_habdle, isco_handle], loc="upper right")
     plt.title(title or f"Colormap of frequency vs {x_param}, {y_param}")
     plt.xlabel(x_param)
     plt.ylabel(y_param)
