@@ -217,7 +217,7 @@ def plot_param_colormap(mesh_arrays, labels, freq_grid,
             linewidths=[2, 4, 2]
         )
     # Aggiungi il handle manualmente
-    target_handle = plt.Line2D([], [], color="green", linewidth=4, label=f"Target ({NU0} Hz)")
+    target_handle = plt.Line2D([], [], color="darkgreen", linewidth=4, label=f"Target ({NU0} Hz)")
     min_habdle = plt.Line2D([], [], color="red", linewidth=2, label=f"{TARGET_MIN} Hz")
     max_habdle = plt.Line2D([], [], color="darkblue", linewidth=2, label=f"{TARGET_MAX} Hz")
     isco_handle = plt.Line2D([], [], color="purple", linestyle="--", label="ISCO")
