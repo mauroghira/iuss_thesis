@@ -1,2 +1,9 @@
 .vscode
 PITONE
+AWI
+__pycache__
+*.png
+*.jpg
+*.jpeg
+*.pdf
+*.svg
