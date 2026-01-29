@@ -11,11 +11,12 @@ M_BH = 10**6.3
 NU0 = 3.3*10**(-5)
 
 # Physical constants
-C = c.value         # m/s
-MSUN = M_sun.value     # kg
+C = c.cgs.value         # cm/s
+MSUN = M_sun.cgs.value     # g
+GG = G.cgs.value       # cm^3 g^-1 s^-2
 AU = (1 * u.AU).to(u.m).value  # AU
 
-Rg_SUN = G.value * MSUN / C**2  # in m
+Rg_SUN = GG * MSUN / C**2  # in cm
 
 #let's set the tolerance for the target frequency
 TOL = 0.01 * NU0  # 1% tolerance
