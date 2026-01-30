@@ -58,7 +58,7 @@ def create_param_grid(param_dict, mesh=True, flatten=False):
     for key, val in param_dict.items():
         if len(val) == 3 and all(isinstance(x, (int, float)) for x in val):
             vmin, vmax, n = val
-            if "r" in key:
+            if "r" in key or "B00" in key or "Sigma0" in key:
                 # logarithmic spacing for radii
                 values.append(np.logspace(np.log10(vmin), np.log10(vmax), n))
             else:
