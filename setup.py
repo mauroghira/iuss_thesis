@@ -203,6 +203,11 @@ def r_isco(a):
     Z2 = np.sqrt(3*a**2 + Z1**2)
     return 3 + Z2 - sgn*np.sqrt((3 - Z1)*(3 + Z1 + 2*Z2))
 
+# Kerr Event Horizon radius
+def r_horizon(a):
+    a = np.asarray(a)
+    return 1 + np.sqrt(1 - a**2)
+
 
 # --------------------------------------------------------
 # RELATIVISTIC PRECESSION MODEL FREQUENCIES
