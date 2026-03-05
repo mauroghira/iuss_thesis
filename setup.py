@@ -24,7 +24,9 @@ TARGET_MIN = 1e-5
 TARGET_MAX = 1e-4
 
 
+##########################################################
 # --------------------------------------------------------
+##########################################################
 # GENERAL FUNCTION TO CREATE GRIDS
 def create_param_grid(param_dict, mesh=True, flatten=False):
     """
@@ -86,7 +88,9 @@ def create_param_grid(param_dict, mesh=True, flatten=False):
     return param_vectors, mesh_arrays, flat_matrix
 
 
+##########################################################
 # --------------------------------------------------------
+##########################################################
 # GENERAL FUNCTION TO FIND MATCHES
 def find_matches(mesh_arrays, labels, param_vectors, frq_fun):
     """
@@ -146,7 +150,9 @@ def find_matches(mesh_arrays, labels, param_vectors, frq_fun):
     return df
 
 
+##########################################################
 # --------------------------------------------------------
+##########################################################
 # GENERAL WRAPPER TO MAKE FREQUENCY FUNCTIONS
 def frq_wrap(freq_callable):
     """
@@ -164,7 +170,9 @@ def frq_wrap(freq_callable):
     return wrapper
 
 
+##########################################################
 # --------------------------------------------------------
+##########################################################
 # KERR METRIC BASIC FUNCTIONS
 # Kerr frequencies in Hz
 # i compute Rg separating M because I'll may try some different value
@@ -209,7 +217,10 @@ def r_horizon(a):
     return 1 + np.sqrt(1 - a**2)
 
 
+
+##########################################################
 # --------------------------------------------------------
+##########################################################
 # RELATIVISTIC PRECESSION MODEL FREQUENCIES
 # lense-thirring precession frequency
 def nu_LT(r, a, M=M_BH):
@@ -220,7 +231,9 @@ def nu_per(r, a, M=M_BH):
     return np.abs(nu_phi(r, a, M) - nu_r(r, a, M))
 
 
+##########################################################
 # --------------------------------------------------------
+##########################################################
 # PRECESSING INNER FLOW MODEL FREQUENCY
 def nu_solid_vect(a, rin, rout, zeta, M=M_BH, n_rad=2000):
     a    = np.atleast_1d(a)
