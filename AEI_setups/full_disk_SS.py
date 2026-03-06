@@ -221,43 +221,74 @@ def sound_speed_disk(r, a, hr, M=M_BH):
 # 4.  SOLVER AEI  (dispersion relation)
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def solve_k_disk(r, a, B0, Sigma, c_s, m, M=M_BH):
+def solve_k_disk(r_rg, a, B0, Sigma, c_s, m, M=M_BH):
     """
-    Risolve la relazione di dispersione AEI per |k|:
+    Risolve la relazione di dispersione AEI (Tagger & Pellat 1999, Eq. 17):
 
-        (ω̃)² = κ² + (2 B₀² / Σ r)|k| + (c_s/r)² k²
+        ω̃² = κ² + (2B₀²/Σ)(|k|/r) + (k²/r²) c_s²
 
-    con ω̃ = ω_obs - m Ω_φ, ω_obs = 2π ν₀.
+    dove k è il numero d'onda nella variabile s = ln(r)  →  k adimensionale,
+    e r è il raggio fisico in cm.
 
-    Restituisce k_plus in unità di 1/cm.  Converte in 1/r_g fuori.
-    Restituisce NaN dove non esiste soluzione reale e positiva.
+    ANALISI DIMENSIONALE:
+      - ω̃², κ²       : s⁻²
+      - 2B₀²/Σ · k/r : [G²/(g/cm²)] · [1/cm] = s⁻²  (r in cm, k adim.)
+      - k²/r² · c_s² : [1/cm²] · [cm²/s²]    = s⁻²  (r in cm, k adim.)
+
+    Il codice converte r [r_g] → r [cm] internamente prima di costruire
+    i coefficienti. k restituito è adimensionale (numero d'onda in s=ln r).
+    kperr = k (già adimensionale, equivale a k_fisico × r).
+
+    Parameters
+    ----------
+    r_rg  : array_like   raggio in unità di r_g
+    a     : float        spin adimensionale
+    B0    : array_like   campo magnetico [G]
+    Sigma : array_like   densità superficiale [g/cm²]
+    c_s   : array_like   velocità del suono [cm/s]
+    m     : int          numero d'onda azimutale
+    M     : float        massa BH [M_sun]
+
+    Returns
+    -------
+    k   : ndarray   numero d'onda adimensionale (in s = ln r)
+                    NaN dove non esiste soluzione reale e positiva.
+                    k_fisico [1/cm] = k / r_cm
+                    kperr (adim.)   = k  (identicamente)
     """
-    r      = np.asarray(r,     dtype=float)
-    B0     = np.asarray(B0,    dtype=float)
-    Sigma  = np.asarray(Sigma, dtype=float)
-    c_s    = np.asarray(c_s,   dtype=float)
+    r_rg  = np.asarray(r_rg,  dtype=float)
+    B0    = np.asarray(B0,    dtype=float)
+    Sigma = np.asarray(Sigma, dtype=float)
+    c_s   = np.asarray(c_s,   dtype=float)
 
-    kappa_sq  = (2 * np.pi * nu_r(r, a, M))**2
-    omega     = 2 * np.pi * NU0
-    Omega_phi = 2 * np.pi * nu_phi(r, a, M)
-    om_tilde  = omega - m * Omega_phi
+    # ── conversione r in cm ──────────────────────────────────────────────────
+    Rg    = Rg_SUN * M          # cm per r_g
+    r_cm  = r_rg * Rg           # raggio fisico in cm
 
-    A  = c_s**2 / r**2
-    B  = 2 * B0**2 / (Sigma * r)
-    CC = kappa_sq - om_tilde**2
+    # ── frequenze ───────────────────────────────────────────────────────────
+    kappa_sq  = (2 * np.pi * nu_r(r_rg,  a, M))**2   # s⁻²
+    Omega_phi = 2 * np.pi * nu_phi(r_rg, a, M)        # s⁻¹
+    omega     = 2 * np.pi * NU0                        # s⁻¹  (frequenza osservata)
+    om_tilde  = omega - m * Omega_phi                  # s⁻¹
 
-    Delta = B**2 - 4 * A * CC
+    # ── coefficienti quadratica  A k² + B k + CC = 0 ────────────────────────
+    # r in cm → k adimensionale → unità omogenee s⁻²
+    A  = c_s**2   / r_cm**2          # s⁻²
+    B  = 2*B0**2  / (Sigma * r_cm)   # s⁻²
+    CC = kappa_sq - om_tilde**2       # s⁻²
 
-    k = np.full_like(r, np.nan)
+    Delta = B**2 - 4*A*CC
+
+    k = np.full_like(r_rg, np.nan)
     good = Delta >= 0
     if np.any(good):
-        sqD   = np.sqrt(Delta[good])
-        kp    = (-B[good] + sqD) / (2 * A[good])
-        km    = (-B[good] - sqD) / (2 * A[good])
-        # prendi k_plus se positivo, altrimenti k_minus
+        sqD = np.sqrt(Delta[good])
+        kp  = (-B[good] + sqD) / (2*A[good])
+        km  = (-B[good] - sqD) / (2*A[good])
+        # preferisci k_plus (più grande); se negativo prova k_minus
         k[good] = np.where(kp > 0, kp, np.where(km > 0, km, np.nan))
 
-    return k   # unità: 1/cm
+    return k   # adimensionale (numero d'onda in s = ln r)
 
 
 def compute_beta_disk(r, a, B0, Sigma, c_s, hr, M=M_BH):
@@ -346,7 +377,6 @@ def compute_full_disk_profile(a, B00, Sigma0, mm, hr, alpha=0.01, M=M_BH,
 
     # Solver k
     k_cm_arr = solve_k_disk(r_arr, a, B0_arr, Sigma_arr, cs_arr, m=mm, M=M)
-    k_arr    = k_cm_arr * Rg        # 1/rg
     kr_arr   = k_arr * r_arr        # adimensionale
 
     # Beta e shear
@@ -365,7 +395,6 @@ def compute_full_disk_profile(a, B00, Sigma0, mm, hr, alpha=0.01, M=M_BH,
         'B0':          B0_arr,
         'Sigma':       Sigma_arr,
         'c_s':         cs_arr,
-        'k_cm':        k_cm_arr,
         'k':           k_arr,
         'kr':          kr_arr,
         'beta':        beta_arr,
@@ -602,7 +631,7 @@ def find_rossby_matches_SS(param_dict, alpha_visc, m, hr,
         for iB, B00_val in enumerate(B00_vals):
             for iS, S0_val in enumerate(S0_vals):
                 # frontiere e normalizzazioni per questa combinazione
-                r_AB, r_BC, mdot = ss_boundaries(a_val, B00_val, M, alpha_visc)
+                r_AB, r_BC, mdot = ss_boundaries(a_val, S0_val, alpha=alpha_visc, M=M)
                 norms      = compute_norms(a_val, B00_val, S0_val, r_AB, r_BC)
 
                 # indice lungo r per questo (a, B00, Sigma0)
