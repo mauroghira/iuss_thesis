@@ -1,4 +1,5 @@
 .vscode
+.venv
 PITONE
 AEI
 AEI2
@@ -9,4 +10,3 @@ __pycache__
 *.jpeg
 *.pdf
 *.svg
-s
