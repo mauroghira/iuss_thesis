@@ -51,11 +51,13 @@ set di parametri scalari (a, B00, Sigma0, alpha_visc, …).
 
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
+from matplotlib.colors import LogNorm
 
 import sys
 sys.path.append("..")
 from setup import (
-    r_isco, nu_phi, nu_r,
+    r_isco, nu_phi, nu_r, r_horizon,
     Rg_SUN, M_BH, NU0,
 )
 
@@ -347,11 +349,10 @@ def find_rossby(
 
         # ── profili fisici (vettorizzati in r) ──────────────────────────────
         result = disk_model(r_i, **row_params)
-        if len(result) == 3:
-            B0_i, Sigma_i, cs_i = result
-            zone_i = None
-        else:
-            B0_i, Sigma_i, cs_i, zone_i = result   # modello SS/NT può restituire zona
+        n_ret  = len(result)
+        B0_i, Sigma_i, cs_i = result[0], result[1], result[2]
+        zone_i = result[3] if n_ret >= 4 else None
+        info_i = result[4] if n_ret == 5 else {} # in realtà non serge
 
         # ── solver k ────────────────────────────────────────────────────────
         k_i = solve_k_aei(r_i, a_val, B0_i, Sigma_i, cs_i, m=m, M=M)
@@ -425,95 +426,308 @@ def _make_interp(r_nodes, y_nodes):
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# 4.  ADAPTER UFFICIALI PER OGNI MODELLO
-#     (da copiare nelle celle di setup del notebook o nei file modello)
+# 4.  PLOT e stats
 # ═══════════════════════════════════════════════════════════════════════════
 
-# ── 4a. simple_disc (power-law omogeneo) ────────────────────────────────────
-#
-# Nel notebook / simple_disc.py:
-#
-#   from aei_common import find_rossby
-#   from simple_disc import B0_profile, Sigma_profile, sound_speed_thin
-#
-#   def disk_model_simple(r_rg, a, B00, Sigma0, alpha_B=alp_B, alpha_S=alp_S,
-#                          hr=hor, M=M_BH):
-#       B0    = B0_profile(r_rg, a, B00, alpha_B)
-#       Sigma = Sigma_profile(r_rg, a, Sigma0, alpha_S)
-#       c_s   = sound_speed_thin(r_rg, a, hr, M)
-#       return B0, Sigma, c_s
-#
-#   param_grid = {
-#       'a':      np.linspace(-0.9, 0.9, 19),
-#       'B00':    np.logspace(-3, 8, 24),
-#       'Sigma0': np.logspace(3, 7, 20),
-#   }
-#   r_vec = np.geomspace(1, 1000, 100)
-#
-#   df = find_rossby(
-#       r_vec, param_grid,
-#       disk_model=lambda r, **p: disk_model_simple(r, **p, hr=0.05, M=M_BH),
-#       m=1, hr=0.05, M=M_BH,
-#       check_k=True, check_beta=True, check_shear=True,
-#   )
+def plot_standard_4panels(df, title_prefix=""):
+    """
+    Crea i 4 grafici standard per analizzare le soluzioni
+    """
+    if len(df) == 0:
+        print(f"Nessuna soluzione per {title_prefix}")
+        return
+    
+    fig, axes = plt.subplots(2, 2, figsize=(15, 12))
+    
+    # Panel 1: k vs r (colored by spin)
+    sc1 = axes[0, 0].scatter(df['r'], df['k'], c=df['a'], alpha=0.6, cmap='RdBu', s=20)
+    axes[0, 0].set_xlabel('r [r_g]', fontsize=12)
+    axes[0, 0].set_ylabel('k [dimensionless]', fontsize=12)
+    axes[0, 0].set_xscale('log')
+    axes[0, 0].set_yscale('log')
+    axes[0, 0].set_title(f'{title_prefix}Wavenumber vs Radius', fontsize=13)
+    axes[0, 0].grid(True, alpha=0.3)
+    plt.colorbar(sc1, ax=axes[0, 0], label='Spin a')
+
+    # Panel 2: B00 vs Sigma0 (colored by radius)
+    sc2 = axes[0, 1].scatter(df['B00'], df['Sigma0'], c=df['r'], 
+                             alpha=0.6, cmap='viridis', s=20)
+    sc2.set_norm(LogNorm())
+    axes[0, 1].set_xlabel('B₀₀', fontsize=12)
+    axes[0, 1].set_ylabel('Σ₀', fontsize=12)
+    axes[0, 1].set_xscale('log')
+    axes[0, 1].set_yscale('log')
+    axes[0, 1].set_title(f'{title_prefix}Parameter Space', fontsize=13)
+    axes[0, 1].grid(True, alpha=0.3)
+    plt.colorbar(sc2, ax=axes[0, 1], label='r [r_g]')
+
+    # Panel 3: k (dimensionless) vs spin
+    sc3 = axes[1, 0].scatter(df['a'], df['k'], c=df['r'], 
+                             alpha=0.6, cmap='plasma', s=20)
+    sc3.set_norm(LogNorm())
+    axes[1, 0].set_xlabel('Spin a', fontsize=12)
+    axes[1, 0].set_ylabel('k [dimensionless]', fontsize=12)
+    axes[1, 0].set_yscale('log')
+    axes[1, 0].set_title(f'{title_prefix}Dimensionless wavenumber', fontsize=13)
+    axes[1, 0].axhline(0.1, ls='--', c='gray', alpha=0.5, label='Physical range')
+    axes[1, 0].axhline(10, ls='--', c='gray', alpha=0.5)
+    axes[1, 0].grid(True, alpha=0.3)
+    axes[1, 0].legend()
+    plt.colorbar(sc3, ax=axes[1, 0], label='r [r_g]')
+    
+    # Panel 4: beta vs spin (colored by radius)
+    sc4 = axes[1, 1].scatter(df['a'], df['beta'], c=df['r'], 
+                             alpha=0.6, cmap='plasma', s=20)
+    sc4.set_norm(LogNorm())
+    axes[1, 1].set_xlabel('Spin a', fontsize=12)
+    axes[1, 1].set_ylabel(r'$\beta$ [dimensionless]', fontsize=12)
+    axes[1, 1].set_yscale('log')
+    axes[1, 1].set_title(f'{title_prefix}Disk magnetization', fontsize=13)
+    axes[1, 1].axhline(1, ls='--', c='red', alpha=0.7, label=r'$\beta = 1$')
+    axes[1, 1].grid(True, alpha=0.3)
+    axes[1, 1].legend()
+    plt.colorbar(sc4, ax=axes[1, 1], label='r [r_g]')
+    
+    plt.tight_layout()
+    plt.show()
 
 
-# ── 4b. full_disk_SS (tre zone Shakura-Sunyaev) ─────────────────────────────
-#
-# Nel notebook / full_disk_SS.py:
-#
-#   from aei_common import find_rossby
-#   from full_disk_SS import (
-#       ss_boundaries, compute_norms,
-#       B0_disk, Sigma_disk, sound_speed_disk,
-#       zone_index, ZONE_NAMES,
-#   )
-#
-#   def disk_model_SS(r_rg, a, B00, Sigma0, alpha_visc=0.1, M=M_BH, hr=0.05):
-#       r_AB, r_BC, _ = ss_boundaries(a, Sigma0, alpha=alpha_visc, M=M)
-#       norms         = compute_norms(a, B00, Sigma0, r_AB, r_BC)
-#       B0    = B0_disk(r_rg, norms, r_AB, r_BC)
-#       Sigma = Sigma_disk(r_rg, norms, r_AB, r_BC)
-#       c_s   = sound_speed_disk(r_rg, a, hr, M)
-#       zi    = zone_index(r_rg, r_AB, r_BC)
-#       zone  = np.array([ZONE_NAMES[i] for i in zi])
-#       return B0, Sigma, c_s, zone
-#
-#   param_grid = {
-#       'a':      np.linspace(-0.9, 0.9, 19),
-#       'B00':    np.logspace(-3, 8, 24),
-#       'Sigma0': np.logspace(3, 7, 20),
-#   }
-#   r_vec = np.geomspace(2, 1000, 150)
-#
-#   df = find_rossby(
-#       r_vec, param_grid,
-#       disk_model=lambda r, **p: disk_model_SS(r, **p, alpha_visc=0.1, M=M_BH, hr=0.05),
-#       m=1, hr=0.05, M=M_BH,
-#       check_k=True, check_beta=True, check_shear=True,
-#   )
+def summarize_comparison2(dfs):
+    """
+    Confronta più DataFrame di soluzioni producendo:
+    - tabella riassuntiva
+    - grafico a barre
+    
+    Parametri
+    ----------
+    dfs : dict
+        Dizionario {nome_Configuration: dataframe}
+    """
+
+    results = []
+
+    for name, df in dfs.items():
+
+        stats = {
+            "Configuration": name,
+            "# Solutions": len(df),
+            "Range k":
+                f"[{df['k'].min():.2e}, {df['k'].max():.2e}]",
+            "Range β":
+                f"[{df['beta'].min():.2e}, {df['beta'].max():.2e}]",
+            "Range dQ/dr":
+                f"[{df['dQdr'].min():.2e}, {df['dQdr'].max():.2e}]",
+            "% β ≤ 1": (df['beta'] <= 1).mean() * 100,
+            "% dQ/dr > 0": (df['dQdr'] > 0).mean() * 100
+        }
+
+        results.append(stats)
+
+    comparison = pd.DataFrame(results)
+
+    # baseline
+    baseline = comparison.loc[
+        comparison['Configuration'] == 'Baseline',
+        '# Solutions'
+    ].iloc[0]
+
+    # salva valori numerici per il grafico
+    solutions_numeric = comparison['# Solutions'].copy()
+
+    # percentuali di rimanenti (solo array temporaneo)
+    reductions = (solutions_numeric / baseline) * 100
+
+    # formatta colonna # Solutions
+    comparison['# Solutions'] = [
+        f"{int(n)} ({r:.1f}%)" if cfg != "Baseline" else f"{int(n)}"
+        for n, r, cfg in zip(solutions_numeric, reductions, comparison['Configuration'])
+    ]
+
+    print("\n" + "=" * 150)
+    print("CONFRONTO RIASSUNTIVO DEGLI EFFETTI DEI BOUND")
+    print("=" * 150)
+
+    print(comparison.round(3).to_string(index=False))
+
+    # Grafico
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    bars = ax.bar(
+        comparison['Configuration'],
+        solutions_numeric,
+        alpha=0.7
+    )
+
+    ax.set_ylabel('# Solutions')
+    ax.set_title('Effects of Physical Bounds on AEI Solutions')
+    ax.grid(True, axis='y', alpha=0.3)
+
+    for bar, pct in zip(bars, reductions):
+        height = bar.get_height()
+        ax.text(
+            bar.get_x() + bar.get_width()/2,
+            height,
+            f'{pct:.1f}%',
+            ha='center',
+            va='bottom'
+        )
+
+    plt.xticks(rotation=15)
+    plt.tight_layout()
+    plt.show()
+
+    return comparison
 
 
-# ── 4c. Novikov-Thorne (profili NT diretti) ──────────────────────────────────
-#
-# Se si hanno direttamente i profili B0(r), Sigma(r), c_s(r) calcolati con
-# ss_nt_boundaries, basta un adapter minimale:
-#
-#   from aei_common import find_rossby
-#   from ss_nt_boundaries import nt_profiles  # funzione che restituisce profili NT
-#
-#   def disk_model_NT(r_rg, a, mdot, alpha_visc=0.1, M=M_BH, hr=0.05):
-#       B0, Sigma, c_s = nt_profiles(r_rg, a, mdot, alpha=alpha_visc, M=M)
-#       return B0, Sigma, c_s
-#
-#   param_grid = {
-#       'a':    np.linspace(-0.9, 0.9, 19),
-#       'mdot': np.logspace(-2, 0, 15),
-#   }
-#   r_vec = np.geomspace(2, 500, 150)
-#
-#   df = find_rossby(
-#       r_vec, param_grid,
-#       disk_model=lambda r, **p: disk_model_NT(r, **p, alpha_visc=0.1, M=M_BH, hr=0.05),
-#       m=1, hr=0.05, M=M_BH,
-#   )
+# ═══════════════════════════════════════════════════════════════════════════
+# 5.  FULL DISC INFOS PER ANALISI RADIALE
+# ═══════════════════════════════════════════════════════════════════════════
+def compute_disk_profile(
+    disk_model,
+    params,
+    mm=mm,
+    hr=HOR,
+    M=M_BH,
+    r_min=None,
+    r_max=None,
+    n_points=300,
+):
+    """
+    Profilo radiale completo per qualsiasi modello di disco.
+
+    Funziona con la stessa `disk_model` passata a `find_rossby` —
+
+    Parametri
+    ----------
+    disk_model : callable
+        disk_model(r_rg, **params) → (B0, Sigma, c_s, zone)
+        Stessa firma usata in find_rossby.
+        Può restituire un quinto elemento `info` (dict con r_ISCO, r_AB,
+        r_BC, mdot, ...) che viene incluso in meta automaticamente.
+
+    params : dict
+        Parametri scalari del disco, es.:
+          {'a': 0.5, 'B00': 1e6, 'Sigma0': 1e5}
+        Vengono passati a disk_model come **kwargs.
+
+    mm : int
+        Modo azimutale m della perturbazione AEI.
+
+    hr : float
+        Aspect ratio H/r (per i check β e c_s se non già in disk_model).
+
+    M : float
+        Massa BH [M_sun].
+
+    r_min : float o None
+        Raggio interno della griglia [r_g].
+        Se None: r_isco(params['a'])
+
+    r_max : float o None
+        Raggio esterno della griglia [r_g].
+        Se None: richiede che disk_model restituisca info['r_BC'],
+                 allora r_max = 3 × r_BC.
+                 Se info non è disponibile, solleva ValueError.
+
+    n_points : int
+        Numero di punti radiali log-spaziati.
+
+    Restituisce
+    -----------
+    df : pd.DataFrame
+        Colonne: r, zone, B0, Sigma, c_s, k, beta, dQdr,
+                 k_valid, beta_valid, shear_valid, aei_valid
+
+    meta : dict
+        Contiene almeno: r_H, r_ISCO, a, mm, hr, M, + tutto ciò che
+        disk_model restituisce in info (r_AB, r_BC, mdot, norms, ...).
+
+    Esempi
+    ------
+    # modello SS
+    df, meta = compute_disk_profile(
+        disk_model = lambda r, **p: disk_model_SS(r, **p, alpha_visc=0.1, hr=0.05),
+        params     = {'a': 0.5, 'B00': 1e6, 'Sigma0': 1e5},
+        mm=1, hr=0.05,
+    )
+
+    # modello NT — identico, solo disk_model cambia
+    df, meta = compute_disk_profile(
+        disk_model = lambda r, **p: disk_model_NT(r, **p, alpha_visc=0.1, hr=0.05),
+        params     = {'a': 0.5, 'B00': 1e6, 'Sigma0': 1e5},
+        mm=1, hr=0.05,
+    )
+
+    # con r_min/r_max espliciti
+    df, meta = compute_disk_profile(
+        disk_model = my_model,
+        params     = {'a': 0.5, 'alpha': 0.3},
+        mm=1, hr=0.05,
+        r_min=5.0, r_max=500.0,
+    )
+    """
+    a = float(params['a'])
+
+    # ── griglia radiale ───────────────────────────────────────────────────
+    rISCO = float(r_isco(a))
+    rH    = float(r_horizon(a))
+
+    if r_min is None:
+        r_min = rISCO
+
+    # Chiamata di prova su un singolo punto per estrarre info se disponibile
+    _r_probe = np.array([r_min])
+    _result  = disk_model(_r_probe, **params)
+    _info    = _result[4] if len(_result) == 5 else {}
+
+    if r_max is None:
+        if 'r_BC' in _info:
+            r_max = 3.0 * _info['r_BC']
+        else:
+            raise ValueError(
+                "r_max non specificato e disk_model non restituisce info['r_BC']. "
+                "Passare r_max esplicitamente oppure aggiornare disk_model per "
+                "restituire un quinto elemento info={'r_BC': ...}."
+            )
+
+    r_arr = np.geomspace(r_min, r_max, n_points)
+
+    # ── profili fisici ────────────────────────────────────────────────────
+    result    = disk_model(r_arr, **params)
+    n_ret     = len(result)
+    B0_arr    = np.asarray(result[0], dtype=float)
+    Sigma_arr = np.asarray(result[1], dtype=float)
+    cs_arr    = np.asarray(result[2], dtype=float)
+    zone_arr  = np.asarray(result[3]) if n_ret >= 4 else np.full(len(r_arr), 'N/A', dtype=object)
+    info      = result[4] if n_ret == 5 else {}
+
+    # ── solver AEI ────────────────────────────────────────────────────────
+    k_arr    = solve_k_aei(r_arr, a, B0_arr, Sigma_arr, cs_arr, m=mm, M=M)
+    beta_arr = compute_beta(B0_arr, Sigma_arr, cs_arr, r_arr, hr, M)
+    dQdr_arr = compute_dQdr(r_arr, a,
+                            _make_interp(r_arr, B0_arr),
+                            _make_interp(r_arr, Sigma_arr), M)
+
+    # ── maschere di validità ──────────────────────────────────────────────
+    k_valid     = check_k_wkb(k_arr)
+    beta_valid  = beta_arr <= 1.0
+    shear_valid = dQdr_arr > 0
+    aei_valid   = k_valid & beta_valid & shear_valid
+
+    df = pd.DataFrame({
+        'r':           r_arr,
+        'zone':        zone_arr,
+        'B0':          B0_arr,
+        'Sigma':       Sigma_arr,
+        'c_s':         cs_arr,
+        'k':           k_arr,
+        'beta':        beta_arr,
+        'dQdr':        dQdr_arr,
+        'k_valid':     k_valid,
+        'beta_valid':  beta_valid,
+        'shear_valid': shear_valid,
+        'aei_valid':   aei_valid,
+    })
+
+    meta = dict(r_H=rH, r_ISCO=rISCO, mm=mm, hr=hr, M=M, **params, **info)
+    return df, meta

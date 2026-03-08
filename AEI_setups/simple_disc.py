@@ -1,3 +1,5 @@
+from .aei_common import HOR
+
 import sys
 sys.path.append("..")
 from setup import *
@@ -73,3 +75,13 @@ def sound_speed_thin(r, a, hr=0.05, M=M_BH):
     v_phi = 2 * np.pi * nu_phi(r, a, M) * r * Rg  # cm/s
     
     return hr * v_phi
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 2.  ADAPTER PER FZ UNIVERSASLI
+# ═══════════════════════════════════════════════════════════════════════════════
+def disk_model_simple(r_rg, a, B00, Sigma0, alpha_B, alpha_S, hr=HOR, M=M_BH):
+    B0    = B0_profile(r_rg, a, B00, alpha_B)
+    Sigma = Sigma_profile(r_rg, a, Sigma0, alpha_S)
+    c_s   = sound_speed_thin(r_rg, a, hr, M)
+    return B0, Sigma, c_s

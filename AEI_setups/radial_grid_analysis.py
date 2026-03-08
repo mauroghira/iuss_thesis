@@ -1,18 +1,27 @@
 """
 radial_grid_analysis.py
 =======================
-Estensione di full_disk_SS.py per l'analisi radiale su griglia di parametri.
+Analisi radiale su griglia di parametri — versione aggiornata.
 
-Funzioni principali:
-  - radial_scan_grid     : itera su griglia (a, B00, Sigma0) e raccoglie
-                           profili radiali binned per zona
-  - plot_radial_grid     : grafici mediana ± IQR per k, β, dQ/dr vs r
-  - plot_validity_heatmap: heatmap 2D della frazione AEI valida nello spazio
-                           dei parametri, per bin radiale scelto
-  - plot_slope_grid      : distribuzioni degli esponenti delle leggi di potenza
-                           al variare dei parametri
+Compatibile con la nuova API di aei_common.compute_disk_profile:
+  • disk_model è passato esplicitamente come argomento a radial_scan_grid
+  • params è un dict {'a':..., 'B00':..., 'Sigma0':...}
+  • nessun monkey-patch necessario per cambiare modello
 
-Dipende da: full_disk_SS.py, setup.py
+Funzioni principali
+-------------------
+  radial_scan_grid        itera su griglia (a, B00, Sigma0), raccoglie profili
+                          radiali completi e li aggrega in bin radiali
+  plot_radial_grid        4 pannelli: k·r, β, dQ/dr, frac_AEI  vs r
+                          mediana ± IQR per zona, aggregati sulla griglia
+  plot_validity_heatmap   heatmap 2D della frazione AEI valida nello spazio
+                          dei parametri, per range radiale e zona scelti
+  compute_slopes_grid     esponenti delle leggi di potenza per (a, B00, Σ₀, zona)
+  plot_slope_distributions violinplot + scatter degli esponenti per zona
+  summary_table_grid      tabella riassuntiva per zona (%, slopes mediane)
+
+Dipendenze: aei_common.py, setup.py
+           (NON dipende più direttamente da full_disk_SS)
 """
 
 import numpy as np
@@ -20,60 +29,98 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from matplotlib.colors import LogNorm, Normalize
-from itertools import product
-
-from .full_disk_SS import (
-    compute_full_disk_profile,
-    ZONE_NAMES, ZONE_COLORS,
-)
 
 import sys
 sys.path.append("..")
 from setup import create_param_grid, M_BH
 
+from .aei_common import compute_disk_profile, HOR, mm as MM_DEFAULT
+
+# colori e nomi zone — definiti qui in modo autonomo
+ZONE_NAMES  = ['A', 'B', 'C']
+ZONE_COLORS = {'A': '#f97316', 'B': '#3b82f6', 'C': '#22c55e'}
+_COLOR_FALLBACK = '#94a3b8'   # grigio — per zone 'N/A' o sconosciute
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # 1.  SCAN SU GRIGLIA
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def radial_scan_grid(param_dict, mm, hr, n_r=150, r_max_factor=2.5,
-                     quantities=('k', 'kr', 'beta', 'dQdr'),
-                     n_rbins=30, M=M_BH, verbose=True):
+def radial_scan_grid(
+    param_dict,
+    disk_model,
+    mm=MM_DEFAULT,
+    hr=HOR,
+    n_r=150,
+    r_max=None,
+    quantities=('k', 'beta', 'dQdr'),
+    n_rbins=30,
+    M=M_BH,
+    verbose=True,
+):
     """
     Itera su una griglia (a, B00, Sigma0) e per ogni combinazione calcola
-    il profilo radiale completo, poi lo aggrega in bin radiali.
+    il profilo radiale completo tramite compute_disk_profile, poi aggrega
+    i risultati in bin radiali log-spaziati.
 
     Parameters
     ----------
     param_dict : dict
         Formato: {'a': (min,max,n), 'B00': (min,max,n), 'Sigma0': (min,max,n)}
         Usa la stessa convenzione di create_param_grid del notebook.
+
+    disk_model : callable
+        disk_model(r_rg, **params) → (B0, Sigma, c_s, zone[, info])
+        Stessa firma richiesta da find_rossby e compute_disk_profile.
+        Esempi:
+          lambda r, **p: disk_model_SS(r, **p, alpha_visc=0.01, hr=0.05)
+          lambda r, **p: disk_model_NT(r, **p, alpha_visc=0.01, hr=0.05)
+          lambda r, **p: disk_model_simple(r, **p, hr=0.05)
+
+    mm : int
+        Modo azimutale m della perturbazione AEI.
+
+    hr : float
+        Aspect ratio H/r.
+
     n_r : int
-        Punti radiali per ogni profilo individuale.
-    r_max_factor : float
-        r_max = r_max_factor * r_BC per ogni profilo.
+        Numero di punti radiali per ogni profilo individuale.
+
+    r_max : float o None
+        Raggio esterno della griglia [r_g].
+        Se None: ricavato automaticamente da info['r_BC'] × 3 se disponibile,
+                 altrimenti 1000 r_g come fallback.
+
     quantities : tuple of str
-        Colonne del DataFrame da aggregare ('k','kr','beta','dQdr').
+        Colonne del DataFrame da aggregare.
+        Valori possibili: 'k', 'beta', 'dQdr', 'B0', 'Sigma', 'c_s'.
+
     n_rbins : int
         Numero di bin radiali log-spaziati per l'aggregazione.
+
+    M : float
+        Massa del buco nero [M_sun].
+
     verbose : bool
-        Stampa progresso.
+        Stampa progressi e statistiche.
 
     Returns
     -------
-    df_all : DataFrame
+    df_all : pd.DataFrame
         Tutti i punti radiali di tutti i run concatenati.
-        Colonne: r, zone, k, kr, beta, dQdr, k_valid, beta_valid,
-                 shear_valid, aei_valid, a, B00, Sigma0.
-    df_binned : DataFrame
-        Statistiche per bin radiale (mediana, Q1, Q3, mean, std, count)
-        aggregate su tutta la griglia.
+        Colonne garantite: r, zone, B0, Sigma, c_s, k, beta, dQdr,
+                           k_valid, beta_valid, shear_valid, aei_valid,
+                           a, B00, Sigma0.
+
+    df_binned : pd.DataFrame
+        Statistiche per bin radiale aggregate su tutta la griglia.
         Colonne: r_mid, zone, {qty}_median, {qty}_q1, {qty}_q3,
                  {qty}_mean, {qty}_std, count, frac_k, frac_beta,
                  frac_shear, frac_aei.
+
     meta_list : list of dict
-        Metadati (r_AB, r_BC, ecc.) per ogni run.
+        Metadati (r_AB, r_BC, r_ISCO, mdot, …) per ogni run.
     """
-    # costruisci vettori 1D
     vectors = create_param_grid(param_dict, mesh=False)
     a_vals   = vectors['a']
     B00_vals = vectors['B00']
@@ -91,25 +138,32 @@ def radial_scan_grid(param_dict, mm, hr, n_r=150, r_max_factor=2.5,
     for a_val in a_vals:
         for B00_val in B00_vals:
             for S0_val in S0_vals:
+                params = {'a': a_val, 'B00': B00_val, 'Sigma0': S0_val}
                 try:
-                    df_run, meta = compute_full_disk_profile(
-                        a=a_val, B00=B00_val, Sigma0=S0_val,
-                        mm=mm, hr=hr,
-                        M=M, n_points=n_r, r_max_factor=r_max_factor,
-                        check_norm=False
+                    df_run, meta = compute_disk_profile(
+                        disk_model = disk_model,
+                        params     = params,
+                        mm         = mm,
+                        hr         = hr,
+                        M          = M,
+                        n_points   = n_r,
+                        r_max      = r_max,   # None → auto via info['r_BC']
                     )
+
                     df_run['a']      = a_val
                     df_run['B00']    = B00_val
                     df_run['Sigma0'] = S0_val
                     all_frames.append(df_run)
                     meta_list.append(meta)
+
                 except Exception as e:
                     if verbose:
-                        print(f"  skip a={a_val:.2f} B={B00_val:.1e} S={S0_val:.1e}: {e}")
+                        print(f"  skip a={a_val:.2f} B={B00_val:.1e} "
+                              f"S={S0_val:.1e}: {e}")
 
                 done += 1
                 if verbose and done % max(1, total // 10) == 0:
-                    print(f"  {done}/{total} ({done/total*100:.0f}%)")
+                    print(f"  {done}/{total}  ({done/total*100:.0f}%)")
 
     if not all_frames:
         raise RuntimeError("Nessun profilo calcolato — controlla i parametri.")
@@ -117,17 +171,20 @@ def radial_scan_grid(param_dict, mm, hr, n_r=150, r_max_factor=2.5,
     df_all = pd.concat(all_frames, ignore_index=True)
 
     # ── bin radiali log-spaziati sull'intero range di r ──────────────────────
-    r_min = df_all['r'].min()
-    r_max = df_all['r'].max()
-    edges = np.geomspace(r_min, r_max, n_rbins + 1)
+    r_lo = df_all['r'].min()
+    r_hi = df_all['r'].max()
+    edges  = np.geomspace(r_lo, r_hi, n_rbins + 1)
     r_mids = np.sqrt(edges[:-1] * edges[1:])
 
     df_all['r_bin'] = pd.cut(df_all['r'], bins=edges, labels=r_mids)
     df_all['r_bin'] = df_all['r_bin'].astype(float)
 
     # ── aggregazione per (r_bin, zone) ───────────────────────────────────────
+    # Usa le zone effettivamente presenti — funziona con 'A','B','C' (SS/NT)
+    # e con 'N/A' (simple_disc)
+    zones_present = df_all['zone'].unique().tolist()
     records = []
-    for zone in ZONE_NAMES:
+    for zone in zones_present:
         sub_z = df_all[df_all['zone'] == zone]
         for r_mid in r_mids:
             sub = sub_z[sub_z['r_bin'] == r_mid]
@@ -135,16 +192,16 @@ def radial_scan_grid(param_dict, mm, hr, n_r=150, r_max_factor=2.5,
                 continue
             row = {'r_mid': r_mid, 'zone': zone, 'count': len(sub)}
             for qty in quantities:
+                if qty not in sub.columns:
+                    continue
                 col = sub[qty].dropna()
                 if qty == 'dQdr':
-                    # non log → stats lineari
                     row[f'{qty}_median'] = col.median()
                     row[f'{qty}_q1']     = col.quantile(0.25)
                     row[f'{qty}_q3']     = col.quantile(0.75)
                     row[f'{qty}_mean']   = col.mean()
                     row[f'{qty}_std']    = col.std()
                 else:
-                    # log-stats per quantità positive
                     pos = col[col > 0]
                     if len(pos) < 2:
                         continue
@@ -153,9 +210,8 @@ def radial_scan_grid(param_dict, mm, hr, n_r=150, r_max_factor=2.5,
                     row[f'{qty}_q1']     = 10**lp.quantile(0.25)
                     row[f'{qty}_q3']     = 10**lp.quantile(0.75)
                     row[f'{qty}_mean']   = 10**lp.mean()
-                    row[f'{qty}_std']    = lp.std()   # in dex
+                    row[f'{qty}_std']    = lp.std()
 
-            # frazioni di validità
             N = len(sub)
             row['frac_k']     = sub['k_valid'].sum()     / N
             row['frac_beta']  = sub['beta_valid'].sum()  / N
@@ -168,141 +224,218 @@ def radial_scan_grid(param_dict, mm, hr, n_r=150, r_max_factor=2.5,
     if verbose:
         print(f"\nPunti totali: {len(df_all)}")
         print(f"Bin radiali con dati: {len(df_binned)}")
+        _print_zone_summary(df_all)
 
     return df_all, df_binned, meta_list
+
+
+def _print_zone_summary(df_all):
+    """Stampa veloce della frazione AEI per zona."""
+    print("\n  Zona  |  N punti  | % k ok | % β≤1  | % shear | % AEI")
+    print("  " + "-"*55)
+    for zone in df_all['zone'].unique():
+        sub = df_all[df_all['zone'] == zone]
+        N = len(sub)
+        if N == 0:
+            continue
+        pk = sub['k_valid'].sum()    / N * 100
+        pb = sub['beta_valid'].sum() / N * 100
+        ps = sub['shear_valid'].sum()/ N * 100
+        pa = sub['aei_valid'].sum()  / N * 100
+        print(f"    {zone}   | {N:>9} | {pk:>5.1f}% | {pb:>5.1f}% | {ps:>6.1f}% | {pa:>5.1f}%")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 2.  PLOT PROFILI RADIALI BINNED  (mediana ± IQR)
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def plot_radial_grid(df_binned, figsize=(16, 12), title=""):
+def plot_radial_grid(df_binned, quantities=('k', 'beta', 'dQdr'),
+                    figsize=(16, 12), title=""):
     """
-    4 pannelli: k·r, β, dQ/dr, frazione AEI valida vs r.
-    Per ogni zona mostra mediana e banda IQR aggregati sulla griglia.
+    Pannelli radiali: mediana ± IQR per zona aggregata sulla griglia.
+
+    Pannelli fissi: k, β, dQ/dr, frazione AEI valida (sempre il quarto).
+    Qualsiasi quantità aggiuntiva viene aggiunta come pannello extra.
+
+    Parameters
+    ----------
+    df_binned : DataFrame da radial_scan_grid
+    quantities : tuple of str
+        Quantità da mostrare nei pannelli (escluso il pannello frac_AEI
+        che è sempre aggiunto come ultimo).
+    figsize : tuple
+    title : str
+
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
     """
-    fig = plt.figure(figsize=figsize)
+    n_panels = len(quantities) + 1   # +1 per il pannello frazioni
+    ncols = min(n_panels, 2)
+    nrows = (n_panels + ncols - 1) // ncols
+
+    fig, axes = plt.subplots(nrows, ncols,
+                             figsize=(figsize[0], figsize[1] * nrows / 2),
+                             squeeze=False)
+    axes_flat = axes.flatten()
     if title:
-        fig.suptitle(title, fontsize=13)
-    gs = gridspec.GridSpec(2, 2, hspace=0.38, wspace=0.32)
-    axes = [fig.add_subplot(gs[i, j]) for i in range(2) for j in range(2)]
+        fig.suptitle(title, fontsize=13, y=1.01)
 
-    panels = [
-        ('kr',    'k·r  (adimensionale)',    True,  [(0.1,'gray',':'), (10,'gray',':')]),
-        ('beta',  'β  (plasma beta)',         True,  [(1.0,'red','--')]),
-        ('dQdr',  'dQ/dr  [u.a.]',           False, [(0,'red','--')]),
-        (None,    'Frazione AEI valida',      False, [(0.5,'gray',':')]),
-    ]
+    _log_qty  = {'k', 'beta', 'B0', 'Sigma', 'c_s'}
+    _ylabel   = {
+        'k':     'k  (adimensionale)',
+        'beta':  'β  (plasma beta)',
+        'dQdr':  'dQ/dr  [u.a.]',
+        'B0':    'B₀  [G]',
+        'Sigma': 'Σ  [g/cm²]',
+        'c_s':   'c_s  [cm/s]',
+    }
+    _hrefs = {
+        'k':     [(0.1, 'gray', ':'), (10.0, 'gray', ':')],
+        'beta':  [(1.0, 'red',  '--')],
+        'dQdr':  [(0.0, 'red',  '--')],
+    }
 
-    for ax, (qty, ylabel, logscale, hrefs) in zip(axes, panels):
-        for zone in ZONE_NAMES:
-            col  = ZONE_COLORS[zone]
-            sub  = df_binned[df_binned['zone'] == zone].sort_values('r_mid')
-            if sub.empty:
+    for ax, qty in zip(axes_flat, quantities):
+        logscale = qty in _log_qty
+        zones_present = df_binned['zone'].unique()
+        for zone in zones_present:
+            col = ZONE_COLORS.get(zone, _COLOR_FALLBACK)
+            sub = df_binned[df_binned['zone'] == zone].sort_values('r_mid')
+            if sub.empty or f'{qty}_median' not in sub.columns:
                 continue
+            med = sub[f'{qty}_median']
+            q1  = sub[f'{qty}_q1']
+            q3  = sub[f'{qty}_q3']
+            label = f'Zona {zone}' if zone != 'N/A' else 'disco'
+            ax.plot(sub['r_mid'], med, color=col, lw=2, label=label)
+            ax.fill_between(sub['r_mid'], q1, q3, color=col, alpha=0.18)
 
-            if qty is None:
-                # pannello frazioni
-                ax.plot(sub['r_mid'], sub['frac_aei'],  color=col, lw=2,   label=f'{zone} AEI')
-                ax.plot(sub['r_mid'], sub['frac_k'],    color=col, lw=1, ls='--', alpha=0.5)
-                ax.plot(sub['r_mid'], sub['frac_beta'], color=col, lw=1, ls=':',  alpha=0.5)
-                ax.set_ylim(0, 1.05)
-            else:
-                med = sub[f'{qty}_median']
-                q1  = sub[f'{qty}_q1']
-                q3  = sub[f'{qty}_q3']
-                ax.plot(sub['r_mid'], med, color=col, lw=2, label=f'Zona {zone}')
-                ax.fill_between(sub['r_mid'], q1, q3, color=col, alpha=0.18)
-
-        for (yval, hcol, hls) in hrefs:
+        for (yval, hcol, hls) in _hrefs.get(qty, []):
             ax.axhline(yval, color=hcol, ls=hls, lw=1, alpha=0.7)
 
         ax.set_xscale('log')
         if logscale:
             ax.set_yscale('log')
         ax.set_xlabel('r [rg]', fontsize=11)
-        ax.set_ylabel(ylabel,   fontsize=11)
-        ax.set_title(ylabel,    fontsize=12)
+        ylabel = _ylabel.get(qty, qty)
+        ax.set_ylabel(ylabel, fontsize=11)
+        ax.set_title(ylabel, fontsize=11)
         ax.grid(True, alpha=0.15)
         ax.legend(fontsize=9)
 
-    # legenda aggiuntiva per il pannello frazioni
-    axes[3].plot([], [], 'k-',  lw=2,   label='AEI (tutti e tre)')
-    axes[3].plot([], [], 'k--', lw=1, alpha=0.5, label='k fisico')
-    axes[3].plot([], [], 'k:',  lw=1, alpha=0.5, label='β ≤ 1')
-    axes[3].legend(fontsize=8)
+    # ── pannello frazioni (sempre l'ultimo) ──────────────────────────────────
+    ax_frac = axes_flat[len(quantities)]
+    for zone in df_binned['zone'].unique():
+        col = ZONE_COLORS.get(zone, _COLOR_FALLBACK)
+        sub = df_binned[df_binned['zone'] == zone].sort_values('r_mid')
+        if sub.empty:
+            continue
+        label = f'Zona {zone}' if zone != 'N/A' else 'disco'
+        ax_frac.plot(sub['r_mid'], sub['frac_aei'],  color=col, lw=2,
+                     label=f'{label} — AEI')
+        ax_frac.plot(sub['r_mid'], sub['frac_k'],    color=col, lw=1,
+                     ls='--', alpha=0.55)
+        ax_frac.plot(sub['r_mid'], sub['frac_beta'], color=col, lw=1,
+                     ls=':',  alpha=0.55)
+
+    ax_frac.set_xscale('log')
+    ax_frac.set_ylim(0, 1.05)
+    ax_frac.axhline(0.5, color='gray', ls=':', lw=1, alpha=0.7)
+    ax_frac.set_xlabel('r [rg]', fontsize=11)
+    ax_frac.set_ylabel('Frazione valida', fontsize=11)
+    ax_frac.set_title('Frazione AEI valida', fontsize=11)
+    ax_frac.grid(True, alpha=0.15)
+    ax_frac.plot([], [], 'k-',  lw=2,   label='AEI (tutti)')
+    ax_frac.plot([], [], 'k--', lw=1, alpha=0.55, label='k fisico')
+    ax_frac.plot([], [], 'k:',  lw=1, alpha=0.55, label='β ≤ 1')
+    ax_frac.legend(fontsize=8)
+
+    # nascondi pannelli in eccesso
+    for ax in axes_flat[len(quantities) + 1:]:
+        ax.set_visible(False)
 
     plt.tight_layout()
     return fig
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 3.  HEATMAP  frac_aei  nello spazio dei parametri, per bin radiale
+# 3.  HEATMAP  frac_aei  nello spazio dei parametri
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def plot_validity_heatmap(df_all, param_x='B00', param_y='Sigma0',
                           r_range=(None, None), zone=None,
-                          n_bins_x=12, n_bins_y=12, figsize=(10, 7)):
+                          metric='aei_valid',
+                          n_bins_x=15, n_bins_y=15, figsize=(10, 7)):
     """
     Heatmap 2D: asse x = param_x, asse y = param_y,
-    colore = frazione di punti AEI validi nel range radiale [r_min, r_max].
+    colore = metrica aggregata nel range radiale e zona selezionati.
 
     Parameters
     ----------
     df_all   : DataFrame da radial_scan_grid
-    param_x  : str  asse x ('a','B00','Sigma0')
-    param_y  : str  asse y ('a','B00','Sigma0')
-    r_range  : (r_min, r_max) | (None, None) → tutto il range
-    zone     : str | None  — se specificato filtra per zona ('A','B','C')
+    param_x  : str  colonna asse x  ('a', 'B00', 'Sigma0')
+    param_y  : str  colonna asse y  ('a', 'B00', 'Sigma0')
+    r_range  : (r_min, r_max) | (None, None)  — None = tutto il range
+    zone     : str | None  — filtra per zona ('A', 'B', 'C')
+    metric   : str  — colonna booleana da aggregare come media
+               ('aei_valid', 'k_valid', 'beta_valid', 'shear_valid')
+    n_bins_x, n_bins_y : int  — risoluzione della griglia 2D
+    figsize  : tuple
+
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
     """
     sub = df_all.copy()
     if zone:
         sub = sub[sub['zone'] == zone]
-    r_lo = r_range[0] or sub['r'].min()
-    r_hi = r_range[1] or sub['r'].max()
+    r_lo = r_range[0] if r_range[0] is not None else sub['r'].min()
+    r_hi = r_range[1] if r_range[1] is not None else sub['r'].max()
     sub  = sub[(sub['r'] >= r_lo) & (sub['r'] <= r_hi)]
 
     if sub.empty:
-        print("Nessun dato nel range selezionato.")
-        return
+        print("Nessun dato nel range / zona selezionati.")
+        return None
 
-    # bin 2D
     log_x = param_x in ('B00', 'Sigma0')
     log_y = param_y in ('B00', 'Sigma0')
 
-    x_vals = np.log10(sub[param_x]) if log_x else sub[param_x]
-    y_vals = np.log10(sub[param_y]) if log_y else sub[param_y]
+    x_vals = np.log10(sub[param_x].values.astype(float)) if log_x else sub[param_x].values.astype(float)
+    y_vals = np.log10(sub[param_y].values.astype(float)) if log_y else sub[param_y].values.astype(float)
+    m_vals = sub[metric].values.astype(float)
 
     x_edges = np.linspace(x_vals.min(), x_vals.max(), n_bins_x + 1)
     y_edges = np.linspace(y_vals.min(), y_vals.max(), n_bins_y + 1)
 
-    grid_frac = np.full((n_bins_y, n_bins_x), np.nan)
-    grid_n    = np.zeros((n_bins_y, n_bins_x), dtype=int)
+    grid_val = np.full((n_bins_y, n_bins_x), np.nan)
 
     for ix in range(n_bins_x):
         for iy in range(n_bins_y):
-            mask = ((x_vals >= x_edges[ix]) & (x_vals < x_edges[ix+1]) &
-                    (y_vals >= y_edges[iy]) & (y_vals < y_edges[iy+1]))
-            pts = sub[mask]
-            if len(pts) >= 3:
-                grid_frac[iy, ix] = pts['aei_valid'].mean()
-                grid_n[iy, ix]    = len(pts)
+            mask = ((x_vals >= x_edges[ix]) & (x_vals < x_edges[ix + 1]) &
+                    (y_vals >= y_edges[iy]) & (y_vals < y_edges[iy + 1]))
+            if mask.sum() >= 3:
+                grid_val[iy, ix] = m_vals[mask].mean()
 
     fig, ax = plt.subplots(figsize=figsize)
-    im = ax.imshow(grid_frac, origin='lower', aspect='auto',
+    im = ax.imshow(grid_val, origin='lower', aspect='auto',
                    extent=[x_edges[0], x_edges[-1], y_edges[0], y_edges[-1]],
                    vmin=0, vmax=1, cmap='RdYlGn')
-    plt.colorbar(im, ax=ax, label='Frazione AEI valida')
+    plt.colorbar(im, ax=ax, label=f'<{metric}>')
 
-    xlabel = f"log₁₀({param_x})" if log_x else param_x
-    ylabel = f"log₁₀({param_y})" if log_y else param_y
-    ax.set_xlabel(xlabel, fontsize=12)
-    ax.set_ylabel(ylabel, fontsize=12)
+    _label = {
+        'B00':    'log₁₀(B₀₀ [G])',
+        'Sigma0': 'log₁₀(Σ₀ [g/cm²])',
+        'a':      'spin  a',
+    }
+    ax.set_xlabel(_label.get(param_x, param_x), fontsize=12)
+    ax.set_ylabel(_label.get(param_y, param_y), fontsize=12)
 
     zone_str = f"Zona {zone}" if zone else "Tutte le zone"
     ax.set_title(
-        f"Frazione AEI valida — {zone_str}\n"
-        f"r ∈ [{r_lo:.1f}, {r_hi:.1f}] rg", fontsize=12
+        f"{metric} — {zone_str}\n"
+        f"r ∈ [{r_lo:.1f}, {r_hi:.1f}] rg",
+        fontsize=12
     )
     ax.grid(False)
     plt.tight_layout()
@@ -310,17 +443,18 @@ def plot_validity_heatmap(df_all, param_x='B00', param_y='Sigma0',
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 4.  DISTRIBUZIONI DEGLI ESPONENTI  (power-law slopes vs parametri)
+# 4.  ESPONENTI DELLE LEGGI DI POTENZA
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def _pl_slope(x, y):
-    """Fit log-log lineare, restituisce pendenza o NaN."""
+    """Fit log-log lineare → pendenza, o NaN se dati insufficienti."""
     mask = (x > 0) & (y > 0) & np.isfinite(x) & np.isfinite(y)
     if mask.sum() < 4:
         return np.nan
-    lx = np.log10(x[mask]); ly = np.log10(y[mask])
+    lx = np.log10(x[mask])
+    ly = np.log10(y[mask])
     mx, my = lx.mean(), ly.mean()
-    denom = ((lx - mx)**2).sum()
+    denom = ((lx - mx) ** 2).sum()
     if denom == 0:
         return np.nan
     return float(((lx - mx) * (ly - my)).sum() / denom)
@@ -329,69 +463,87 @@ def _pl_slope(x, y):
 def compute_slopes_grid(df_all):
     """
     Per ogni run (a, B00, Sigma0) e ogni zona calcola le pendenze
-    delle leggi di potenza B∝r^α, Σ∝r^α, β∝r^α, k·r∝r^α.
+    delle leggi di potenza  B∝r^α,  Σ∝r^α,  β∝r^α,  k·r∝r^α.
+
+    Parameters
+    ----------
+    df_all : DataFrame da radial_scan_grid
 
     Returns
     -------
-    df_slopes : DataFrame con colonne:
-        a, B00, Sigma0, zone, slope_B, slope_S, slope_beta, slope_kr
+    df_slopes : DataFrame
+        Colonne: a, B00, Sigma0, zone, slope_B, slope_S, slope_beta
     """
     records = []
-    for (a_val, B00_val, S0_val), grp in df_all.groupby(['a','B00','Sigma0']):
-        for zone in ZONE_NAMES:
+    zones_present = df_all['zone'].unique().tolist()   # ← usa le zone reali
+    for (a_val, B00_val, S0_val), grp in df_all.groupby(['a', 'B00', 'Sigma0']):
+        for zone in zones_present:                     # ← non ZONE_NAMES fisso
             sub = grp[grp['zone'] == zone]
             if len(sub) < 5:
                 continue
             r = sub['r'].values
-            records.append({
-                'a': a_val, 'B00': B00_val, 'Sigma0': S0_val, 'zone': zone,
-                'slope_B':    _pl_slope(r, sub['B0'].values),
-                'slope_S':    _pl_slope(r, sub['Sigma'].values),
-                'slope_beta': _pl_slope(r, sub['beta'].values),
-                'slope_kr':   _pl_slope(r, sub['kr'].values),
-            })
+            rec = {
+                'a':         a_val,
+                'B00':       B00_val,
+                'Sigma0':    S0_val,
+                'zone':      zone,
+                'slope_B':   _pl_slope(r, sub['B0'].values)    if 'B0'    in sub else np.nan,
+                'slope_S':   _pl_slope(r, sub['Sigma'].values) if 'Sigma' in sub else np.nan,
+                'slope_beta':_pl_slope(r, sub['beta'].values)  if 'beta'  in sub else np.nan,
+            }
+            records.append(rec)
     return pd.DataFrame(records)
 
 
 def plot_slope_distributions(df_slopes, figsize=(16, 10)):
     """
-    Violinplot delle distribuzioni degli esponenti per zona,
-    con overlay scatter colorato per spin.
+    Violinplot + scatter degli esponenti delle leggi di potenza per zona.
+    Il colore dei punti rappresenta lo spin a.
+
+    Parameters
+    ----------
+    df_slopes : DataFrame da compute_slopes_grid
+    figsize : tuple
+
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
     """
     quantities = [
         ('slope_B',    'B ∝ r^α   →   α'),
         ('slope_S',    'Σ ∝ r^α   →   α'),
         ('slope_beta', 'β ∝ r^α   →   α'),
-        ('slope_kr',   'k·r ∝ r^α →   α'),
     ]
     fig, axes = plt.subplots(1, 4, figsize=figsize, sharey=False)
     fig.suptitle("Distribuzioni degli esponenti delle leggi di potenza", fontsize=13)
 
     for ax, (col, label) in zip(axes, quantities):
+        zones_in_data = df_slopes['zone'].unique().tolist()
         data_by_zone = [
             df_slopes[df_slopes['zone'] == z][col].dropna().values
-            for z in ZONE_NAMES
+            for z in zones_in_data        # ← non ZONE_NAMES
         ]
-        # violinplot
-        parts = ax.violinplot(
-            [d for d in data_by_zone if len(d) > 1],
-            positions=range(len(ZONE_NAMES)),
-            showmedians=True, showextrema=True
-        )
-        for pc, zone in zip(parts['bodies'], ZONE_NAMES):
-            pc.set_facecolor(ZONE_COLORS[zone])
-            pc.set_alpha(0.5)
+        valid = [d for d in data_by_zone if len(d) > 1]
+        if valid:
+            parts = ax.violinplot(
+                valid,
+                positions=range(len(valid)),
+                showmedians=True, showextrema=True
+            )
+            for pc, zone in zip(parts['bodies'], ZONE_NAMES):
+                pc.set_facecolor(ZONE_COLORS[zone])
+                pc.set_alpha(0.45)
 
-        # scatter sovrapposto colorato per spin
+        sc_handle = None
         for i, zone in enumerate(ZONE_NAMES):
             sub = df_slopes[df_slopes['zone'] == zone].dropna(subset=[col])
             if sub.empty:
                 continue
-            sc = ax.scatter(
-                np.random.normal(i, 0.05, len(sub)),
-                sub[col],
-                c=sub['a'], cmap='RdBu', vmin=-1, vmax=1,
-                s=12, alpha=0.6, zorder=3
+            sc_handle = ax.scatter(
+                np.random.normal(i, 0.04, len(sub)),
+                sub[col].values,
+                c=sub['a'].values, cmap='RdBu', vmin=-1, vmax=1,
+                s=14, alpha=0.65, zorder=3
             )
 
         ax.axhline(0, color='gray', ls='--', lw=0.8, alpha=0.6)
@@ -401,11 +553,9 @@ def plot_slope_distributions(df_slopes, figsize=(16, 10)):
         ax.set_title(label.split('→')[0].strip(), fontsize=11)
         ax.grid(True, alpha=0.15, axis='y')
 
-    # colorbar spin
     sm = plt.cm.ScalarMappable(cmap='RdBu', norm=Normalize(-1, 1))
     sm.set_array([])
-    plt.colorbar(sm, ax=axes[-1], label='Spin a', shrink=0.8)
-
+    plt.colorbar(sm, ax=axes[-1], label='Spin  a', shrink=0.8)
     plt.tight_layout()
     return fig
 
@@ -414,36 +564,163 @@ def plot_slope_distributions(df_slopes, figsize=(16, 10)):
 # 5.  TABELLA RIASSUNTIVA GRIGLIA
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def summary_table_grid(df_all, df_binned, df_slopes=None):
-    """Stampa statistiche aggregate per zona sulla griglia completa."""
-    print("\n" + "="*70)
+def summary_table_grid(df_all, df_binned=None, df_slopes=None):
+    """
+    Stampa statistiche aggregate per zona sulla griglia completa.
+
+    Parameters
+    ----------
+    df_all     : DataFrame da radial_scan_grid
+    df_binned  : DataFrame (opzionale, per info aggiuntive sui bin)
+    df_slopes  : DataFrame da compute_slopes_grid (opzionale)
+
+    Returns
+    -------
+    df_summary : pd.DataFrame  con le stesse info stampate
+    """
+    n_runs = df_all.groupby(['a', 'B00', 'Sigma0']).ngroups
+    print("\n" + "=" * 78)
     print("  ANALISI RADIALE — SINTESI GRIGLIA")
-    print("="*70)
+    print("=" * 78)
+    print(f"  Run totali: {n_runs}   |   Punti totali: {len(df_all)}")
+    print(f"  Range r:    [{df_all['r'].min():.1f}, {df_all['r'].max():.0f}] rg")
+    if df_binned is not None:
+        print(f"  Bin radiali con dati: {len(df_binned)}")
+    print()
 
-    n_runs = df_all.groupby(['a','B00','Sigma0']).ngroups
-    print(f"  Run totali: {n_runs}   Punti totali: {len(df_all)}")
-    print(f"  Range r: [{df_all['r'].min():.1f}, {df_all['r'].max():.0f}] rg\n")
-
-    header = (f"{'Zona':>5} {'N punti':>9} {'% k ok':>8} {'% β≤1':>8} "
-              f"{'% shear':>8} {'% AEI':>8}")
-    if df_slopes is not None:
-        header += f"  {'<slope_B>':>10} {'<slope_Σ>':>10} {'<slope_β>':>10}"
+    has_slopes = df_slopes is not None
+    header = (f"{'Zona':>5}  {'N':>9}  {'% k':>6}  {'% β':>6}  "
+              f"{'% sh':>6}  {'% AEI':>7}")
+    if has_slopes:
+        header += f"  {'α_B':>8}  {'α_Σ':>8}  {'α_β':>8}"
     print(header)
-    print("-"*70)
+    print("  " + "-" * (len(header) - 2))
 
+    rows = []
     for zone in ZONE_NAMES:
         sub = df_all[df_all['zone'] == zone]
-        N   = len(sub)
+        N = len(sub)
         if N == 0:
             continue
-        pct = lambda c: f"{sub[c].sum()/N*100:.0f}%"
-        row = (f"{zone:>5} {N:>9} {pct('k_valid'):>8} {pct('beta_valid'):>8} "
-               f"{pct('shear_valid'):>8} {pct('aei_valid'):>8}")
-        if df_slopes is not None:
-            sz = df_slopes[df_slopes['zone'] == zone]
-            for sc in ['slope_B','slope_S','slope_beta']:
-                v = sz[sc].median() if not sz.empty else np.nan
-                row += f"  {v:>10.3f}"
-        print(row)
+        pct = lambda c: sub[c].sum() / N * 100
 
-    print("="*70)
+        row_dict = {
+            'zone':       zone,
+            'N':          N,
+            'pct_k':      pct('k_valid'),
+            'pct_beta':   pct('beta_valid'),
+            'pct_shear':  pct('shear_valid'),
+            'pct_aei':    pct('aei_valid'),
+        }
+        line = (f"    {zone}  {N:>9}  {pct('k_valid'):>5.1f}%  "
+                f"{pct('beta_valid'):>5.1f}%  {pct('shear_valid'):>5.1f}%  "
+                f"{pct('aei_valid'):>6.1f}%")
+
+        if has_slopes:
+            sz = df_slopes[df_slopes['zone'] == zone]
+            for sc in ['slope_B', 'slope_S', 'slope_beta']:
+                v = sz[sc].median() if not sz.empty else np.nan
+                row_dict[sc] = v
+                line += f"  {v:>8.3f}"
+
+        print(line)
+        rows.append(row_dict)
+
+    print("=" * 78)
+    return pd.DataFrame(rows)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 6.  CONFRONTO TRA MODELLI DIVERSI
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def compare_models(results_dict, figsize=(16, 10)):
+    """
+    Confronta i risultati di scan su modelli diversi sullo stesso grafico.
+
+    Parameters
+    ----------
+    results_dict : dict  { 'nome_modello': (df_all, df_binned, meta_list) }
+        Dizionario con i risultati di radial_scan_grid per ogni modello.
+        Esempio:
+          {
+            'SS':     (df_all_ss,  df_binned_ss,  meta_ss),
+            'NT':     (df_all_nt,  df_binned_nt,  meta_nt),
+            'Simple': (df_all_s,   df_binned_s,   meta_s),
+          }
+    figsize : tuple
+
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+    """
+    linestyles = ['-', '--', ':', '-.']
+    quantities = ['k', 'beta', 'dQdr']
+    n_panels = len(quantities) + 1   # +1 per il pannello frazioni
+    ncols = min(n_panels, 2)
+    nrows = (n_panels + ncols - 1) // ncols
+    fig, axes = plt.subplots(nrows, ncols, figsize=figsize)
+    fig.suptitle("Confronto modelli — mediana su tutta la griglia", fontsize=13)
+
+    _log_qty = {'k', 'beta', 'B0', 'Sigma', 'c_s'}
+    _ylabel  = {'k': 'k', 'beta': 'β', 'dQdr': 'dQ/dr'}
+    _hrefs   = {
+        'k':    [(0.1, 'gray', ':'), (10, 'gray', ':')],
+        'beta': [(1.0, 'red', '--')],
+        'dQdr': [(0.0, 'red', '--')],
+    }
+
+    cmap  = plt.cm.tab10
+    model_colors = {name: cmap(i) for i, name in enumerate(results_dict)}
+
+    for ax, qty in zip(axes[:len(quantities)], quantities):
+        logscale = qty in _log_qty
+        for (name, (df_all, df_binned, _)), ls in zip(results_dict.items(), linestyles):
+            col = model_colors[name]
+            for zone in ZONE_NAMES:
+                sub = df_binned[df_binned['zone'] == zone].sort_values('r_mid')
+                if sub.empty or f'{qty}_median' not in sub.columns:
+                    continue
+                alpha = 1.0 if zone == 'B' else 0.5
+                ax.plot(sub['r_mid'], sub[f'{qty}_median'],
+                        color=col, ls=ls, lw=1.5 + (zone == 'B') * 0.5,
+                        alpha=alpha, label=f'{name}·{zone}' if zone == 'A' else '_')
+
+        for (yval, hcol, hls) in _hrefs.get(qty, []):
+            ax.axhline(yval, color=hcol, ls=hls, lw=1, alpha=0.6)
+
+        ax.set_xscale('log')
+        if logscale:
+            ax.set_yscale('log')
+        ax.set_xlabel('r [rg]', fontsize=11)
+        ax.set_ylabel(_ylabel.get(qty, qty), fontsize=11)
+        ax.set_title(_ylabel.get(qty, qty), fontsize=11)
+        ax.grid(True, alpha=0.15)
+
+    # ── pannello frac_aei per ogni modello (tutte le zone aggregate) ─────────
+    ax_frac = axes[-1]
+    for (name, (df_all, df_binned, _)), ls in zip(results_dict.items(), linestyles):
+        col = model_colors[name]
+        # aggrega su tutte le zone: per ogni r_mid prendi la media pesata
+        sub_all = df_binned.groupby('r_mid', as_index=False).agg(
+            frac_aei_mean=('frac_aei', 'mean')
+        ).sort_values('r_mid')
+        ax_frac.plot(sub_all['r_mid'], sub_all['frac_aei_mean'],
+                     color=col, ls=ls, lw=2, label=name)
+
+    ax_frac.set_xscale('log')
+    ax_frac.set_ylim(0, 1.05)
+    ax_frac.axhline(0.5, color='gray', ls=':', lw=1, alpha=0.6)
+    ax_frac.set_xlabel('r [rg]', fontsize=11)
+    ax_frac.set_ylabel('Frazione AEI valida', fontsize=11)
+    ax_frac.set_title('Frac AEI (media zone)', fontsize=11)
+    ax_frac.legend(fontsize=9)
+    ax_frac.grid(True, alpha=0.15)
+
+    # legenda modelli su primo pannello
+    handles = [plt.Line2D([0], [0], color=model_colors[n], ls=ls, lw=2, label=n)
+               for n, ls in zip(results_dict, linestyles)]
+    axes[0].legend(handles=handles, fontsize=9, title='Modello')
+
+    plt.tight_layout()
+    return fig
