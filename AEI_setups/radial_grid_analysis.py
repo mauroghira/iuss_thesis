@@ -230,9 +230,13 @@ def radial_scan_grid(
 
 
 def _print_zone_summary(df_all):
-    """Stampa veloce della frazione AEI per zona."""
-    print("\n  Zona  |  N punti  | % k ok | % β≤1  | % shear | % AEI")
-    print("  " + "-"*55)
+    """Stampa veloce della frazione AEI per zona, incluse le colonne ILR se presenti."""
+    has_ilr = 'ilr_valid' in df_all.columns
+    header = "  Zona  |  N punti  | % k ok | % β≤1  | % shear | % AEI"
+    if has_ilr:
+        header += " | % r<ILR | % QPO"
+    print("\n" + header)
+    print("  " + "-" * (len(header) - 2))
     for zone in df_all['zone'].unique():
         sub = df_all[df_all['zone'] == zone]
         N = len(sub)
@@ -242,8 +246,13 @@ def _print_zone_summary(df_all):
         pb = sub['beta_valid'].sum() / N * 100
         ps = sub['shear_valid'].sum()/ N * 100
         pa = sub['aei_valid'].sum()  / N * 100
-        print(f"    {zone}   | {N:>9} | {pk:>5.1f}% | {pb:>5.1f}% | {ps:>6.1f}% | {pa:>5.1f}%")
-
+        line = f"    {zone}   | {N:>9} | {pk:>5.1f}% | {pb:>5.1f}% | {ps:>6.1f}% | {pa:>5.1f}%"
+        if has_ilr:
+            pi = sub['ilr_valid'].sum()     / N * 100
+            pq = sub['aei_ilr_valid'].sum() / N * 100
+            line += f" | {pi:>6.1f}% | {pq:>5.1f}%"
+        print(line)
+        
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 2.  PLOT PROFILI RADIALI BINNED  (mediana ± IQR)
@@ -283,7 +292,7 @@ def plot_radial_grid(df_binned, quantities=('k', 'beta', 'dQdr'),
 
     _log_qty  = {'k', 'beta', 'B0', 'Sigma', 'c_s'}
     _ylabel   = {
-        'k':     'k  (adimensionale)',
+        'k':     'k  (dimensionless)',
         'beta':  'β  (plasma beta)',
         'dQdr':  'dQ/dr  [u.a.]',
         'B0':    'B₀  [G]',
@@ -307,7 +316,7 @@ def plot_radial_grid(df_binned, quantities=('k', 'beta', 'dQdr'),
             med = sub[f'{qty}_median']
             q1  = sub[f'{qty}_q1']
             q3  = sub[f'{qty}_q3']
-            label = f'Zona {zone}' if zone != 'N/A' else 'disco'
+            label = f'Zona {zone}' if zone != 'N/A' else 'disc'
             ax.plot(sub['r_mid'], med, color=col, lw=2, label=label)
             ax.fill_between(sub['r_mid'], q1, q3, color=col, alpha=0.18)
 
@@ -589,8 +598,12 @@ def summary_table_grid(df_all, df_binned=None, df_slopes=None):
     print()
 
     has_slopes = df_slopes is not None
+    has_ilr    = 'ilr_valid' in df_all.columns
+
     header = (f"{'Zona':>5}  {'N':>9}  {'% k':>6}  {'% β':>6}  "
               f"{'% sh':>6}  {'% AEI':>7}")
+    if has_ilr:
+        header += f"  {'% ILR':>7}  {'% QPO':>7}"
     if has_slopes:
         header += f"  {'α_B':>8}  {'α_Σ':>8}  {'α_β':>8}"
     print(header)
@@ -602,7 +615,7 @@ def summary_table_grid(df_all, df_binned=None, df_slopes=None):
         N = len(sub)
         if N == 0:
             continue
-        pct = lambda c: sub[c].sum() / N * 100
+        pct = lambda c: sub[c].sum() / N * 100 if c in sub.columns else 0.0
 
         row_dict = {
             'zone':       zone,
@@ -615,6 +628,13 @@ def summary_table_grid(df_all, df_binned=None, df_slopes=None):
         line = (f"    {zone}  {N:>9}  {pct('k_valid'):>5.1f}%  "
                 f"{pct('beta_valid'):>5.1f}%  {pct('shear_valid'):>5.1f}%  "
                 f"{pct('aei_valid'):>6.1f}%")
+
+        if has_ilr:
+            p_ilr = pct('ilr_valid')
+            p_qpo = pct('aei_ilr_valid')
+            row_dict['pct_ilr'] = p_ilr
+            row_dict['pct_qpo'] = p_qpo
+            line += f"  {p_ilr:>6.1f}%  {p_qpo:>6.1f}%"
 
         if has_slopes:
             sz = df_slopes[df_slopes['zone'] == zone]

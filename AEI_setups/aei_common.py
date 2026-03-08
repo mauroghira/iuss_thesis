@@ -10,7 +10,11 @@ Contiene:
   - check_shear_aei    : dQ/dr > 0 (condizione di shear)
   - compute_beta       : calcolo di β
   - compute_dQdr       : calcolo di dQ/dr con differenze finite
+  - r_corotation       : raggio di corotazione ω̃ = 0
+  - r_ilr              : Inner Lindblad Resonance (confine della cavity AEI)
+  - check_ilr_aei      : constraint r < r_ILR (QPO fisicamente possibile)
   - find_rossby        : finder vettorizzato, funziona con qualsiasi modello di disco
+  - compute_disk_profile : profilo radiale completo con tutti i constraint
 
 ──────────────────────────────────────────────────────────────────────────────
 NOTE SULLE UNITÀ (da Tagger & Pellat 1999)
@@ -63,7 +67,7 @@ from setup import (
 
 HOR = 0.05
 mm = 1
-ALPHA_VISC = 0.01
+ALPHA_VISC = 0.1
 
 # ═══════════════════════════════════════════════════════════════════════════
 # 1.  SOLVER  (identico per tutti i modelli)
@@ -233,13 +237,124 @@ def check_shear_aei(r_rg, a, B0_func, Sigma_func, M=M_BH, dr_frac=0.01):
 
 
 # ═══════════════════════════════════════════════════════════════════════════
+# 2b.  RISONANZE LINDBLAD E COROTAZIONE
+# ═══════════════════════════════════════════════════════════════════════════
+
+def r_corotation(a, nu_obs=NU0, m=mm, M=M_BH, n_scan=8000):
+    """
+    Raggio di corotazione: il raggio dove ω̃ = ω_obs − m Ω_φ = 0,
+    ovvero dove Ω_φ(r_CR) = ω_obs / m.
+
+    Al raggio di corotazione l'onda spirale AEI ruota solidalmente con
+    il disco — è il centro geometrico dell'instabilità di Rossby.
+
+    Parametri
+    ----------
+    a      : float   spin adimensionale  [−1, 1]
+    nu_obs : float   frequenza osservata [Hz]  (default NU0)
+    m      : int     numero d'onda azimutale
+    M      : float   massa BH [M_sun]
+    n_scan : int     punti di scansione radiale
+
+    Restituisce
+    -----------
+    r_CR : float   raggio di corotazione in r_g  (NaN se non trovato)
+    """
+    a = float(a)
+    isco = float(r_isco(a))
+    r = np.geomspace(isco * 1.001, 5000.0, n_scan)
+    om_tilde = 2*np.pi*nu_obs - m * 2*np.pi * nu_phi(r, a, M)
+    # corotation: om_tilde cambia segno (da positivo a negativo procedendo verso l'interno)
+    idx = np.where(np.diff(np.sign(om_tilde)) != 0)[0]
+    if len(idx) == 0:
+        return np.nan
+    # interpolazione lineare al punto di zero
+    i = idx[0]
+    r_cr = r[i] - om_tilde[i] * (r[i+1] - r[i]) / (om_tilde[i+1] - om_tilde[i])
+    return float(r_cr)
+
+
+def r_ilr(a, nu_obs=NU0, m=mm, M=M_BH, n_scan=8000):
+    """
+    Inner Lindblad Resonance (ILR): confine esterno della cavity AEI.
+
+    Condizione: ω̃ + κ = 0  (dove ω̃ = ν_obs - m Ω_φ < 0 vicino all ISCO).
+
+    Significato fisico
+    ------------------
+    Vicino all ISCO, Ω_φ >> ν_obs/m → ω̃ < 0.
+    La cavity di propagazione dell onda AEI è r_ISCO < r < r_ILR
+    dove ω̃² > κ², ovvero ω̃ < -κ (lato interno della risonanza).
+    Alla ILR (ω̃ = -κ) le onde vengono riflesse e formano standing waves
+    con autofequenze discrete — le uniche configurazioni che producono QPO.
+
+    Parametri
+    ----------
+    a      : float   spin adimensionale
+    nu_obs : float   frequenza osservata [Hz]
+    m      : int     numero d onda azimutale
+    M      : float   massa BH [M_sun]
+    n_scan : int     punti di scansione radiale
+
+    Restituisce
+    -----------
+    r_ILR : float   raggio ILR in r_g  (NaN se non trovato)
+    """
+    a = float(a)
+    isco = float(r_isco(a))
+    r = np.geomspace(isco * 1.001, 5000.0, n_scan)
+
+    kappa    = 2*np.pi * nu_r(r, a, M)
+    om_tilde = 2*np.pi*nu_obs - m * 2*np.pi * nu_phi(r, a, M)
+
+    # ILR: omega_tilde + kappa = 0  (transizione da negativo a positivo)
+    diff = om_tilde + kappa
+    sign_changes = np.where(np.diff(np.sign(diff)) > 0)[0]
+    if len(sign_changes) == 0:
+        return np.nan
+
+    i = sign_changes[0]
+    denom = diff[i+1] - diff[i]
+    if denom == 0:
+        return float(r[i])
+    return float(r[i] - diff[i] * (r[i+1] - r[i]) / denom)
+
+def check_ilr_aei(r_rg, a, nu_obs=NU0, m=mm, M=M_BH):
+    """
+    Constraint ILR: seleziona solo le soluzioni dentro la cavity di risonanza
+    (r < r_ILR), ovvero le uniche che possono generare un QPO coerente.
+
+    Soluzioni con r > r_ILR soddisfano la relazione di dispersione ma corrispondono
+    a onde esterne alla cavity: si propagano verso l'esterno e si dissipano senza
+    produrre modi normali quantizzati.
+
+    Parametri
+    ----------
+    r_rg   : array_like   raggi in r_g
+    a      : float        spin
+    nu_obs : float        frequenza osservata [Hz]
+    m      : int          modo azimutale
+    M      : float        massa BH [M_sun]
+
+    Restituisce
+    -----------
+    mask : ndarray bool   True dove r < r_ILR
+    """
+    r_rg  = np.asarray(r_rg, dtype=float)
+    r_ILR = r_ilr(a, nu_obs, m, M)
+    if np.isnan(r_ILR):
+        return np.zeros(r_rg.shape, dtype=bool)
+    return r_rg < r_ILR
+
+
+# ═══════════════════════════════════════════════════════════════════════════
 # 3.  FINDER VETTORIZZATO
 # ═══════════════════════════════════════════════════════════════════════════
 
 def find_rossby(
     r_vec, param_grid, disk_model,
     m=mm, hr=HOR, M=M_BH,
-    check_k=True, check_beta=True, check_shear=True,
+    check_k=True, check_beta=True, check_shear=True, check_ilr=False,
     k_min=0.1, k_max=10.0, beta_max=1.0, dr_frac=0.01,
 ):
     """
@@ -288,7 +403,15 @@ def find_rossby(
         Modo azimutale, aspect ratio, massa BH.
 
     check_k, check_beta, check_shear : bool
-        Attiva/disattiva i check fisici.
+        Attiva/disattiva i tre constraint fisici standard.
+
+    check_ilr : bool  (default False)
+        Se True, applica il constraint r < r_ILR: mantiene solo le soluzioni
+        dentro la cavity di risonanza AEI tra il bordo interno del disco e
+        la Inner Lindblad Resonance.  Queste sono le uniche fisicamente
+        capaci di produrre QPO coerenti (standing waves quantizzate).
+        r_ILR dipende solo da (a, ν₀, m, M) — viene pre-calcolata una volta
+        per ogni valore unico di spin per efficienza.
 
     k_min, k_max : float
         Range WKB per k adimensionale.
@@ -323,6 +446,14 @@ def find_rossby(
     # ── vincolo ISCO (dipende solo da a) ────────────────────────────────────
     a_flat    = flat['a']
     isco_flat = r_isco(a_flat)          # (N_combos,)
+
+    # ── pre-calcolo r_ILR per spin unici (O(N_a) chiamate, non O(N_combos)) ──
+    # r_ILR dipende solo da (a, ν₀, m, M), indipendente da B00 e Sigma0
+    if check_ilr:
+        _a_unique  = np.unique(a_flat)
+        _ilr_cache = {float(av): r_ilr(float(av), NU0, m, M) for av in _a_unique}
+    else:
+        _ilr_cache = {}
 
     rows = []
 
@@ -376,10 +507,18 @@ def find_rossby(
             mask &= (beta_i <= beta_max)
         if check_shear:
             mask &= (dQdr_i > 0)
+        if check_ilr:
+            r_ILR_val = _ilr_cache.get(a_val, np.nan)
+            if np.isnan(r_ILR_val):
+                mask[:] = False          # nessuna cavity valida per questo spin
+            else:
+                mask &= (r_i < r_ILR_val)
 
         # ── raccolta risultati ───────────────────────────────────────────────
         if not np.any(mask):
             continue
+
+        r_ILR_entry = _ilr_cache.get(a_val, np.nan) if check_ilr else np.nan
 
         idx_ok = np.where(mask)[0]
         for j in idx_ok:
@@ -390,6 +529,7 @@ def find_rossby(
             entry['dQdr']  = dQdr_i[j]
             entry['m']     = m
             entry['hr']    = hr
+            entry['r_ILR'] = r_ILR_entry
             if zone_i is not None:
                 entry['zone'] = zone_i[j]
             rows.append(entry)
@@ -546,20 +686,29 @@ def compute_disk_profile(
     shear_valid = dQdr_arr > 0
     aei_valid   = k_valid & beta_valid & shear_valid
 
+    # ── risonanze Lindblad e corotazione ─────────────────────────────────
+    rILR = r_ilr(a, NU0, mm, M)
+    rCR  = r_corotation(a, NU0, mm, M)
+    ilr_valid     = (r_arr < rILR) if np.isfinite(rILR) else np.zeros(len(r_arr), dtype=bool)
+    aei_ilr_valid = aei_valid & ilr_valid   # soluzioni AEI dentro la cavity QPO
+
     df = pd.DataFrame({
-        'r':           r_arr,
-        'zone':        zone_arr,
-        'B0':          B0_arr,
-        'Sigma':       Sigma_arr,
-        'c_s':         cs_arr,
-        'k':           k_arr,
-        'beta':        beta_arr,
-        'dQdr':        dQdr_arr,
-        'k_valid':     k_valid,
-        'beta_valid':  beta_valid,
-        'shear_valid': shear_valid,
-        'aei_valid':   aei_valid,
+        'r':             r_arr,
+        'zone':          zone_arr,
+        'B0':            B0_arr,
+        'Sigma':         Sigma_arr,
+        'c_s':           cs_arr,
+        'k':             k_arr,
+        'beta':          beta_arr,
+        'dQdr':          dQdr_arr,
+        'k_valid':       k_valid,
+        'beta_valid':    beta_valid,
+        'shear_valid':   shear_valid,
+        'aei_valid':     aei_valid,
+        'ilr_valid':     ilr_valid,
+        'aei_ilr_valid': aei_ilr_valid,
     })
 
-    meta = dict(r_H=rH, r_ISCO=rISCO, mm=mm, hr=hr, M=M, **params, **info)
+    meta = dict(r_H=rH, r_ISCO=rISCO, r_ILR=rILR, r_CR=rCR,
+                mm=mm, hr=hr, M=M, **params, **info)
     return df, meta

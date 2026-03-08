@@ -6,7 +6,7 @@ Funzioni di plotting universali per l'analisi AEI.
 Compatibili con tutti i modelli di disco (simple_disc, full_disk_SS, NT)
 tramite l'output standard di aei_common.compute_disk_profile:
 
-    df   : pd.DataFrame  con colonne r, zone, B0, Sigma, c_s, k, kr,
+    df   : pd.DataFrame  con colonne r, zone, B0, Sigma, c_s, k,
                          beta, dQdr, k_valid, beta_valid, shear_valid, aei_valid
     meta : dict          con almeno r_H, r_ISCO, a, B00, Sigma0, mm, hr, M
                          + opzionali: r_AB, r_BC, mdot, alpha
@@ -39,6 +39,8 @@ ZONE_COLORS = {'A': '#f97316', 'B': '#3b82f6', 'C': '#22c55e', 'N/A': '#94a3b8'}
 _COL_ISCO = '#ffffff'
 _COL_AB   = '#f97316'
 _COL_BC   = '#3b82f6'
+_COL_ILR  = '#facc15'   # giallo — Inner Lindblad Resonance (cavity AEI)
+_COL_CR   = '#f43f5e'   # rosa — Corotation Radius
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -95,14 +97,6 @@ def _iter_zones(df):
         yield 'disco', df, ZONE_COLORS['N/A']
 
 
-def _add_kr(df):
-    """Aggiunge colonna kr = k * r se non presente."""
-    if 'kr' not in df.columns:
-        df = df.copy()
-        df['kr'] = df['k'] * df['r']
-    return df
-
-
 # ═══════════════════════════════════════════════════════════════════════════════
 # 1.  PLOT PROFILI COMPLETI
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -126,7 +120,6 @@ def plot_full_disk_profiles(df, meta, alpha_visc=None, figsize=(16, 12)):
     -------
     fig : matplotlib.figure.Figure
     """
-    df = _add_kr(df)
 
     fig = plt.figure(figsize=figsize)
     fig.suptitle(_build_title(meta, alpha_visc), fontsize=13)
@@ -149,7 +142,7 @@ def plot_full_disk_profiles(df, meta, alpha_visc=None, figsize=(16, 12)):
     ax.set_xlabel('r [rg]')
     ax.set_ylabel('B₀  [G]')
     ax2.set_ylabel('Σ  [g/cm²]', color='#94a3b8')
-    ax.set_title('Profili B₀(r)  —  Σ(r) (tratteggio)')
+    ax.set_title('Radial profiles B₀(r)  —  Σ(r) (dashed)')
     _zone_vlines(ax, meta)
     ax.legend(fontsize=8, loc='upper right')
 
@@ -158,18 +151,18 @@ def plot_full_disk_profiles(df, meta, alpha_visc=None, figsize=(16, 12)):
     for label, sub, col in _iter_zones(df):
         valid = sub[sub['k'].notna() & (sub['k'] > 0)]
         if not valid.empty:
-            ax.semilogy(valid['r'], valid['kr'],
+            ax.semilogy(valid['r'], valid['k'],
                         color=col, lw=2, label=f"Zona {label}")
     ax.axhline(0.1, color='gray', ls=':', lw=1, alpha=0.7)
     ax.axhline(10,  color='gray', ls=':', lw=1, alpha=0.7, label='limiti WKB')
     aei = df[df['aei_valid']]
     if not aei.empty:
-        ax.scatter(aei['r'], aei['kr'],
+        ax.scatter(aei['r'], aei['k'],
                    color='yellow', s=8, zorder=5, alpha=0.5, label='AEI valida')
     ax.set_xscale('log')
     ax.set_xlabel('r [rg]')
-    ax.set_ylabel('k·r  (adimensionale)')
-    ax.set_title('Wavenumber  k·r(r)')
+    ax.set_ylabel('k  (dimensionless)')
+    ax.set_title('Wavenumber  k(r)')
     _zone_vlines(ax, meta)
     ax.legend(fontsize=8)
 
@@ -184,7 +177,7 @@ def plot_full_disk_profiles(df, meta, alpha_visc=None, figsize=(16, 12)):
     ax.set_xscale('log')
     ax.set_xlabel('r [rg]')
     ax.set_ylabel('β')
-    ax.set_title('Magnetizzazione β(r)')
+    ax.set_title('Magnetisation β(r)')
     _zone_vlines(ax, meta)
     ax.legend(fontsize=8)
 
@@ -200,7 +193,7 @@ def plot_full_disk_profiles(df, meta, alpha_visc=None, figsize=(16, 12)):
     ax.set_xscale('log')
     ax.set_xlabel('r [rg]')
     ax.set_ylabel('dQ/dr  [u.a.]')
-    ax.set_title('Condizione di shear  dQ/dr(r)')
+    ax.set_title('Shear conndition  dQ/dr(r)')
     _zone_vlines(ax, meta)
     ax.legend(fontsize=8)
 
@@ -234,15 +227,25 @@ def plot_aei_validity_map(df, meta, figsize=(14, 5)):
     fig : matplotlib.figure.Figure
     """
     criteria = [
-        ('k_valid',     'k fisico  (0.1 ≤ k·r ≤ 10)', '#a78bfa'),
-        ('beta_valid',  'β ≤ 1',                        '#ef4444'),
-        ('shear_valid', 'dQ/dr > 0',                    '#f59e0b'),
-        ('aei_valid',   'Tutti  →  AEI',                '#22c55e'),
+        ('k_valid',     'WKB  (0.1 ≤ k·r ≤ 10)', '#a78bfa'),
+        ('beta_valid',  'β ≤ 1',                   '#ef4444'),
+        ('shear_valid', 'dQ/dr > 0',               '#f59e0b'),
+        ('aei_valid',   'AEI  (WKB + β + shear)',  '#22c55e'),
     ]
+    if 'ilr_valid' in df.columns:
+        criteria += [
+            ('ilr_valid',     'r < r_ILR  (cavity AEI)',       _COL_ILR),
+            ('aei_ilr_valid', 'QPO candidate  (AEI + r<r_ILR)', '#10b981'),
+        ]
 
     fig, axes = plt.subplots(len(criteria), 1, figsize=figsize, sharex=True)
 
     for ax, (col, label, color) in zip(axes, criteria):
+        if col not in df.columns:
+            ax.set_ylabel(label, fontsize=9, color='gray', labelpad=4)
+            ax.set_yticks([])
+            continue
+
         # sfondo per zona (se disponibile)
         if _has_zones(df):
             for zn, sub, zcol in _iter_zones(df):
@@ -256,22 +259,33 @@ def plot_aei_validity_map(df, meta, figsize=(14, 5)):
         ax.set_ylabel(label, fontsize=9, color=color, labelpad=4)
         ax.grid(False)
 
-        # linee frontiere
+        # linee frontiere SS/NT
         if 'r_AB' in meta:
             ax.axvline(meta['r_AB'], color=_COL_AB, ls='--', lw=0.9, alpha=0.65)
         if 'r_BC' in meta:
             ax.axvline(meta['r_BC'], color=_COL_BC, ls='--', lw=0.9, alpha=0.65)
+        # linee risonanze AEI
+        if 'r_ILR' in meta and np.isfinite(float(meta['r_ILR'])):
+            ax.axvline(meta['r_ILR'], color=_COL_ILR, ls='-', lw=1.8, alpha=0.9)
+        if 'r_CR' in meta and np.isfinite(float(meta['r_CR'])):
+            ax.axvline(meta['r_CR'], color=_COL_CR, ls='--', lw=1.3, alpha=0.8)
 
     axes[-1].set_xscale('log')
     axes[-1].set_xlabel('r  [rg]', fontsize=11)
 
     fig.suptitle(
-        f"Mappa validità AEI  —  {_build_title(meta)}",
+        f"AEI validity map  —  {_build_title(meta)}",
         fontsize=11
     )
 
-    # legenda frontiere
+    # legenda frontiere (su primo pannello)
     handles = []
+    if 'r_ILR' in meta and np.isfinite(float(meta['r_ILR'])):
+        handles.append(plt.Line2D([0], [0], color=_COL_ILR, ls='-', lw=1.8,
+                                  label=f"r_ILR = {meta['r_ILR']:.1f} rg"))
+    if 'r_CR' in meta and np.isfinite(float(meta['r_CR'])):
+        handles.append(plt.Line2D([0], [0], color=_COL_CR, ls='--', lw=1.3,
+                                  label=f"r_CR = {meta['r_CR']:.1f} rg"))
     if 'r_AB' in meta:
         handles.append(plt.Line2D([0], [0], color=_COL_AB, ls='--', lw=1,
                                   label=f"r_AB = {meta['r_AB']:.1f} rg"))
@@ -420,26 +434,25 @@ def plot_profiles_comparison(runs, figsize=(16, 12)):
     ls_cycle  = ['-', '--', ':', '-.']
 
     fig = plt.figure(figsize=figsize)
-    fig.suptitle("Confronto profili disco", fontsize=13)
+    fig.suptitle("Disk profiles comparison", fontsize=13)
     gs   = gridspec.GridSpec(2, 2, hspace=0.38, wspace=0.32)
     axes = [fig.add_subplot(gs[i, j]) for i in range(2) for j in range(2)]
 
     panels = [
         # (qty_y, ylabel, logscale_y, hlines)
         ('B0',   'B₀  [G]',              True,  []),
-        ('kr',   'k·r  (adimensionale)', True,  [(0.1,'gray',':'), (10,'gray',':')]),
+        ('Sigma', 'Σ  [g/cm³]',        True, []),
+        ('k',   'k  (dimensionless)', True,  [(0.1,'gray',':'), (10,'gray',':')]),
         ('beta', 'β',                    True,  [(1.0,'red','--')]),
-        ('dQdr', 'dQ/dr  [u.a.]',        False, [(0.0,'red','--')]),
     ]
 
     for (label, df, meta), ls in zip(runs, ls_cycle):
-        df = _add_kr(df)
         col = run_cols[label]
 
         for ax, (qty, ylabel, log_y, hrefs) in zip(axes, panels):
             # un'unica curva per run (mediana sulle zone, o diretto se no zone)
             valid = df[df[qty].notna()]
-            if qty in ('B0', 'beta', 'kr'):
+            if qty in ('B0', 'beta', 'k'):
                 valid = valid[valid[qty] > 0]
             if not valid.empty:
                 ax.plot(valid['r'], valid[qty],
