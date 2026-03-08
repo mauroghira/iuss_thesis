@@ -27,6 +27,9 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
+from matplotlib.colors import Normalize
+from matplotlib.cm import ScalarMappable
+from matplotlib.colors import LogNorm
 
 # ── costanti di layout per le zone ──────────────────────────────────────────
 ZONE_NAMES  = ['A', 'B', 'C']
@@ -456,3 +459,157 @@ def plot_profiles_comparison(runs, figsize=(16, 12)):
 
     plt.tight_layout()
     return fig
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 2.  PLOT e stats
+# ═══════════════════════════════════════════════════════════════════════════
+
+def plot_standard_4panels(df, title_prefix=""):
+    """
+    Crea i 4 grafici standard per analizzare le soluzioni
+    """
+    if len(df) == 0:
+        print(f"Nessuna soluzione per {title_prefix}")
+        return
+    
+    fig, axes = plt.subplots(2, 2, figsize=(15, 12))
+    
+    # Panel 1: k vs r (colored by spin)
+    sc1 = axes[0, 0].scatter(df['r'], df['k'], c=df['a'], alpha=0.6, cmap='RdBu', s=20)
+    axes[0, 0].set_xlabel('r [r_g]', fontsize=12)
+    axes[0, 0].set_ylabel('k [dimensionless]', fontsize=12)
+    axes[0, 0].set_xscale('log')
+    axes[0, 0].set_yscale('log')
+    axes[0, 0].set_title(f'{title_prefix}Wavenumber vs Radius', fontsize=13)
+    axes[0, 0].grid(True, alpha=0.3)
+    plt.colorbar(sc1, ax=axes[0, 0], label='Spin a')
+
+    # Panel 2: B00 vs Sigma0 (colored by radius)
+    sc2 = axes[0, 1].scatter(df['B00'], df['Sigma0'], c=df['r'], 
+                             alpha=0.6, cmap='viridis', s=20)
+    sc2.set_norm(LogNorm())
+    axes[0, 1].set_xlabel('B₀₀', fontsize=12)
+    axes[0, 1].set_ylabel('Σ₀', fontsize=12)
+    axes[0, 1].set_xscale('log')
+    axes[0, 1].set_yscale('log')
+    axes[0, 1].set_title(f'{title_prefix}Parameter Space', fontsize=13)
+    axes[0, 1].grid(True, alpha=0.3)
+    plt.colorbar(sc2, ax=axes[0, 1], label='r [r_g]')
+
+    # Panel 3: k (dimensionless) vs spin
+    sc3 = axes[1, 0].scatter(df['a'], df['k'], c=df['r'], 
+                             alpha=0.6, cmap='plasma', s=20)
+    sc3.set_norm(LogNorm())
+    axes[1, 0].set_xlabel('Spin a', fontsize=12)
+    axes[1, 0].set_ylabel('k [dimensionless]', fontsize=12)
+    axes[1, 0].set_yscale('log')
+    axes[1, 0].set_title(f'{title_prefix}Dimensionless wavenumber', fontsize=13)
+    axes[1, 0].axhline(0.1, ls='--', c='gray', alpha=0.5, label='Physical range')
+    axes[1, 0].axhline(10, ls='--', c='gray', alpha=0.5)
+    axes[1, 0].grid(True, alpha=0.3)
+    axes[1, 0].legend()
+    plt.colorbar(sc3, ax=axes[1, 0], label='r [r_g]')
+    
+    # Panel 4: beta vs spin (colored by radius)
+    sc4 = axes[1, 1].scatter(df['a'], df['beta'], c=df['r'], 
+                             alpha=0.6, cmap='plasma', s=20)
+    sc4.set_norm(LogNorm())
+    axes[1, 1].set_xlabel('Spin a', fontsize=12)
+    axes[1, 1].set_ylabel(r'$\beta$ [dimensionless]', fontsize=12)
+    axes[1, 1].set_yscale('log')
+    axes[1, 1].set_title(f'{title_prefix}Disk magnetization', fontsize=13)
+    axes[1, 1].axhline(1, ls='--', c='red', alpha=0.7, label=r'$\beta = 1$')
+    axes[1, 1].grid(True, alpha=0.3)
+    axes[1, 1].legend()
+    plt.colorbar(sc4, ax=axes[1, 1], label='r [r_g]')
+    
+    plt.tight_layout()
+    plt.show()
+
+
+def summarize_comparison2(dfs):
+    """
+    Confronta più DataFrame di soluzioni producendo:
+    - tabella riassuntiva
+    - grafico a barre
+    
+    Parametri
+    ----------
+    dfs : dict
+        Dizionario {nome_Configuration: dataframe}
+    """
+
+    results = []
+
+    for name, df in dfs.items():
+
+        stats = {
+            "Configuration": name,
+            "# Solutions": len(df),
+            "Range k":
+                f"[{df['k'].min():.2e}, {df['k'].max():.2e}]",
+            "Range β":
+                f"[{df['beta'].min():.2e}, {df['beta'].max():.2e}]",
+            "Range dQ/dr":
+                f"[{df['dQdr'].min():.2e}, {df['dQdr'].max():.2e}]",
+            "% β ≤ 1": (df['beta'] <= 1).mean() * 100,
+            "% dQ/dr > 0": (df['dQdr'] > 0).mean() * 100
+        }
+
+        results.append(stats)
+
+    comparison = pd.DataFrame(results)
+
+    # baseline
+    baseline = comparison.loc[
+        comparison['Configuration'] == 'Baseline',
+        '# Solutions'
+    ].iloc[0]
+
+    # salva valori numerici per il grafico
+    solutions_numeric = comparison['# Solutions'].copy()
+
+    # percentuali di rimanenti (solo array temporaneo)
+    reductions = (solutions_numeric / baseline) * 100
+
+    # formatta colonna # Solutions
+    comparison['# Solutions'] = [
+        f"{int(n)} ({r:.1f}%)" if cfg != "Baseline" else f"{int(n)}"
+        for n, r, cfg in zip(solutions_numeric, reductions, comparison['Configuration'])
+    ]
+
+    print("\n" + "=" * 150)
+    print("CONFRONTO RIASSUNTIVO DEGLI EFFETTI DEI BOUND")
+    print("=" * 150)
+
+    print(comparison.round(3).to_string(index=False))
+
+    # Grafico
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    bars = ax.bar(
+        comparison['Configuration'],
+        solutions_numeric,
+        alpha=0.7
+    )
+
+    ax.set_ylabel('# Solutions')
+    ax.set_title('Effects of Physical Bounds on AEI Solutions')
+    ax.grid(True, axis='y', alpha=0.3)
+
+    for bar, pct in zip(bars, reductions):
+        height = bar.get_height()
+        ax.text(
+            bar.get_x() + bar.get_width()/2,
+            height,
+            f'{pct:.1f}%',
+            ha='center',
+            va='bottom'
+        )
+
+    plt.xticks(rotation=15)
+    plt.tight_layout()
+    plt.show()
+
+    return comparison

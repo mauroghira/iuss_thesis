@@ -382,9 +382,31 @@ def _bisect_vec(func_vec, r_lo, r_hi, n_scan=200, n_bisect=40):
     return (a_r + b_r) / 2
 
 
+def _r_AB_search_limit(mdot, alpha, M):
+    """
+    Stima analitica del limite superiore per la ricerca di r_AB.
+
+    Per r >> r_ISCO i fattori NT → 1 e f_AB ~ r^(21/8), quindi il crossing vale:
+        r_AB ≈ (α^{1/4} M^{1/4} ṁ² / 4×10⁻⁶)^{8/21}
+    Restituisce 5× questa stima (margine di sicurezza), limitato a [500, 1e5].
+    """
+    r_est = (alpha**(1/4) * float(M)**(1/4) * mdot**2 / 4e-6)**(8/21)
+    return float(np.clip(r_est * 5.0, 500.0, 1e5))
+
+
 def nt_boundaries(a, Sigma0, alpha=ALPHA_VISC, M=M_BH):
     """
     Calcola mdot, r_AB, r_BC dai parametri liberi (a, Sigma0, alpha).
+
+    Casi speciali gestiti esplicitamente:
+
+    * f_AB(r_ISCO) ≥ 1  →  il disco è già dominato dalla pressione di gas
+      all'ISCO: la zona A è assente, r_AB = r_ISCO  (frontiera collassata).
+
+    * f_AB cresce sempre come r^{21/8}: se f_AB(r_ISCO) < 1 il crossing
+      esiste certamente; il limite superiore di ricerca viene stimato
+      analiticamente in modo da coprire tutti i valori di ṁ fisicamente
+      raggiunti dalla griglia dei parametri.
 
     Returns
     -------
@@ -396,28 +418,42 @@ def nt_boundaries(a, Sigma0, alpha=ALPHA_VISC, M=M_BH):
     m     = float(M)
     mdot  = nt_mdot_from_Sigma0(Sigma0, a, alpha)
 
-    # r_AB: β/(1-β) = 1  (zona A)
+    # ── r_AB: β/(1-β) = 1  (condizione P_rad = P_gas) ───────────────────
     def f_AB(r_arr):
         f   = nt_ABCDEQ(r_arr, a)
         rel = f['A']**(-5/2) * f['B']**(9/2) * f['D'] * f['E']**(5/4) / f['Q']**2
         return 4e-6 * alpha**(-1/4) * m**(-1/4) * mdot**(-2) * np.asarray(r_arr)**(21/8) * rel
 
-    r_AB = _bisect_vec(f_AB, rISCO*1.01, 300.0)
-    if r_AB is None:
-        r_AB = rISCO*1.5 if f_AB(np.array([rISCO*1.01]))[0] > 1 else 150.0
-    r_AB = float(np.clip(r_AB, rISCO*1.1, 300.0))
+    f_at_ISCO = float(f_AB(np.array([rISCO * 1.01]))[0])
 
-    # r_BC: τ_ff/τ_es = 1  (zona B)
+    if f_at_ISCO >= 1.0:
+        # Tutto il disco è dominato dal gas già all'ISCO: zona A assente.
+        r_AB = rISCO
+    else:
+        # Il crossing esiste certamente (f_AB ~ r^{21/8} → ∞).
+        # Il limite superiore è stimato analiticamente per coprire mdot grandi.
+        r_AB_hi = _r_AB_search_limit(mdot, alpha, m)
+        r_AB = _bisect_vec(f_AB, rISCO * 1.01, r_AB_hi)
+        if r_AB is None:
+            # Fallback di sicurezza: non dovrebbe accadere con il limite dinamico,
+            # ma se succede significa che r_AB > r_AB_hi → usiamo il limite stesso.
+            r_AB = r_AB_hi
+        r_AB = float(np.clip(r_AB, rISCO, 1e5))
+
+    # ── r_BC: τ_ff/τ_es = 1  (cambio regime opacità) ────────────────────
     def f_BC(r_arr):
         f   = nt_ABCDEQ(r_arr, a)
         rel = (f['A']**(-1) * f['B']**2
                * np.sqrt(np.maximum(f['D'], 0)) * np.sqrt(np.maximum(f['E'], 0)) / f['Q'])
         return 2e-6 * mdot**(-1) * np.asarray(r_arr)**(3/2) * rel
 
-    r_BC = _bisect_vec(f_BC, r_AB*1.01, 1e5)
+    r_BC = _bisect_vec(f_BC, r_AB * 1.01, 1e5)
     if r_BC is None:
-        r_BC = r_AB*2.0 if f_BC(np.array([r_AB*1.01]))[0] > 1 else 1000.0
-    r_BC = float(np.clip(r_BC, r_AB*1.2, 1e5))
+        # f_BC(r_AB) ≥ 1: zona B assente (disco tutto in zona C da r_AB in poi)
+        # oppure crossing oltre 1e5: usiamo il confine del dominio.
+        f_at_rAB = float(f_BC(np.array([r_AB * 1.01]))[0])
+        r_BC = r_AB * 1.01 if f_at_rAB >= 1.0 else 1e5
+    r_BC = float(np.clip(r_BC, r_AB, 1e5))
 
     return mdot, r_AB, r_BC
 
@@ -469,53 +505,29 @@ def disk_model_NT(r_rg, a, B00, Sigma0, alpha_visc=ALPHA_VISC, hr=HOR, M=M_BH):
 # ═══════════════════════════════════════════════════════════════════════════
 
 def nt_print_boundaries(a, Sigma0, alpha=ALPHA_VISC, M=M_BH):
-    """Stampa riepilogo di frontiere, ṁ, e campo B₀_SS di riferimento."""
-    rISCO = float(r_isco(a))
-    rH    = float(r_horizon(a))
-    mdot, r_AB, r_BC = nt_boundaries(a, Sigma0, alpha, M)
+    """
+    Stampa riepilogo di frontiere per il modello NT.
 
-    # verifica τ_ff/τ_es zona C a r_BC (atteso ≈ 1)
-    f     = nt_ABCDEQ(np.array([r_BC]), a)
-    tau_C = float(2e-3 * mdot**(-1/2) * r_BC**(3/4)
-                  * f['A']**(-1/2) * f['B']**(2/5) * f['D']**(1/4) * f['E']**(1/4) / f['Q']**(1/2))
+    Wrapper di ``aei_common.print_disk_boundaries`` con firma compatibile
+    alle versioni precedenti. Per usare con altri modelli:
 
-    B0_rAB = float(ss_B0_B(np.array([r_AB]), mdot, alpha, M)[0])
-    B0_rBC = float(ss_B0_B(np.array([r_BC]), mdot, alpha, M)[0])
-
-    print(f"\n{'='*64}")
-    print(f"  NT  |  a={a:.2f}  Σ₀={Sigma0:.1e}  α={alpha:.2f}  M={M:.1e} M☉")
-    print(f"{'='*64}")
-    print(f"  ṁ      = {mdot:.4f}   (da Σ₀ via zona A all'ISCO)")
-    print(f"  r_H    = {rH:.3f}  r_g")
-    print(f"  r_ISCO = {rISCO:.3f}  r_g")
-    print(f"  r_AB   = {r_AB:.2f}  r_g  ({r_AB/rISCO:.1f} × r_ISCO)")
-    print(f"  r_BC   = {r_BC:.1f}  r_g  ({r_BC/r_AB:.1f} × r_AB)")
-    print(f"  check τ_ff/τ_es (zona C) @ r_BC = {tau_C:.3f}  [atteso ≈ 1]")
-    print(f"  B₀_SS(r_AB) = {B0_rAB:.3e} G  →  B00=1 produce questo campo a r_AB")
-    print(f"  B₀_SS(r_BC) = {B0_rBC:.3e} G  →  campo di transizione B→C")
-    print(f"{'='*64}")
+        from AEI_setups.aei_common import print_disk_boundaries
+        print_disk_boundaries(disk_model, params)
+    """
+    _model = lambda r, **p: disk_model_NT(r, **p, alpha_visc=alpha, M=M)
+    print_disk_boundaries(_model, {'a': a, 'B00': 1.0, 'Sigma0': Sigma0}, M=M)
 
 
 def nt_scan_grid(Sigma0_vals, a_vals, alpha=ALPHA_VISC, M=M_BH):
     """
-    Tabella diagnostica su griglia (Σ₀, a).
-    Colonne: Sigma0, a, mdot, r_AB, r_BC, r_AB/r_ISCO, r_BC/r_AB, B0_SS_rAB
+    Tabella diagnostica su griglia (Σ₀, a) per il modello NT.
+
+    Wrapper di ``aei_common.scan_disk_grid`` con firma compatibile alle
+    versioni precedenti. Per usare con altri modelli:
+
+        from AEI_setups.aei_common import scan_disk_grid
+        scan_disk_grid(disk_model, Sigma0_vals, a_vals, extra_params=...)
     """
-    rows = []
-    for S0 in Sigma0_vals:
-        for a_val in a_vals:
-            try:
-                mdot, r_AB, r_BC = nt_boundaries(a_val, S0, alpha, M)
-                rISCO  = float(r_isco(a_val))
-                B0_rAB = float(ss_B0_B(np.array([r_AB]), mdot, alpha, M)[0])
-                rows.append(dict(Sigma0=S0, a=a_val, mdot=mdot,
-                                 r_AB=r_AB, r_BC=r_BC,
-                                 r_AB_rISCO=r_AB/rISCO, r_BC_rAB=r_BC/r_AB,
-                                 B0_SS_rAB=B0_rAB))
-            except Exception:
-                rows.append(dict(Sigma0=S0, a=a_val, mdot=np.nan, r_AB=np.nan,
-                                 r_BC=np.nan, r_AB_rISCO=np.nan,
-                                 r_BC_rAB=np.nan, B0_SS_rAB=np.nan))
-    df = pd.DataFrame(rows)
-    print(df.to_string(index=False, float_format='{:.3g}'.format))
-    return df
+    _model = lambda r, **p: disk_model_NT(r, **p, alpha_visc=alpha, M=M)
+    return scan_disk_grid(_model, Sigma0_vals, a_vals,
+                          extra_params={'B00': 1.0}, M=M)

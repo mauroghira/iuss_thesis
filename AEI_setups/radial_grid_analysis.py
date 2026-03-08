@@ -660,6 +660,7 @@ def compare_models(results_dict, figsize=(16, 10)):
     ncols = min(n_panels, 2)
     nrows = (n_panels + ncols - 1) // ncols
     fig, axes = plt.subplots(nrows, ncols, figsize=figsize)
+    axes = axes.flatten()
     fig.suptitle("Confronto modelli — mediana su tutta la griglia", fontsize=13)
 
     _log_qty = {'k', 'beta', 'B0', 'Sigma', 'c_s'}
@@ -684,7 +685,7 @@ def compare_models(results_dict, figsize=(16, 10)):
                 alpha = 1.0 if zone == 'B' else 0.5
                 ax.plot(sub['r_mid'], sub[f'{qty}_median'],
                         color=col, ls=ls, lw=1.5 + (zone == 'B') * 0.5,
-                        alpha=alpha, label=f'{name}·{zone}' if zone == 'A' else '_')
+                        alpha=alpha, label=f'{name}·{zone}')
 
         for (yval, hcol, hls) in _hrefs.get(qty, []):
             ax.axhline(yval, color=hcol, ls=hls, lw=1, alpha=0.6)
@@ -696,6 +697,7 @@ def compare_models(results_dict, figsize=(16, 10)):
         ax.set_ylabel(_ylabel.get(qty, qty), fontsize=11)
         ax.set_title(_ylabel.get(qty, qty), fontsize=11)
         ax.grid(True, alpha=0.15)
+        ax.legend(fontsize=9, title='Modello')
 
     # ── pannello frac_aei per ogni modello (tutte le zone aggregate) ─────────
     ax_frac = axes[-1]
