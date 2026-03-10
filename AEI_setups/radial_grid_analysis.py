@@ -627,14 +627,14 @@ def summary_table_grid(df_all, df_binned=None, df_slopes=None):
         }
         line = (f"    {zone}  {N:>9}  {pct('k_valid'):>5.1f}%  "
                 f"{pct('beta_valid'):>5.1f}%  {pct('shear_valid'):>5.1f}%  "
-                f"{pct('aei_valid'):>6.1f}%")
+                f"{pct('aei_valid'):>6.3f}%")
 
         if has_ilr:
             p_ilr = pct('ilr_valid')
             p_qpo = pct('aei_ilr_valid')
             row_dict['pct_ilr'] = p_ilr
             row_dict['pct_qpo'] = p_qpo
-            line += f"  {p_ilr:>6.1f}%  {p_qpo:>6.1f}%"
+            line += f"  {p_ilr:>6.1f}%  {p_qpo:>6.3f}%"
 
         if has_slopes:
             sz = df_slopes[df_slopes['zone'] == zone]
@@ -654,95 +654,149 @@ def summary_table_grid(df_all, df_binned=None, df_slopes=None):
 # 6.  CONFRONTO TRA MODELLI DIVERSI
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def compare_models(results_dict, figsize=(16, 10)):
+def compare_models(results_dict, figsize=(16, 10),
+                   aei_only=False,
+                   show_iqr=True,
+                   a_ref=None, nu_obs=None, m_mode=None, M_bh=None):
     """
-    Confronta i risultati di scan su modelli diversi sullo stesso grafico.
+    Confronta i profili radiali aggregati di B₀, Σ, k, β per più modelli,
+    con lo stesso stile di plot_profiles_comparison ma calcolati come
+    mediana (± IQR opzionale) sulla griglia di parametri.
 
     Parameters
     ----------
     results_dict : dict  { 'nome_modello': (df_all, df_binned, meta_list) }
-        Dizionario con i risultati di radial_scan_grid per ogni modello.
-        Esempio:
-          {
-            'SS':     (df_all_ss,  df_binned_ss,  meta_ss),
-            'NT':     (df_all_nt,  df_binned_nt,  meta_nt),
-            'Simple': (df_all_s,   df_binned_s,   meta_s),
-          }
-    figsize : tuple
+    figsize      : tuple
+    aei_only     : bool (default False)
+        True  → aggrega solo i punti con aei_valid=True
+        False → aggrega tutti i punti della griglia
+    show_iqr     : bool (default True)
+        True  → banda IQR (Q1–Q3) attorno alla mediana
+    a_ref        : float | None
+        Spin per calcolare ILR/OLR/CR. Default: mediana del primo modello.
+    nu_obs, m_mode, M_bh : override dei default di aei_common
 
     Returns
     -------
     fig : matplotlib.figure.Figure
     """
-    linestyles = ['-', '--', ':', '-.']
-    quantities = ['k', 'beta', 'dQdr']
-    n_panels = len(quantities) + 1   # +1 per il pannello frazioni
-    ncols = min(n_panels, 2)
-    nrows = (n_panels + ncols - 1) // ncols
-    fig, axes = plt.subplots(nrows, ncols, figsize=figsize)
-    axes = axes.flatten()
-    fig.suptitle("Confronto modelli — mediana su tutta la griglia", fontsize=13)
+    # ── importa funzioni di risonanza ────────────────────────────────────────
+    try:
+        from .aei_common import (r_ilr as _r_ilr, r_olr as _r_olr,
+                                  r_corotation as _r_cr,
+                                  NU0 as _NU0, mm as _mm, M_BH as _M_BH)
+    except ImportError:
+        from aei_common import (r_ilr as _r_ilr, r_olr as _r_olr,
+                                 r_corotation as _r_cr,
+                                 NU0 as _NU0, mm as _mm, M_BH as _M_BH)
 
-    _log_qty = {'k', 'beta', 'B0', 'Sigma', 'c_s'}
-    _ylabel  = {'k': 'k', 'beta': 'β', 'dQdr': 'dQ/dr'}
-    _hrefs   = {
-        'k':    [(0.1, 'gray', ':'), (10, 'gray', ':')],
-        'beta': [(1.0, 'red', '--')],
-        'dQdr': [(0.0, 'red', '--')],
-    }
+    nu_obs = nu_obs if nu_obs is not None else _NU0
+    m_mode = m_mode if m_mode is not None else _mm
+    M_bh   = M_bh   if M_bh   is not None else _M_BH
 
-    cmap  = plt.cm.tab10
+    first_df_all = next(iter(results_dict.values()))[0]
+    if a_ref is None:
+        a_ref = float(np.median(first_df_all['a'].unique()))
+
+    r_ILR = _r_ilr(a_ref, nu_obs, m_mode, M_bh)
+    r_CR  = _r_cr (a_ref, nu_obs, m_mode, M_bh)
+    r_OLR = _r_olr(a_ref, nu_obs, m_mode, M_bh)
+    resonances = [
+        (r_ILR, r'$r_{\rm ILR}$', 'blue',    '--'),
+        (r_OLR, r'$r_{\rm OLR}$', 'magenta', '--'),
+        (r_CR,  r'$r_{\rm CR}$',  '#f43f5e', '-.'),
+    ]
+
+    # ── panels: same 4 quantities as plot_profiles_comparison ────────────────
+    panels = [
+        # (col_in_df, col_in_binned, ylabel, log_y, hlines)
+        ('B0',    'B0',    r'B₀  [G]',              True,  []),
+        ('Sigma', 'Sigma', r'Σ  [g/cm²]',           True,  []),
+        ('k',     'k',     r'k  (dimensionless)',    True,  [(0.1,'gray',':'),(10,'gray',':')]),
+        ('beta',  'beta',  r'β',                     True,  [(1.0,'red','--')]),
+    ]
+
+    import matplotlib.gridspec as _gs
+    fig = plt.figure(figsize=figsize)
+    mode_label = 'AEI-valid only' if aei_only else 'full grid'
+    fig.suptitle(
+        f"Models comparison — {mode_label} — "
+        f"median ± IQR  (a_ref = {a_ref:.2f})",
+        fontsize=13
+    )
+    gs = _gs.GridSpec(2, 2, hspace=0.38, wspace=0.32)
+    axes = [fig.add_subplot(gs[i, j]) for i in range(2) for j in range(2)]
+
+    linestyles   = ['-', '--', ':', '-.']
+    cmap         = plt.cm.tab10
     model_colors = {name: cmap(i) for i, name in enumerate(results_dict)}
 
-    for ax, qty in zip(axes[:len(quantities)], quantities):
-        logscale = qty in _log_qty
+    for ax, (col_df, col_bin, ylabel, log_y, hrefs) in zip(axes, panels):
+
         for (name, (df_all, df_binned, _)), ls in zip(results_dict.items(), linestyles):
             col = model_colors[name]
-            for zone in ZONE_NAMES:
-                sub = df_binned[df_binned['zone'] == zone].sort_values('r_mid')
-                if sub.empty or f'{qty}_median' not in sub.columns:
-                    continue
-                alpha = 1.0 if zone == 'B' else 0.5
-                ax.plot(sub['r_mid'], sub[f'{qty}_median'],
-                        color=col, ls=ls, lw=1.5 + (zone == 'B') * 0.5,
-                        alpha=alpha, label=f'{name}·{zone}')
 
-        for (yval, hcol, hls) in _hrefs.get(qty, []):
-            ax.axhline(yval, color=hcol, ls=hls, lw=1, alpha=0.6)
+            # ── source data ──────────────────────────────────────────────────
+            df_src = df_all[df_all['aei_valid']] if aei_only else df_all
+
+            if df_src.empty:
+                continue
+
+            # Re-bin to get median ± IQR per r_mid
+            r_lo = max(df_src['r'].min(), 1.0)
+            r_hi = df_src['r'].max()
+            n_rbins = 40
+            edges  = np.geomspace(r_lo, r_hi, n_rbins + 1)
+            r_mids = np.sqrt(edges[:-1] * edges[1:])
+
+            r_plot, med_vals, q1_vals, q3_vals = [], [], [], []
+            for lo, hi, rm in zip(edges[:-1], edges[1:], r_mids):
+                pts = df_src[(df_src['r'] >= lo) & (df_src['r'] < hi)][col_df].dropna()
+                pts = pts[np.isfinite(pts) & (pts > 0)] if log_y else pts[np.isfinite(pts)]
+                if len(pts) >= 3:
+                    r_plot.append(rm)
+                    med_vals.append(float(np.median(pts)))
+                    q1_vals.append(float(np.percentile(pts, 25)))
+                    q3_vals.append(float(np.percentile(pts, 75)))
+
+            if not r_plot:
+                continue
+
+            r_arr  = np.array(r_plot)
+            med    = np.array(med_vals)
+            q1     = np.array(q1_vals)
+            q3     = np.array(q3_vals)
+
+            ax.plot(r_arr, med, color=col, ls=ls, lw=1.8,
+                    label=name, alpha=0.9)
+            if show_iqr:
+                ax.fill_between(r_arr, q1, q3, color=col, alpha=0.15)
+
+        # ── horizontal reference lines ────────────────────────────────────
+        for (yv, hc, hls) in hrefs:
+            ax.axhline(yv, color=hc, ls=hls, lw=1, alpha=0.7)
+
+        # ── resonance vertical lines ──────────────────────────────────────
+        for (rr, rlabel, rc, rls) in resonances:
+            if np.isfinite(rr):
+                ax.axvline(rr, color=rc, ls=rls, lw=1.3, alpha=0.85,
+                           label=f'{rlabel} = {rr:.1f}')
 
         ax.set_xscale('log')
-        if logscale:
+        if log_y:
             ax.set_yscale('log')
-        ax.set_xlabel('r [rg]', fontsize=11)
-        ax.set_ylabel(_ylabel.get(qty, qty), fontsize=11)
-        ax.set_title(_ylabel.get(qty, qty), fontsize=11)
+        ax.set_xlabel('r  [r_g]', fontsize=11)
+        ax.set_ylabel(ylabel,     fontsize=11)
+        ax.set_title(ylabel,      fontsize=11)
         ax.grid(True, alpha=0.15)
-        ax.legend(fontsize=9, title='Modello')
 
-    # ── pannello frac_aei per ogni modello (tutte le zone aggregate) ─────────
-    ax_frac = axes[-1]
-    for (name, (df_all, df_binned, _)), ls in zip(results_dict.items(), linestyles):
-        col = model_colors[name]
-        # aggrega su tutte le zone: per ogni r_mid prendi la media pesata
-        sub_all = df_binned.groupby('r_mid', as_index=False).agg(
-            frac_aei_mean=('frac_aei', 'mean')
-        ).sort_values('r_mid')
-        ax_frac.plot(sub_all['r_mid'], sub_all['frac_aei_mean'],
-                     color=col, ls=ls, lw=2, label=name)
-
-    ax_frac.set_xscale('log')
-    ax_frac.set_ylim(0, 1.05)
-    ax_frac.axhline(0.5, color='gray', ls=':', lw=1, alpha=0.6)
-    ax_frac.set_xlabel('r [rg]', fontsize=11)
-    ax_frac.set_ylabel('Frazione AEI valida', fontsize=11)
-    ax_frac.set_title('Frac AEI (media zone)', fontsize=11)
-    ax_frac.legend(fontsize=9)
-    ax_frac.grid(True, alpha=0.15)
-
-    # legenda modelli su primo pannello
-    handles = [plt.Line2D([0], [0], color=model_colors[n], ls=ls, lw=2, label=n)
-               for n, ls in zip(results_dict, linestyles)]
-    axes[0].legend(handles=handles, fontsize=9, title='Modello')
+        # legend: models first, then resonances
+        handles_m = [plt.Line2D([0],[0], color=model_colors[n], ls=l, lw=2, label=n)
+                     for n, l in zip(results_dict, linestyles)]
+        handles_r = [plt.Line2D([0],[0], color=rc, ls=rls, lw=1.3,
+                                 label=f'{rlabel} = {rr:.1f}')
+                     for (rr, rlabel, rc, rls) in resonances if np.isfinite(rr)]
+        ax.legend(handles=handles_m + handles_r, fontsize=8)
 
     plt.tight_layout()
     return fig

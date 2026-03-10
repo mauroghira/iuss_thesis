@@ -346,6 +346,46 @@ def check_ilr_aei(r_rg, a, nu_obs=NU0, m=mm, M=M_BH):
         return np.zeros(r_rg.shape, dtype=bool)
     return r_rg < r_ILR
 
+def r_olr(a, nu_obs=NU0, m=mm, M=M_BH, n_scan=8000):
+    """
+    Outer Lindblad Resonance (OLR): ω̃ − κ = 0.
+
+    The OLR marks the outer boundary of the propagation region for
+    outward-propagating density waves. It satisfies:
+
+        ω_obs − m·Ω_φ(r) = +κ(r)
+
+    Parameters
+    ----------
+    a      : float   dimensionless spin  [−1, 1]
+    nu_obs : float   observed frequency  [Hz]  (default NU0)
+    m      : int     azimuthal wavenumber
+    M      : float   BH mass [M_sun]
+    n_scan : int     radial scan points
+
+    Returns
+    -------
+    r_OLR : float   OLR radius in r_g  (NaN if not found)
+    """
+    a = float(a)
+    isco = float(r_isco(a))
+    r = np.geomspace(isco * 1.001, 5000.0, n_scan)
+
+    kappa    = 2*np.pi * nu_r(r, a, M)
+    om_tilde = 2*np.pi*nu_obs - m * 2*np.pi * nu_phi(r, a, M)
+
+    # OLR: om_tilde − kappa = 0
+    diff = om_tilde - kappa
+    sign_changes = np.where(np.diff(np.sign(diff)) != 0)[0]
+    if len(sign_changes) == 0:
+        return np.nan
+
+    i = sign_changes[0]
+    denom = diff[i+1] - diff[i]
+    if denom == 0:
+        return float(r[i])
+    return float(r[i] - diff[i] * (r[i+1] - r[i]) / denom)
+
 
 # ═══════════════════════════════════════════════════════════════════════════
 # 3.  FINDER VETTORIZZATO

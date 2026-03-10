@@ -103,7 +103,7 @@ def _iter_zones(df):
 
 def plot_full_disk_profiles(df, meta, alpha_visc=None, figsize=(16, 12)):
     """
-    Figura con 4 pannelli: B₀/Σ, k·r, β, dQ/dr.
+    Figura con 4 pannelli: B₀ e Σ, k, β, dQ/dr
 
     Funziona con qualsiasi output di compute_disk_profile:
       • modelli con zone A/B/C (SS, NT): ogni curva è colorata per zona
@@ -146,7 +146,7 @@ def plot_full_disk_profiles(df, meta, alpha_visc=None, figsize=(16, 12)):
     _zone_vlines(ax, meta)
     ax.legend(fontsize=8, loc='upper right')
 
-    # ── pannello 2: k·r ───────────────────────────────────────────────────────
+    # ── pannello 2: k ───────────────────────────────────────────────────────
     ax = axes[1]
     for label, sub, col in _iter_zones(df):
         valid = sub[sub['k'].notna() & (sub['k'] > 0)]

@@ -33,8 +33,6 @@ from matplotlib.colors import Normalize
 from matplotlib.cm import ScalarMappable
 import pandas as pd
 
-# import del modulo NT (stesso folder)
-from .ss_nt_boundaries import nt_boundaries, nt_mdot_from_Sigma0
 from .aei_common import (
     solve_k_aei, compute_beta, compute_dQdr, check_k_wkb, _make_interp,
     ALPHA_VISC, HOR, mm
@@ -62,22 +60,57 @@ ZONE_COLORS = {'A': '#f97316', 'B': '#3b82f6', 'C': '#22c55e'}
 # 1.  FRONTIERE S&S
 # ═══════════════════════════════════════════════════════════════════════════════
 
+def ss_mdot_from_Sigma0(Sigma0, a, alpha=0.1):
+    """
+    Inverte u₀_A(r_ISCO) = Sigma0 con la formula SS pura (eq. 2.9 S&S 1973):
+        u₀ = 4.6 α⁻¹ ṁ⁻¹ r^{3/2} (1 - r^{-1/2})⁻¹
+
+    Invertendo a r_ISCO:
+        ṁ_SS = 4.6 · r_ISCO^{3/2} · (1 - r_ISCO^{-1/2})⁻¹ / (α · Σ₀)
+
+    Solo il fattore non-relativistico f = (1 - r^{-1/2}), senza A,B,C,D,E,Q NT.
+    """
+    rISCO = float(r_isco(a))
+    f_isco = max(1.0 - rISCO**(-0.5), 1e-10)
+    return float(4.6 * rISCO**(3/2) / (f_isco * alpha * float(Sigma0)))
+
+
+def _bisect_ss(func, r_lo, r_hi, n_scan=300, n_bisect=50):
+    """Bisezione scalare: trova r dove func(r) = 0."""
+    r_arr = np.geomspace(r_lo, r_hi, n_scan)
+    f_arr = func(r_arr)
+    sc = np.where(np.diff(np.sign(f_arr)))[0]
+    if len(sc) == 0:
+        return None
+    a_r, b_r = r_arr[sc[0]], r_arr[sc[0] + 1]
+    for _ in range(n_bisect):
+        mid = (a_r + b_r) / 2
+        if func(np.array([mid]))[0] < 0:
+            a_r = mid
+        else:
+            b_r = mid
+    return float((a_r + b_r) / 2)
+
+
 def ss_boundaries(a, Sigma0, alpha=0.1, M=M_BH):
     """
-    Frontiere r_AB e r_BC con correzioni relativistiche di Novikov-Thorne.
+    Frontiere r_AB e r_BC con le formule S&S 1973 PURE (non-relativistiche).
 
-    ṁ ricavato da Σ₀ tramite la formula ESATTA della zona A (inner region)
-    del review Shakura, sez. 5.3:
-        Σ_A(r_ISCO) = Σ₀  →  ṁ = 5 r_ISCO^{3/2} rel_A / (α Σ₀)
+    ṁ ricavato da Σ₀ tramite la formula SS zona A (eq. 2.9):
+        u₀ = 4.6 α⁻¹ ṁ⁻¹ r^{3/2} (1 - r^{-1/2})⁻¹
+        → ṁ_SS = 4.6 r_ISCO^{3/2} (1 - r_ISCO^{-1/2})⁻¹ / (α Σ₀)
 
-    r_AB: β/(1-β) = 1  (P_rad = P_gas, zona A)
-    r_BC: τ_ff/τ_es = 1  (cambio opacità, zona B)
+    r_AB (eq. 2.17):  r_ab / (1 - r_ab^{-1/2})^{16/21} = 150 (αm)^{2/21} ṁ^{16/21}
+    r_bc (eq. 2.20):  r_bc = 6.3×10³ ṁ^{2/3} (1 - r_bc^{-1/2})^{2/3}
+
+    Entrambe le equazioni sono implicite in r (via f = 1-r^{-1/2}) e si risolvono
+    con bisezione semplice — nessun fattore relativistico NT.
 
     B₀₀ NON entra nelle frontiere — è un parametro libero del campo.
 
     Parameters
     ----------
-    a      : float   spin adimensionale
+    a      : float   spin adimensionale (usato solo per r_ISCO nel calcolo di ṁ)
     Sigma0 : float   Σ₀ in g/cm²  (determina ṁ)
     alpha  : float   viscosità α (default 0.1)
     M      : float   massa BH in M_sun
@@ -85,9 +118,45 @@ def ss_boundaries(a, Sigma0, alpha=0.1, M=M_BH):
     Returns
     -------
     r_AB, r_BC : float   raggi di frontiera in r_g
-    mdot       : float   ṁ derivato
+    mdot       : float   ṁ derivato (formula SS pura)
     """
-    mdot, r_AB, r_BC = nt_boundaries(a, Sigma0, alpha=alpha, M=M)
+    rISCO = float(r_isco(a))
+    m     = float(M)
+    mdot  = ss_mdot_from_Sigma0(Sigma0, a, alpha)
+
+    def _f(r):
+        return np.maximum(1.0 - np.asarray(r, float)**(-0.5), 1e-10)
+
+    # ── r_AB: eq. 2.17  →  r / f(r)^{16/21} - 150 (αm)^{2/21} ṁ^{16/21} = 0 ──
+    rhs_AB = 150.0 * (alpha * m)**(2/21) * mdot**(16/21)
+
+    def eq_AB(r):
+        r = np.asarray(r, float)
+        return r / _f(r)**(16/21) - rhs_AB
+
+    # controlla se zona A esiste (se eq_AB(r_ISCO) ≥ 0 → r_AB collassato a r_ISCO)
+    if eq_AB(np.array([rISCO * 1.01]))[0] >= 0:
+        r_AB = rISCO
+    else:
+        r_AB_hi = float(np.clip(rhs_AB * 2.0, 500.0, 1e5))
+        r_AB = _bisect_ss(eq_AB, rISCO * 1.01, r_AB_hi)
+        if r_AB is None:
+            r_AB = r_AB_hi
+        r_AB = float(np.clip(r_AB, rISCO, 1e5))
+
+    # ── r_BC: eq. 2.20  →  r / f(r)^{2/3} - 6.3e3 · ṁ^{2/3} = 0 ──────────────
+    rhs_BC = 6.3e3 * mdot**(2/3)
+
+    def eq_BC(r):
+        r = np.asarray(r, float)
+        return r / _f(r)**(2/3) - rhs_BC
+
+    r_BC = _bisect_ss(eq_BC, r_AB * 1.01, 1e5)
+    if r_BC is None:
+        f_at_rAB = float(eq_BC(np.array([r_AB * 1.01]))[0])
+        r_BC = r_AB * 1.01 if f_at_rAB >= 0 else 1e5
+    r_BC = float(np.clip(r_BC, r_AB, 1e5))
+
     return r_AB, r_BC, mdot
 
 
