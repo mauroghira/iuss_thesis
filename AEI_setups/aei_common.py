@@ -165,8 +165,8 @@ def compute_beta(B0, Sigma, c_s, r_rg, hr=HOR, M=M_BH):
     """
     Parametro plasma beta:
 
-        β = 8π Σ c_s² / (H B₀²)    con H = hr · r · Rg
-
+        β = 8π Σ c_s² / (2 H B₀²)    con H = hr · r · Rg
+        (altezza totale del disco = 2H)
     Parametri
     ----------
     B0, Sigma, c_s : array_like   profili fisici  [G, g/cm², cm/s]
@@ -180,7 +180,7 @@ def compute_beta(B0, Sigma, c_s, r_rg, hr=HOR, M=M_BH):
     """
     Rg = Rg_SUN * M
     H  = hr * np.asarray(r_rg) * Rg
-    return 8*np.pi * np.asarray(Sigma) * np.asarray(c_s)**2 / (H * np.asarray(B0)**2)
+    return 8*np.pi * np.asarray(Sigma) * np.asarray(c_s)**2 / (2*H * np.asarray(B0)**2)
 
 
 def check_beta_aei(B0, Sigma, c_s, r_rg, hr=HOR, M=M_BH, beta_max=1.0):
@@ -392,6 +392,7 @@ def r_olr(a, nu_obs=NU0, m=mm, M=M_BH, n_scan=8000):
 # 3.  FINDER VETTORIZZATO
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 def find_rossby(
     r_vec, param_grid, disk_model,
     m=mm, hr=HOR, M=M_BH,
@@ -400,17 +401,17 @@ def find_rossby(
 ):
     """
     Finder vettorizzato della relazione di dispersione AEI.
-
+ 
     Funziona con qualsiasi modello di disco purché venga fornito
     l'adapter `disk_model` (vedi sotto).
-
+ 
     ──────────────────────────────────────────────────────────────────
     Strategia di vettorizzazione
     ──────────────────────────────────────────────────────────────────
     L'ostacolo alla piena vettorizzazione è che per i modelli SS e NT
     le frontiere  r_AB, r_BC  dipendono da (a, Sigma0) e non da r:
     non si possono precalcolare in un unico meshgrid.
-
+ 
     Soluzione adottata:
       - si itera sul prodotto cartesiano dei parametri *fissi per disco*
         (tutto tranne r),  che è in genere N_a × N_B00 × N_Sigma0 ≪ N_tot
@@ -418,34 +419,34 @@ def find_rossby(
         che restituisce (B0, Sigma, c_s) sull'intero vettore r — questa
         chiamata è completamente vettorizzata in r
       - i check fisici e il solver sono anch'essi vettorizzati in r
-
+ 
     Costo: O(N_a × N_B00 × N_Sigma0 × N_r)  con solo  N_a × N_B00 × N_Sigma0
     chiamate Python (contro  N_a × N_B00 × N_Sigma0 × N_r  nel vecchio codice).
-
+ 
     ──────────────────────────────────────────────────────────────────
     Parametri
     ──────────────────────────────────────────────────────────────────
     r_vec      : array_like
         Raggi in r_g su cui calcolare i profili.
-
+ 
     param_grid : dict  {nome: array_1d}
         Griglia dei parametri *che non dipendono da r*.
         Deve contenere almeno 'a'.
         Esempio per simple_disc:   {'a': ..., 'B00': ..., 'Sigma0': ...}
         Esempio per full_disk_SS:  {'a': ..., 'B00': ..., 'Sigma0': ...}
         (i parametri 'r' vanno in r_vec, non qui)
-
+ 
     disk_model : callable
         disk_model(r_rg, **row) → (B0, Sigma, c_s)
         dove row è un dict con i parametri scalari della riga corrente.
         Vedi sezione adapter in fondo al file.
-
+ 
     m, hr, M   : int, float, float
         Modo azimutale, aspect ratio, massa BH.
-
+ 
     check_k, check_beta, check_shear : bool
         Attiva/disattiva i tre constraint fisici standard.
-
+ 
     check_ilr : bool  (default False)
         Se True, applica il constraint r < r_ILR: mantiene solo le soluzioni
         dentro la cavity di risonanza AEI tra il bordo interno del disco e
@@ -453,16 +454,16 @@ def find_rossby(
         capaci di produrre QPO coerenti (standing waves quantizzate).
         r_ILR dipende solo da (a, ν₀, m, M) — viene pre-calcolata una volta
         per ogni valore unico di spin per efficienza.
-
+ 
     k_min, k_max : float
         Range WKB per k adimensionale.
-
+ 
     beta_max : float
         Soglia per il check β.
-
+ 
     dr_frac : float
         Passo relativo per dQ/dr.
-
+ 
     ──────────────────────────────────────────────────────────────────
     Restituisce
     ──────────────────────────────────────────────────────────────────
@@ -474,20 +475,20 @@ def find_rossby(
           + 'zone' (se disk_model la restituisce, altrimenti assente)
     """
     r_vec = np.asarray(r_vec, dtype=float)
-
+ 
     # ── prodotto cartesiano dei parametri non-r ──────────────────────────────
     keys   = list(param_grid.keys())
     arrays = [np.asarray(param_grid[k]) for k in keys]
-
+ 
     # meshgrid N-D sui parametri non-r
     grids = np.meshgrid(*arrays, indexing='ij')
     flat  = {k: g.ravel() for k, g in zip(keys, grids)}
     N_combos = flat[keys[0]].size
-
+ 
     # ── vincolo ISCO (dipende solo da a) ────────────────────────────────────
     a_flat    = flat['a']
     isco_flat = r_isco(a_flat)          # (N_combos,)
-
+ 
     # ── pre-calcolo r_ILR per spin unici (O(N_a) chiamate, non O(N_combos)) ──
     # r_ILR dipende solo da (a, ν₀, m, M), indipendente da B00 e Sigma0
     if check_ilr:
@@ -495,21 +496,21 @@ def find_rossby(
         _ilr_cache = {float(av): r_ilr(float(av), NU0, m, M) for av in _a_unique}
     else:
         _ilr_cache = {}
-
+ 
     rows = []
-
+ 
     for i in range(N_combos):
         # parametri scalari per questa combinazione
         row_params = {k: float(flat[k][i]) for k in keys}
         a_val      = row_params['a']
         isco_val   = float(isco_flat[i])
-
+ 
         # maschera ISCO su r
         r_ok = r_vec >= isco_val
         r_i  = r_vec[r_ok]
         if r_i.size == 0:
             continue
-
+ 
         # ── profili fisici (vettorizzati in r) ──────────────────────────────
         result = disk_model(r_i, **row_params)
         n_ret  = len(result)
@@ -517,36 +518,38 @@ def find_rossby(
         # Nuova firma (6 valori): B0, Sigma, c_s, hr, zone, info
         # Vecchia firma (5 valori): B0, Sigma, c_s, zone, info
         if n_ret >= 6:
+            hr_ret = result[3]
+            hr_i   = (np.full_like(r_i, float(hr_ret))
+                      if np.isscalar(hr_ret) else np.asarray(hr_ret, dtype=float))
             zone_i = result[4]
             info_i = result[5]
         elif n_ret == 5:
+            hr_i   = np.full_like(r_i, float(hr))
             zone_i = result[3]
             info_i = result[4]
-        elif n_ret == 4:
-            zone_i = result[3]
-            info_i = {}
         else:
-            zone_i = None
+            hr_i   = np.full_like(r_i, float(hr))
+            zone_i = result[3] if n_ret == 4 else None
             info_i = {}
-
+ 
         # ── solver k ────────────────────────────────────────────────────────
         k_i = solve_k_aei(r_i, a_val, B0_i, Sigma_i, cs_i, m=m, M=M)
-
+ 
         # ── check fisici ────────────────────────────────────────────────────
         mask = np.isfinite(k_i) & (k_i > 0)
-
+ 
         if check_k:
             mask &= check_k_wkb(k_i, k_min, k_max)
-
+ 
         # beta e dQdr calcolati solo dove k è già valido (risparmio CPU)
         beta_i = np.full_like(r_i, np.nan)
         dQdr_i = np.full_like(r_i, np.nan)
-
+ 
         if np.any(mask):
             beta_i[mask] = compute_beta(
-                B0_i[mask], Sigma_i[mask], cs_i[mask], r_i[mask], hr, M
+                B0_i[mask], Sigma_i[mask], cs_i[mask], r_i[mask], hr_i[mask], M
             )
-
+ 
             # per dQdr serve B0_func e Sigma_func come callable in r
             # le costruiamo interpolando i profili già calcolati sull'intero r_i
             # (evita di richiamare disk_model due volte)
@@ -555,7 +558,7 @@ def find_rossby(
             dQdr_i[mask]  = compute_dQdr(
                 r_i[mask], a_val, _B0_interp, _Sigma_interp, M, dr_frac
             )
-
+ 
         if check_beta:
             mask &= (beta_i <= beta_max)
         if check_shear:
@@ -566,13 +569,13 @@ def find_rossby(
                 mask[:] = False          # nessuna cavity valida per questo spin
             else:
                 mask &= (r_i < r_ILR_val)
-
+ 
         # ── raccolta risultati ───────────────────────────────────────────────
         if not np.any(mask):
             continue
-
+ 
         r_ILR_entry = _ilr_cache.get(a_val, np.nan) if check_ilr else np.nan
-
+ 
         idx_ok = np.where(mask)[0]
         for j in idx_ok:
             entry = dict(row_params)
@@ -586,7 +589,7 @@ def find_rossby(
             if zone_i is not None:
                 entry['zone'] = zone_i[j]
             rows.append(entry)
-
+ 
     return pd.DataFrame(rows)
 
 
@@ -615,13 +618,14 @@ def _make_interp(r_nodes, y_nodes):
 def compute_disk_profile(
     disk_model, params,
     mm=mm, hr=HOR, M=M_BH,
-    r_min=None, r_max=None, n_points=300,
+    r_min=None, r_max=None, n_points=500,
+    r_max_aei=1000.0, n_points_ext=80,
 ):
     """
     Profilo radiale completo per qualsiasi modello di disco.
-
+ 
     Funziona con la stessa `disk_model` passata a `find_rossby` —
-
+ 
     Parametri
     ----------
     disk_model : callable
@@ -629,44 +633,44 @@ def compute_disk_profile(
         Stessa firma usata in find_rossby.
         Può restituire un quinto elemento `info` (dict con r_ISCO, r_AB,
         r_BC, mdot, ...) che viene incluso in meta automaticamente.
-
+ 
     params : dict
         Parametri scalari del disco, es.:
           {'a': 0.5, 'B00': 1e6, 'Sigma0': 1e5}
         Vengono passati a disk_model come **kwargs.
-
+ 
     mm : int
         Modo azimutale m della perturbazione AEI.
-
+ 
     hr : float
         Aspect ratio H/r (per i check β e c_s se non già in disk_model).
-
+ 
     M : float
         Massa BH [M_sun].
-
+ 
     r_min : float o None
         Raggio interno della griglia [r_g].
         Se None: r_isco(params['a'])
-
+ 
     r_max : float o None
         Raggio esterno della griglia [r_g].
         Se None: richiede che disk_model restituisca info['r_BC'],
                  allora r_max = 3 × r_BC.
                  Se info non è disponibile, solleva ValueError.
-
+ 
     n_points : int
         Numero di punti radiali log-spaziati.
-
+ 
     Restituisce
     -----------
     df : pd.DataFrame
         Colonne: r, zone, B0, Sigma, c_s, k, beta, dQdr,
                  k_valid, beta_valid, shear_valid, aei_valid
-
+ 
     meta : dict
         Contiene almeno: r_H, r_ISCO, a, mm, hr, M, + tutto ciò che
         disk_model restituisce in info (r_AB, r_BC, mdot, norms, ...).
-
+ 
     Esempi
     ------
     # modello SS
@@ -675,14 +679,14 @@ def compute_disk_profile(
         params     = {'a': 0.5, 'B00': 1e6, 'Sigma0': 1e5},
         mm=1, hr=0.05,
     )
-
+ 
     # modello NT — identico, solo disk_model cambia
     df, meta = compute_disk_profile(
         disk_model = lambda r, **p: disk_model_NT(r, **p, alpha_visc=0.1, hr=0.05),
         params     = {'a': 0.5, 'B00': 1e6, 'Sigma0': 1e5},
         mm=1, hr=0.05,
     )
-
+ 
     # con r_min/r_max espliciti
     df, meta = compute_disk_profile(
         disk_model = my_model,
@@ -692,14 +696,14 @@ def compute_disk_profile(
     )
     """
     a = float(params['a'])
-
+ 
     # ── griglia radiale ───────────────────────────────────────────────────
     rISCO = float(r_isco(a))
     rH    = float(r_horizon(a))
-
+ 
     if r_min is None:
         r_min = rISCO
-
+ 
     # Chiamata di prova su un singolo punto per estrarre info se disponibile
     _r_probe = np.array([r_min])
     _result  = disk_model(_r_probe, **params)
@@ -712,10 +716,9 @@ def compute_disk_profile(
         _info = _result[4]
     else:
         _info = {}
-
+ 
     if r_max is None:
         if 'r_max_hint' in _info:
-            # hint esplicito dal modello (es. NT zona-C only): usa direttamente
             r_max = 3.0 * _info['r_max_hint']
         elif 'r_BC' in _info:
             r_max = 3.0 * _info['r_BC']
@@ -725,9 +728,16 @@ def compute_disk_profile(
                 "Passare r_max esplicitamente oppure aggiornare disk_model per "
                 "restituire un quinto elemento info={'r_BC': ...}."
             )
-
-    r_arr = np.geomspace(r_min, r_max, n_points)
-
+ 
+    # ── griglia composita: densa nella zona AEI, rada all'esterno ──────────
+    if r_max_aei is not None and r_max > r_max_aei * 1.01:
+        r_arr = np.concatenate([
+            np.geomspace(r_min,     r_max_aei, n_points),
+            np.geomspace(r_max_aei, r_max,     n_points_ext)[1:],  # evita duplicato
+        ])
+    else:
+        r_arr = np.geomspace(r_min, r_max, n_points)
+ 
     # ── profili fisici ────────────────────────────────────────────────────
     result    = disk_model(r_arr, **params)
     n_ret     = len(result)
@@ -748,30 +758,12 @@ def compute_disk_profile(
     else:
         zone_arr = np.full(len(r_arr), 'N/A', dtype=object)
         info     = {}
-
-    # ── solver AEI ────────────────────────────────────────────────────────
-    k_arr    = solve_k_aei(r_arr, a, B0_arr, Sigma_arr, cs_arr, m=mm, M=M)
-    beta_arr = compute_beta(B0_arr, Sigma_arr, cs_arr, r_arr, hr, M)
-    dQdr_arr = compute_dQdr(r_arr, a,
-                            _make_interp(r_arr, B0_arr),
-                            _make_interp(r_arr, Sigma_arr), M)
-
-    # ── maschere di validità ──────────────────────────────────────────────
-    k_valid     = check_k_wkb(k_arr)
-    beta_valid  = beta_arr <= 1.0
-    shear_valid = dQdr_arr > 0
-    aei_valid   = k_valid & beta_valid & shear_valid
-
-    # ── risonanze Lindblad e corotazione ─────────────────────────────────
-    rILR = r_ilr(a, NU0, mm, M)
-    rCR  = r_corotation(a, NU0, mm, M)
-    ilr_valid     = (r_arr < rILR) if np.isfinite(rILR) else np.zeros(len(r_arr), dtype=bool)
-    aei_ilr_valid = aei_valid & ilr_valid   # soluzioni AEI dentro la cavity QPO
-
+ 
     # ── profili hr ───────────────────────────────────────────────────────────
-    # Recupera hr per ogni punto radiale:
-    # - SS/NT: il 4° elemento del return è hr (array o scalare)
-    # - Simple / vecchi modelli: non lo restituiscono → usa meta hr
+    # Recupera hr per ogni punto radiale PRIMA del solver AEI, così
+    # compute_beta usa hr(r) reale invece del valore costante del parametro.
+    # - SS/NT: il 4° elemento del return è hr array dal modello
+    # - Simple / vecchi modelli: hr costante dal parametro della funzione
     if n_ret >= 6:
         hr_ret = result[3]   # nuova firma: B0, Sigma, c_s, hr, zone, info
         if np.isscalar(hr_ret):
@@ -779,9 +771,39 @@ def compute_disk_profile(
         else:
             hr_arr = np.asarray(hr_ret, dtype=float)
     else:
-        # vecchi modelli (Simple) — hr costante dal parametro
         hr_arr = np.full(len(r_arr), float(hr))
-
+ 
+    # ── solver AEI — solo nella zona interna (r <= r_max_aei) ───────────
+    aei_zone = (r_arr <= r_max_aei) if r_max_aei is not None else np.ones(len(r_arr), bool)
+    r_aei    = r_arr[aei_zone]
+ 
+    k_arr    = np.full(len(r_arr), np.nan)
+    beta_arr = np.full(len(r_arr), np.nan)
+    dQdr_arr = np.full(len(r_arr), np.nan)
+ 
+    if aei_zone.any():
+        k_arr[aei_zone]    = solve_k_aei(r_aei, a, B0_arr[aei_zone],
+                                          Sigma_arr[aei_zone], cs_arr[aei_zone],
+                                          m=mm, M=M)
+        beta_arr[aei_zone] = compute_beta(B0_arr[aei_zone], Sigma_arr[aei_zone],
+                                           cs_arr[aei_zone], r_aei,
+                                           hr_arr[aei_zone], M)   # hr(r) dal modello
+        dQdr_arr[aei_zone] = compute_dQdr(r_aei, a,
+                                           _make_interp(r_aei, B0_arr[aei_zone]),
+                                           _make_interp(r_aei, Sigma_arr[aei_zone]), M)
+ 
+    # ── maschere di validità ──────────────────────────────────────────────
+    k_valid     = np.where(aei_zone, ~np.isnan(k_arr) & check_k_wkb(np.nan_to_num(k_arr)), False)
+    beta_valid  = np.where(aei_zone, beta_arr <= 1.0, False)
+    shear_valid = np.where(aei_zone, dQdr_arr > 0,    False)
+    aei_valid   = k_valid & beta_valid & shear_valid
+ 
+    # ── risonanze Lindblad e corotazione ─────────────────────────────────
+    rILR = r_ilr(a, NU0, mm, M)
+    rCR  = r_corotation(a, NU0, mm, M)
+    ilr_valid     = (r_arr < rILR) if np.isfinite(rILR) else np.zeros(len(r_arr), dtype=bool)
+    aei_ilr_valid = aei_valid & ilr_valid   # soluzioni AEI dentro la cavity QPO
+ 
     df = pd.DataFrame({
         'r':             r_arr,
         'zone':          zone_arr,
@@ -799,12 +821,11 @@ def compute_disk_profile(
         'ilr_valid':     ilr_valid,
         'aei_ilr_valid': aei_ilr_valid,
     })
-
+ 
     _merged = {**params, **info}
     meta = dict(r_H=rH, r_ISCO=rISCO, r_ILR=rILR, r_CR=rCR,
                 mm=mm, hr=hr, M=M, **_merged)
     return df, meta
-
 
 # ═══════════════════════════════════════════════════════════════════════════
 # 5.  MASSA TOTALE DEL DISCO

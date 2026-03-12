@@ -307,14 +307,19 @@ def nt_boundaries(a, mdot, alpha=ALPHA_VISC, M=M_BH):
         return 4e-6 * alpha**(-0.25) * m**(-0.25) * mdot**(-2) \
                * np.asarray(r_arr)**(21.0/8) * rel
 
-    f_at_ISCO = float(f_AB(np.array([rISCO * 1.001]))[0])
-    if f_at_ISCO >= 1.0:
+    _r_scan_AB = np.geomspace(rISCO * 1.05, rISCO * 200, 300)
+    _f_scan_AB = f_AB(_r_scan_AB)
+    _imin_AB   = int(np.argmin(_f_scan_AB))
+    _r_min_AB  = float(_r_scan_AB[_imin_AB])
+    _fmin_AB   = float(_f_scan_AB[_imin_AB])
+ 
+    if _fmin_AB >= 1.0:
         r_AB   = rISCO
         zone_A = False
     else:
         r_AB_est = (alpha**(0.25) * m**(0.25) * mdot**2 / 4e-6)**(8.0/21)
-        r_AB_hi  = float(max(r_AB_est * 3.0, rISCO * 10.0))
-        r_AB     = _bisect_vec(f_AB, rISCO * 1.001, r_AB_hi)
+        r_AB_hi  = float(max(r_AB_est * 3.0, _r_min_AB * 10.0))
+        r_AB = _bisect_vec(f_AB, _r_min_AB, r_AB_hi)
         if r_AB is None:
             r_AB = r_AB_hi
         r_AB   = float(max(r_AB, rISCO))
@@ -330,14 +335,20 @@ def nt_boundaries(a, mdot, alpha=ALPHA_VISC, M=M_BH):
                / f['Q'])
         return 2e-6 * mdot**(-1) * np.asarray(r_arr)**(1.5) * rel
 
-    f_at_rAB = float(f_BC(np.array([r_AB * 1.001]))[0])
-    if f_at_rAB >= 1.0:
+    _r_start_BC  = max(r_AB, rISCO) * 1.05
+    _r_scan_BC   = np.geomspace(_r_start_BC, _r_start_BC * 200, 300)
+    _f_scan_BC   = f_BC(_r_scan_BC)
+    _imin_BC     = int(np.argmin(_f_scan_BC))
+    _r_min_BC    = float(_r_scan_BC[_imin_BC])
+    _fmin_BC     = float(_f_scan_BC[_imin_BC])
+ 
+    if _fmin_BC >= 1.0:
         r_BC   = r_AB
         zone_B = False
     else:
         r_BC_est = (mdot / 2e-6)**(2.0/3)
-        r_BC_hi  = float(max(r_BC_est * 3.0, r_AB * 10.0))
-        r_BC     = _bisect_vec(f_BC, r_AB * 1.001, r_BC_hi)
+        r_BC_hi  = float(max(r_BC_est * 3.0, _r_min_BC * 10.0))
+        r_BC = _bisect_vec(f_BC, _r_min_BC, r_BC_hi)
         if r_BC is None:
             r_BC = r_BC_hi
         r_BC   = float(max(r_BC, r_AB))
@@ -406,6 +417,89 @@ def Sigma_C_NT(r, a, mdot, alpha, M=M_BH):
     return 4e5 * alpha**(-4.0/5) * float(M)**(1.0/5) * mdot**(7.0/10) \
            * r**(-3/4) * rel
 
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 3b.  RACCORDO REGIONE DI PLUNGE  r_ISCO < r < r_match
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _r_match(a, Q_threshold=0.1):
+    """
+    Trova il raggio r_match dove Q(r) = Q_threshold.
+
+    Per r < r_match il modello NT non è fisicamente valido (regione di plunge):
+    la materia segue geodetiche di caduta libera, non orbite circolari.
+    Q_threshold = 0.1 corrisponde a ~1.65–1.72 r_ISCO per tutti gli spin,
+    dove la divergenza artificiale di Σ ∝ 1/Q inizia a dominare.
+
+    Usa bisezione su Q(r) con scansione log-spaziata.
+    """
+    rISCO = float(r_isco(a))
+    r_scan = np.geomspace(rISCO * 1.001, rISCO * 6, 2000)
+    Q_scan = nt_factors(r_scan, a)['Q']
+    idx = np.searchsorted(Q_scan, Q_threshold)
+    if idx >= len(r_scan):
+        return rISCO * 1.7   # fallback conservativo
+    return float(r_scan[idx])
+
+
+def _apply_plunge_raccordo(r, a, Sigma, H, B, Q_threshold=0.1):
+    """
+    Applica il raccordo fisico nella regione di plunge r_ISCO < r < r_match.
+
+    Fisica della regione di plunge (Noble et al. 2006, Krolik & Hawley 2002):
+      - Σ e H decrescono a zero con profilo sqrt (conservazione flusso di massa
+        con v_r crescente)
+      - B si satura al valore B(r_match): il flusso magnetico è congelato nel
+        plasma e non decade come la densità termica
+
+    Profili raccordati:
+      Σ(r) = Σ(r_match) · sqrt((r - r_ISCO) / (r_match - r_ISCO))
+      H(r) = H(r_match) · stessa legge
+      B(r) = B(r_match)  [costante — plateau di flusso magnetico]
+
+    Parametri
+    ----------
+    r          : array_like   raggi [r_g]
+    a          : float        spin
+    Sigma      : ndarray      profilo Σ non raccordato [g/cm²]
+    H          : ndarray      profilo H non raccordato [cm]
+    B          : ndarray      profilo B non raccordato [G]
+    Q_threshold: float        soglia su Q per individuare r_match
+
+    Restituisce
+    -----------
+    Sigma_out, H_out, B_out : ndarray   profili raccordati
+    r_match                 : float     raggio di raccordo [r_g]
+    """
+    r     = np.asarray(r, float)
+    rISCO = float(r_isco(a))
+    rm    = _r_match(a, Q_threshold)
+
+    plunge = r < rm
+    if not np.any(plunge):
+        return Sigma.copy(), H.copy(), B.copy(), rm
+
+    # primo punto fuori dalla regione di plunge → valori di ancoraggio
+    outside = r >= rm
+    i_ref   = int(np.argmax(outside)) if np.any(outside) else len(r) - 1
+
+    Sigma_m = float(Sigma[i_ref])
+    H_m     = float(H[i_ref])
+    B_m     = float(B[i_ref])
+
+    # peso sqrt: 0 all'ISCO, 1 a r_match
+    xi = np.clip((r - rISCO) / (rm - rISCO), 0.0, 1.0)
+    w  = np.sqrt(xi)
+
+    Sigma_out          = Sigma.copy()
+    H_out              = H.copy()
+    B_out              = B.copy()
+    Sigma_out[plunge]  = Sigma_m * w[plunge]
+    H_out[plunge]      = H_m     * w[plunge]
+    B_out[plunge]      = B_m                  # plateau
+
+    return Sigma_out, H_out, B_out, rm
 
 def _Sigma_disk(r, a, mdot, alpha, M, r_AB, r_BC):
     """
@@ -535,19 +629,22 @@ def H_NT(r, a, mdot, alpha, M, r_AB, r_BC):
 
 def _B0_disk(r, a, mdot, alpha, M, r_AB, r_BC):
     """
-    B₀(r) in equipartizione — usa Σ_NT e H_NT per zona.
+    B₀(r) in equipartizione — usa Σ_NT e H_NT raccordati nella regione di plunge.
 
         B_eq(r) = sqrt(4π · Σ_NT(r) · Ω_φ^{NT}(r)² · H_NT(r))
 
     Ω_φ^{NT} = 2π ν_φ(r, a, M) è la frequenza orbitale di Kerr.
+    Σ e H vengono raccordati a zero con profilo √ per r < r_match (plunge).
+    B → 0 all'ISCO di conseguenza (Σ → 0 e H → 0 con la stessa legge).
     """
     r  = np.asarray(r, float)
-    Rg = Rg_SUN * float(M)
 
-    S  = _Sigma_disk(r, a, mdot, alpha, M, r_AB, r_BC)
-    Hv = H_NT(r, a, mdot, alpha, M, r_AB, r_BC)
-    Omega_phi = 2.0 * np.pi * nu_phi(r, a, M)   # [rad/s]
-    return np.sqrt(4.0 * np.pi * S * Omega_phi**2 * Hv)
+    S         = _Sigma_disk(r, a, mdot, alpha, M, r_AB, r_BC)
+    Hv        = H_NT(r, a, mdot, alpha, M, r_AB, r_BC)
+    Omega_phi = 2.0 * np.pi * nu_phi(r, a, M)
+    B_raw     = np.sqrt(np.maximum(4.0 * np.pi * S * Omega_phi**2 * Hv, 0.0))
+    _, _, B_out, _ = _apply_plunge_raccordo(r, a, S, Hv, B_raw)
+    return B_out
 
 
 def _sound_speed(r, a, Hv=None, hr=None, M=M_BH):
@@ -621,20 +718,23 @@ def disk_model_NT(r_rg, a, mdot, alpha_visc=ALPHA_VISC, hr=None, M=M_BH):
     r_rg = np.asarray(r_rg, float)
     r_AB, r_BC, zone_present = nt_boundaries(a, mdot, alpha=alpha_visc, M=M)
 
-    Sigma = _Sigma_disk(r_rg, a, mdot, alpha_visc, M, r_AB, r_BC)
+    Sigma     = _Sigma_disk(r_rg, a, mdot, alpha_visc, M, r_AB, r_BC)
+    Hv        = H_NT(r_rg, a, mdot, alpha_visc, M, r_AB, r_BC)
+    Omega_phi = 2.0 * np.pi * nu_phi(r_rg, a, M)
+    B_raw     = np.sqrt(np.maximum(4.0 * np.pi * Sigma * Omega_phi**2 * Hv, 0.0))
+    # raccordo plunge: Sigma,H → 0 (sqrt), B → plateau a r_match
+    Sigma, Hv, B0, r_match = _apply_plunge_raccordo(r_rg, a, Sigma, Hv, B_raw)
     if hr is None:
-        Hv = H_NT(r_rg, a, mdot, alpha_visc, M, r_AB, r_BC)
-        hr = Hv / (r_rg * Rg_SUN * M)  # aspect ratio
+        hr = Hv / np.maximum(r_rg * Rg_SUN * M, 1e-30)
     else:
         Hv = hr * r_rg * Rg_SUN * M
-    c_s   = _sound_speed(r_rg, a, hr=hr, M=M)
-    B0    = _B0_disk(r_rg, a, mdot, alpha_visc, M, r_AB, r_BC)
-    zone  = _zone_array(r_rg, r_AB, r_BC)
+    c_s  = _sound_speed(r_rg, a, hr=hr, M=M)
+    zone = _zone_array(r_rg, r_AB, r_BC)
 
     # Se la zona B è assente r_BC coincide con r_ISCO e non rappresenta
     # l'estensione radiale del disco (il disco è tutto zona C, illimitato).
-    # In questo caso usiamo lo stimatore analitico r_BC_est = (mdot/2e-6)^(2/3)
-    # come proxy per r_max, così compute_disk_profile costruisce una griglia sensata.
+    # Aggiungiamo r_max_hint come stima per compute_disk_profile, senza
+    # sovrascrivere r_BC che rimane la frontiera fisica reale.
     if not zone_present['B']:
         r_max_hint = float((mdot / 2e-6) ** (2.0 / 3.0))
         r_max_hint = max(r_max_hint, r_AB * 10.0)
@@ -673,28 +773,36 @@ def disk_inner_values_NT(a, mdot, alpha_visc=ALPHA_VISC, hr=HOR, M=M_BH):
       r_BC        [r_g]     frontiera B-C
       zone_present          {'A': bool, 'B': bool, 'C': bool}
       Sigma_ISCO  [g/cm²]   Σ all'ISCO
-      B_rH        [G]       B_eq all'orizzonte
+      B_ISCO      [G]       B_eq all'ISCO (bordo interno del disco)
+      B_rH        [G]       B_eq all'orizzonte (sempre 0 per NT perché r_H < dominio disco)
+
+    Nota: per NT r_H cade fuori dal dominio del disco (r_H < r_ISCO sempre),
+    quindi B_rH è strutturalmente zero. Usare B_ISCO come parametro di normalizzazione.
     """
     rISCO = float(r_isco(a))
     rH    = float(r_horizon(a))
     r_AB, r_BC, zone_present = nt_boundaries(a, mdot, alpha=alpha_visc, M=M)
+ 
+    # B_ISCO: il raccordo di plunge usa B(r_match) come plateau e poi applica
+    # w=sqrt(0)=0 all'ISCO esatto → B_pts[0]=0 se si valuta a r_ISCO.
+    # Il valore fisico del campo al bordo del disco è B(r_match), non B(r_ISCO).
+    # Valutiamo quindi appena fuori dalla regione di plunge.
+    r_match = _r_match(a)
+    rs = np.array([rISCO, r_match])
 
-    r_pts = np.array([rISCO, rH])
-    S_pts = _Sigma_disk(r_pts, a, mdot, alpha_visc, M, r_AB, r_BC)
-    H_pts = H_NT(r_pts, a, mdot, alpha_visc, M, r_AB, r_BC)
-    B_pts = _B0_disk(r_pts, a, mdot, alpha_visc, M, r_AB, r_BC)
-
+    B_pts   = _B0_disk(rs, a, mdot, alpha_visc, M, r_AB, r_BC)
+    S_pts   = _Sigma_disk(rs, a, mdot, alpha_visc, M, r_AB, r_BC)
+    H_pts   = H_NT(rs, a, mdot, alpha_visc, M, r_AB, r_BC)
+ 
     return {
         'r_ISCO':       rISCO,
         'r_H':          rH,
         'r_AB':         r_AB,
         'r_BC':         r_BC,
         'zone_present': zone_present,
-        'Sigma_ISCO':   float(S_pts[0]),
-        'B_ISCO':       float(B_pts[0]),   # bordo fisico del disco per NT
-        'B_rH':         float(B_pts[1]),
+        'Sigma_ISCO':   float(S_pts[1]),
+        'B_ISCO':       float(B_pts[1]),   # plateau magnetico al bordo del disco
     }
-
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 10.  DIAGNOSTICA  —  check_continuity_NT

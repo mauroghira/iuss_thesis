@@ -560,7 +560,7 @@ def disk_inner_values_SS(a, mdot, alpha_visc=ALPHA_VISC, M=M_BH):
         'r_BC':         r_BC,
         'zone_present': zone_present,
         'Sigma_ISCO':   float(S_pts[0]),
-        'B_rH':         float(B_pts[1]),
+        'B_ISCO':       float(B_pts[0]),
     }
 
 

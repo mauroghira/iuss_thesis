@@ -51,8 +51,10 @@ def radial_scan_grid(
     disk_model,
     mm=MM_DEFAULT,
     hr=HOR,
-    n_r=150,
-    r_max=None,
+    n_r=500,
+    r_max=1e6,
+    r_max_aei=1000.0,
+    n_points_ext=80,
     quantities=('k', 'beta', 'dQdr'),
     n_rbins=30,
     M=M_BH,
@@ -62,12 +64,12 @@ def radial_scan_grid(
     Itera su una griglia di parametri e per ogni combinazione calcola
     il profilo radiale completo tramite compute_disk_profile, poi aggrega
     i risultati in bin radiali log-spaziati.
-
+ 
     Funziona con qualsiasi griglia parametrica:
       • Simple:  {'a': array, 'B00': array, 'Sigma0': array}
       • SS/NT:   {'a': array, 'mdot': array}
       • generica: qualsiasi dict {nome: array_1d}
-
+ 
     Parameters
     ----------
     param_dict : dict {nome: array_1d}
@@ -91,7 +93,7 @@ def radial_scan_grid(
         Massa del buco nero [M_sun].
     verbose : bool
         Stampa progressi e statistiche.
-
+ 
     Returns
     -------
     df_all : pd.DataFrame
@@ -110,56 +112,58 @@ def radial_scan_grid(
     grids      = np.meshgrid(*param_arrs, indexing='ij')
     flat       = {k: g.ravel() for k, g in zip(param_keys, grids)}
     total      = flat[param_keys[0]].size
-
+ 
     if verbose:
         dims = ' × '.join(str(len(a)) for a in param_arrs)
         print(f"Grid scan: {dims} = {total} combinazioni")
         print(f"Parametri: {param_keys}")
-
+ 
     all_frames = []
     meta_list  = []
     done = 0
-
+ 
     for i in range(total):
         params = {k: float(flat[k][i]) for k in param_keys}
         try:
             df_run, meta = compute_disk_profile(
-                disk_model = disk_model,
-                params     = params,
-                mm         = mm,
-                hr         = hr,
-                M          = M,
-                n_points   = n_r,
-                r_max      = r_max,
+                disk_model   = disk_model,
+                params       = params,
+                mm           = mm,
+                hr           = hr,
+                M            = M,
+                n_points     = n_r,
+                r_max        = r_max,
+                r_max_aei    = r_max_aei,
+                n_points_ext = n_points_ext,
             )
             for k, v in params.items():
                 df_run[k] = v
             all_frames.append(df_run)
             meta_list.append(meta)
-
+ 
         except Exception as e:
             if verbose:
                 param_str = '  '.join(f'{k}={v:.3g}' for k, v in params.items())
                 print(f"  skip {param_str}: {e}")
-
+ 
         done += 1
         if verbose and done % max(1, total // 10) == 0:
             print(f"  {done}/{total}  ({done/total*100:.0f}%)")
-
+ 
     if not all_frames:
         raise RuntimeError("Nessun profilo calcolato — controlla i parametri.")
-
+ 
     df_all = pd.concat(all_frames, ignore_index=True)
-
+ 
     # ── bin radiali log-spaziati sull'intero range di r ──────────────────────
     r_lo = df_all['r'].min()
     r_hi = df_all['r'].max()
     edges  = np.geomspace(r_lo, r_hi, n_rbins + 1)
     r_mids = np.sqrt(edges[:-1] * edges[1:])
-
+ 
     df_all['r_bin'] = pd.cut(df_all['r'], bins=edges, labels=r_mids)
     df_all['r_bin'] = df_all['r_bin'].astype(float)
-
+ 
     # ── aggregazione per (r_bin, zone) ───────────────────────────────────────
     # Usa le zone effettivamente presenti — funziona con 'A','B','C' (SS/NT)
     # e con 'N/A' (simple_disc)
@@ -192,21 +196,21 @@ def radial_scan_grid(
                     row[f'{qty}_q3']     = 10**lp.quantile(0.75)
                     row[f'{qty}_mean']   = 10**lp.mean()
                     row[f'{qty}_std']    = lp.std()
-
+ 
             N = len(sub)
             row['frac_k']     = sub['k_valid'].sum()     / N
             row['frac_beta']  = sub['beta_valid'].sum()  / N
             row['frac_shear'] = sub['shear_valid'].sum() / N
             row['frac_aei']   = sub['aei_valid'].sum()   / N
             records.append(row)
-
+ 
     df_binned = pd.DataFrame(records)
-
+ 
     if verbose:
         print(f"\nPunti totali: {len(df_all)}")
         print(f"Bin radiali con dati: {len(df_binned)}")
         _print_zone_summary(df_all)
-
+ 
     return df_all, df_binned, meta_list
 
 

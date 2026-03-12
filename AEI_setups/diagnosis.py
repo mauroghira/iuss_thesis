@@ -95,10 +95,10 @@ def scan_disk_grid(
 ):
     """
     Tabella diagnostica su griglia di parametri per qualsiasi modello di disco.
-
+ 
     Funziona con qualsiasi ``disk_model`` purché restituisca ``info`` come
     sesto elemento (nuova firma 6-valori) con almeno ``r_AB`` e ``r_BC``.
-
+ 
     Parametri
     ----------
     disk_model : callable
@@ -115,7 +115,7 @@ def scan_disk_grid(
         Massa BH [M_sun].
     hr : float
         Aspect ratio H/r.
-
+ 
     Restituisce
     -----------
     df : pd.DataFrame
@@ -124,13 +124,13 @@ def scan_disk_grid(
     """
     if extra_params is None:
         extra_params = {}
-
+ 
     keys   = list(param_vectors.keys())
     arrays = [np.asarray(param_vectors[k]) for k in keys]
     grids  = np.meshgrid(*arrays, indexing='ij')
     flat   = {k: g.ravel() for k, g in zip(keys, grids)}
     N_tot  = flat[keys[0]].size
-
+ 
     rows = []
     for i in range(N_tot):
         combo  = {k: float(flat[k][i]) for k in keys}
@@ -141,7 +141,7 @@ def scan_disk_grid(
             result   = disk_model(_r_probe, **params)
             n_ret    = len(result)
             info     = result[5] if n_ret >= 6 else (result[4] if n_ret == 5 else {})
-
+ 
             row = {**combo, 'r_ISCO': rISCO}
             if 'r_AB' in info and 'r_BC' in info:
                 r_AB = float(info['r_AB'])
@@ -152,7 +152,7 @@ def scan_disk_grid(
             else:
                 row.update(r_AB=np.nan, r_BC=np.nan,
                            r_AB_rISCO=np.nan, r_BC_rAB=np.nan)
-
+ 
             _skip = {'r_AB', 'r_BC', 'r_ISCO', 'r_H', 'norms'}
             for k, v in info.items():
                 if k not in _skip and np.isscalar(v):
@@ -164,13 +164,13 @@ def scan_disk_grid(
                    'r_AB_rISCO': np.nan, 'r_BC_rAB': np.nan,
                    '_error': str(exc)}
             rows.append(row)
-
+ 
     df = pd.DataFrame(rows)
     cols_print = [c for c in df.columns if c != '_error']
     print(df[cols_print].to_string(index=False, float_format='{:.3g}'.format))
     return df
-
-
+ 
+ 
 def plot_boundary_ratios(
     disk_model,
     params,
@@ -181,10 +181,10 @@ def plot_boundary_ratios(
 ):
     """
     Diagnostica grafica delle condizioni sulle frontiere di zona.
-
+ 
     Plotta le funzioni di crossing (quelle che valgono 1 alla frontiera)
     su un range radiale esteso, mostrando dove avvengono le transizioni.
-
+ 
     Parametri
     ----------
     disk_model : callable
@@ -208,60 +208,68 @@ def plot_boundary_ratios(
           Sigma : ndarray [g/cm²]
           c_s   : ndarray [cm/s]
         e deve restituire un ndarray con valori adimensionali (crossing a 1).
-
+ 
     Restituisce
     -----------
     fig : matplotlib.figure.Figure
     """
     import matplotlib.pyplot as plt
-
+ 
     a = float(params['a'])
     rISCO = float(r_isco(a))
-
+ 
     if r_range is None:
         r_lo, r_hi = rISCO * 1.01, 1e5
     else:
         r_lo, r_hi = r_range
-
+ 
     r_diag = np.geomspace(r_lo, r_hi, n_points)
-
+ 
     # profili fisici
     result    = disk_model(r_diag, **params)
     B0_arr    = result[0]
     Sigma_arr = result[1]
     cs_arr    = result[2]
     n_ret     = len(result)
+    # estrai hr(r) dal modello se disponibile (nuova firma 6 valori)
+    if n_ret >= 6:
+        hr_ret = result[3]
+        hr_arr = (np.full_like(r_diag, float(hr_ret))
+                  if np.isscalar(hr_ret) else np.asarray(hr_ret, dtype=float))
+    else:
+        hr_arr = np.full_like(r_diag, float(HOR))
     info      = result[5] if n_ret >= 6 else (result[4] if n_ret == 5 else {})
-
+ 
     # condizioni di default: β/(1-β)
     if condition_funcs is None:
+        _hr_arr = hr_arr   # cattura nell'closure
         def _beta_ratio(r, B0, Sigma, c_s):
             from .aei_common import compute_beta
-            beta = compute_beta(B0, Sigma, c_s, r, HOR, M)
+            beta = compute_beta(B0, Sigma, c_s, r, _hr_arr, M)
             return beta / np.maximum(1 - beta, 1e-30)
-
+ 
         condition_funcs = {r'$\beta\,/\,(1-\beta)$  [A→B]': _beta_ratio}
-
+ 
     n_conds = len(condition_funcs)
     fig, axes = plt.subplots(1, n_conds, figsize=(7 * n_conds, 5), squeeze=False)
-
+ 
     colors = ['C1', 'C0', 'C2', 'C3', 'C4']
-
+ 
     for ax, (label, func), color in zip(axes[0], condition_funcs.items(), colors):
         y = func(r_diag, B0_arr, Sigma_arr, cs_arr)
         y = np.asarray(y, float)
-
+ 
         ax.loglog(r_diag, np.abs(y), color=color, lw=2, label=label)
         ax.axhline(1, color='k', ls='--', lw=1, label='= 1  (frontiera)')
         ax.axvline(rISCO, color='gray', ls=':', lw=1, label=f'r_ISCO={rISCO:.1f}')
-
+ 
         # linee verticali dalle frontiere note
         for fname, fcolor in [('r_AB', '#f97316'), ('r_BC', '#3b82f6')]:
             if fname in info:
                 rv = float(info[fname])
                 ax.axvline(rv, color=fcolor, ls='--', lw=1.5,
                            label=f'{fname}={rv:.1f} rg')
-
+ 
         # trova crossings numerici
         crossings = r_diag[np.where(np.diff(np.sign(y - 1)))[0]]
         for rc in crossings:
@@ -272,13 +280,13 @@ def plot_boundary_ratios(
                   f"[{r_lo:.1f}, {r_hi:.0e}] r_g")
             print(f"  valore a r_lo={r_lo:.1f}: {y[0]:.3e}")
             print(f"  valore a r_hi={r_hi:.0e}: {y[-1]:.3e}")
-
+ 
         ax.set_xlabel('r [r_g]')
         ax.set_ylabel('valore funzione (crossing @ 1)')
         ax.set_title(f'Condizione: {label}')
         ax.legend(fontsize=8)
         ax.grid(True, alpha=0.3)
-
+ 
     plt.tight_layout()
     return fig
 
