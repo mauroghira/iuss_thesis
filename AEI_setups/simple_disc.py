@@ -81,7 +81,26 @@ def sound_speed_thin(r, a, hr=0.05, M=M_BH):
 # 2.  ADAPTER PER FZ UNIVERSASLI
 # ═══════════════════════════════════════════════════════════════════════════════
 def disk_model_simple(r_rg, a, B00, Sigma0, alpha_B, alpha_S, hr=HOR, M=M_BH):
+    """
+    Modello di disco semplificato con leggi di potenza per B₀ e Σ.
+
+    Firma di ritorno allineata con SS/NT:
+        B0, Sigma, c_s, hr_arr, zone, info
+
+    dove hr_arr è costante = hr (H/r fisso per tutto il disco).
+    zone è un array di 'N/A' (nessuna struttura a zone).
+    info contiene i parametri usati (B00, Sigma0, alpha_B, alpha_S).
+    """
+    r_rg  = np.asarray(r_rg, float)
     B0    = B0_profile(r_rg, a, B00, alpha_B)
     Sigma = Sigma_profile(r_rg, a, Sigma0, alpha_S)
     c_s   = sound_speed_thin(r_rg, a, hr, M)
-    return B0, Sigma, c_s
+    hr_arr = np.full(len(r_rg), float(hr))
+    zone   = np.full(len(r_rg), 'N/A', dtype=object)
+    info   = {
+        'B00':     B00,
+        'Sigma0':  Sigma0,
+        'alpha_B': alpha_B,
+        'alpha_S': alpha_S,
+    }
+    return B0, Sigma, c_s, hr_arr, zone, info

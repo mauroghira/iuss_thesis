@@ -346,6 +346,7 @@ def check_ilr_aei(r_rg, a, nu_obs=NU0, m=mm, M=M_BH):
         return np.zeros(r_rg.shape, dtype=bool)
     return r_rg < r_ILR
 
+
 def r_olr(a, nu_obs=NU0, m=mm, M=M_BH, n_scan=8000):
     """
     Outer Lindblad Resonance (OLR): ω̃ − κ = 0.
@@ -513,8 +514,20 @@ def find_rossby(
         result = disk_model(r_i, **row_params)
         n_ret  = len(result)
         B0_i, Sigma_i, cs_i = result[0], result[1], result[2]
-        zone_i = result[3] if n_ret >= 4 else None
-        info_i = result[4] if n_ret == 5 else {} # in realtà non serge
+        # Nuova firma (6 valori): B0, Sigma, c_s, hr, zone, info
+        # Vecchia firma (5 valori): B0, Sigma, c_s, zone, info
+        if n_ret >= 6:
+            zone_i = result[4]
+            info_i = result[5]
+        elif n_ret == 5:
+            zone_i = result[3]
+            info_i = result[4]
+        elif n_ret == 4:
+            zone_i = result[3]
+            info_i = {}
+        else:
+            zone_i = None
+            info_i = {}
 
         # ── solver k ────────────────────────────────────────────────────────
         k_i = solve_k_aei(r_i, a_val, B0_i, Sigma_i, cs_i, m=m, M=M)
@@ -690,10 +703,21 @@ def compute_disk_profile(
     # Chiamata di prova su un singolo punto per estrarre info se disponibile
     _r_probe = np.array([r_min])
     _result  = disk_model(_r_probe, **params)
-    _info    = _result[4] if len(_result) == 5 else {}
+    # Nuova firma (6 valori): B0, Sigma, c_s, hr, zone, info
+    # Vecchia firma (5 valori): B0, Sigma, c_s, zone, info
+    _n_probe = len(_result)
+    if _n_probe >= 6:
+        _info = _result[5]
+    elif _n_probe == 5:
+        _info = _result[4]
+    else:
+        _info = {}
 
     if r_max is None:
-        if 'r_BC' in _info:
+        if 'r_max_hint' in _info:
+            # hint esplicito dal modello (es. NT zona-C only): usa direttamente
+            r_max = 3.0 * _info['r_max_hint']
+        elif 'r_BC' in _info:
             r_max = 3.0 * _info['r_BC']
         else:
             raise ValueError(
@@ -710,8 +734,20 @@ def compute_disk_profile(
     B0_arr    = np.asarray(result[0], dtype=float)
     Sigma_arr = np.asarray(result[1], dtype=float)
     cs_arr    = np.asarray(result[2], dtype=float)
-    zone_arr  = np.asarray(result[3]) if n_ret >= 4 else np.full(len(r_arr), 'N/A', dtype=object)
-    info      = result[4] if n_ret == 5 else {}
+    # Nuova firma (6 valori): B0, Sigma, c_s, hr, zone, info
+    # Vecchia firma (5 valori): B0, Sigma, c_s, zone, info
+    if n_ret >= 6:
+        zone_arr = np.asarray(result[4])
+        info     = result[5]
+    elif n_ret == 5:
+        zone_arr = np.asarray(result[3])
+        info     = result[4]
+    elif n_ret == 4:
+        zone_arr = np.asarray(result[3])
+        info     = {}
+    else:
+        zone_arr = np.full(len(r_arr), 'N/A', dtype=object)
+        info     = {}
 
     # ── solver AEI ────────────────────────────────────────────────────────
     k_arr    = solve_k_aei(r_arr, a, B0_arr, Sigma_arr, cs_arr, m=mm, M=M)
@@ -732,12 +768,27 @@ def compute_disk_profile(
     ilr_valid     = (r_arr < rILR) if np.isfinite(rILR) else np.zeros(len(r_arr), dtype=bool)
     aei_ilr_valid = aei_valid & ilr_valid   # soluzioni AEI dentro la cavity QPO
 
+    # ── profili hr ───────────────────────────────────────────────────────────
+    # Recupera hr per ogni punto radiale:
+    # - SS/NT: il 4° elemento del return è hr (array o scalare)
+    # - Simple / vecchi modelli: non lo restituiscono → usa meta hr
+    if n_ret >= 6:
+        hr_ret = result[3]   # nuova firma: B0, Sigma, c_s, hr, zone, info
+        if np.isscalar(hr_ret):
+            hr_arr = np.full(len(r_arr), float(hr_ret))
+        else:
+            hr_arr = np.asarray(hr_ret, dtype=float)
+    else:
+        # vecchi modelli (Simple) — hr costante dal parametro
+        hr_arr = np.full(len(r_arr), float(hr))
+
     df = pd.DataFrame({
         'r':             r_arr,
         'zone':          zone_arr,
         'B0':            B0_arr,
         'Sigma':         Sigma_arr,
         'c_s':           cs_arr,
+        'hr':            hr_arr,
         'k':             k_arr,
         'beta':          beta_arr,
         'dQdr':          dQdr_arr,
@@ -749,6 +800,100 @@ def compute_disk_profile(
         'aei_ilr_valid': aei_ilr_valid,
     })
 
+    _merged = {**params, **info}
     meta = dict(r_H=rH, r_ISCO=rISCO, r_ILR=rILR, r_CR=rCR,
-                mm=mm, hr=hr, M=M, **params, **info)
+                mm=mm, hr=hr, M=M, **_merged)
     return df, meta
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 5.  MASSA TOTALE DEL DISCO
+# ═══════════════════════════════════════════════════════════════════════════
+
+def disk_mass(disk_model, params, r_max, M=M_BH, n_points=2000):
+    """
+    Calcola la massa totale del disco da r_ISCO a r_max tramite integrazione
+    numerica di  dM = 2π r_cm Σ(r) dr_cm.
+
+    Utilizza la stessa firma di disk_model usata ovunque nel progetto,
+    quindi funziona con qualsiasi modello (SS, NT, Simple).
+
+    Formula:
+        M_disk = ∫_{r_ISCO}^{r_max} 2π R Σ(R) dR
+    con R = r · R_g (in cm), dr = R_g · d(r).
+
+    Parametri
+    ----------
+    disk_model : callable
+        disk_model(r_rg, **params) → (B0, Sigma, c_s, [hr,] zone, info)
+        Stessa firma usata in compute_disk_profile e find_rossby.
+
+    params : dict
+        Parametri scalari del disco. Deve contenere almeno 'a'.
+
+    r_max : float
+        Raggio esterno dell'integrazione [r_g].
+        Può essere None: in tal caso r_max = info['r_BC'] restituito dal modello
+        (se disponibile), altrimenti viene sollevato ValueError.
+
+    M : float
+        Massa BH [M_sun].
+
+    n_points : int
+        Numero di punti per l'integrazione (default 2000, log-spaziati).
+
+    Restituisce
+    -----------
+    M_disk : float   massa totale del disco [g]
+    M_disk_msun : float   massa totale del disco [M_sun]
+    meta : dict
+        r_ISCO, r_max, M_BH, n_points, mdot (se in params o info)
+    """
+    a = float(params['a'])
+    Rg = Rg_SUN * M            # cm per unità r_g
+
+    rISCO = float(r_isco(a))
+
+    # ── determina r_max ──────────────────────────────────────────────────
+    if r_max is None:
+        _r_probe = np.array([rISCO])
+        _result  = disk_model(_r_probe, **params)
+        _info    = _result[5] if len(_result) >= 6 else (_result[4] if len(_result) == 5 else {})
+        if 'r_BC' in _info:
+            r_max = float(_info['r_BC'])
+        else:
+            raise ValueError(
+                "r_max non specificato e disk_model non restituisce info['r_BC']. "
+                "Specificare r_max esplicitamente."
+            )
+
+    # ── griglia radiale log-spaziata ──────────────────────────────────────
+    r_arr  = np.geomspace(rISCO, r_max, n_points)   # [r_g]
+
+    # ── profili fisici ────────────────────────────────────────────────────
+    result    = disk_model(r_arr, **params)
+    Sigma_arr = np.asarray(result[1], dtype=float)  # [g/cm²]
+
+    # ── integrazione  ∫ 2π R Σ dR  con R in cm ───────────────────────────
+    R_cm  = r_arr * Rg                     # [cm]
+    integrand = 2.0 * np.pi * R_cm * Sigma_arr   # [g/cm]
+    M_disk_g  = np.trapz(integrand, R_cm)  # [g]
+
+    M_SUN_G   = 1.989e33                   # g
+    M_disk_msun = M_disk_g / M_SUN_G
+
+    # ── info da disk_model (se disponibile) ───────────────────────────────
+    n_ret = len(result)
+    _info = result[5] if n_ret >= 6 else (result[4] if n_ret == 5 else {})
+
+    meta = dict(
+        r_ISCO    = rISCO,
+        r_max     = r_max,
+        M_BH_msun = M,
+        n_points  = n_points,
+        **{k: _info[k] for k in ('r_AB', 'r_BC', 'mdot', 'alpha') if k in _info},
+    )
+    if 'mdot' in params:
+        meta.setdefault('mdot', params['mdot'])
+
+    return M_disk_g, M_disk_msun, meta

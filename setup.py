@@ -2,7 +2,7 @@
 import numpy as np
 import pandas as pd
 from astropy import units as u
-from astropy.constants import G, c, M_sun
+from astropy.constants import G, c, M_sun, sigma_T
 
 import inspect
 
@@ -16,7 +16,10 @@ MSUN = M_sun.cgs.value     # g
 GG = G.cgs.value       # cm^3 g^-1 s^-2
 AU = (1 * u.AU).to(u.m).value  # AU
 
+SigTOM = sigma_T.cgs.value  # cm^2
+
 Rg_SUN = GG * MSUN / C**2  # in cm
+L_Edd_SUN = 1.26e38  # erg/s
 
 #let's set the tolerance for the target frequency
 TOL = 0.01 * NU0  # 1% tolerance

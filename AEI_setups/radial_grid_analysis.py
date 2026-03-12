@@ -59,48 +59,36 @@ def radial_scan_grid(
     verbose=True,
 ):
     """
-    Itera su una griglia (a, B00, Sigma0) e per ogni combinazione calcola
+    Itera su una griglia di parametri e per ogni combinazione calcola
     il profilo radiale completo tramite compute_disk_profile, poi aggrega
     i risultati in bin radiali log-spaziati.
 
+    Funziona con qualsiasi griglia parametrica:
+      • Simple:  {'a': array, 'B00': array, 'Sigma0': array}
+      • SS/NT:   {'a': array, 'mdot': array}
+      • generica: qualsiasi dict {nome: array_1d}
+
     Parameters
     ----------
-    param_dict : dict
-        Formato: {'a': (min,max,n), 'B00': (min,max,n), 'Sigma0': (min,max,n)}
-        Usa la stessa convenzione di create_param_grid del notebook.
-
+    param_dict : dict {nome: array_1d}
+        Ogni chiave è un nome di parametro, ogni valore è un array 1D.
+        Il prodotto cartesiano viene calcolato internamente.
     disk_model : callable
-        disk_model(r_rg, **params) → (B0, Sigma, c_s, zone[, info])
-        Stessa firma richiesta da find_rossby e compute_disk_profile.
-        Esempi:
-          lambda r, **p: disk_model_SS(r, **p, alpha_visc=0.01, hr=0.05)
-          lambda r, **p: disk_model_NT(r, **p, alpha_visc=0.01, hr=0.05)
-          lambda r, **p: disk_model_simple(r, **p, hr=0.05)
-
+        disk_model(r_rg, **params) → (B0, Sigma, c_s, hr, zone, info)
     mm : int
         Modo azimutale m della perturbazione AEI.
-
     hr : float
-        Aspect ratio H/r.
-
+        Aspect ratio H/r (fallback se non restituito dal modello).
     n_r : int
         Numero di punti radiali per ogni profilo individuale.
-
     r_max : float o None
-        Raggio esterno della griglia [r_g].
-        Se None: ricavato automaticamente da info['r_BC'] × 3 se disponibile,
-                 altrimenti 1000 r_g come fallback.
-
+        Raggio esterno [r_g]. Se None: ricavato da info['r_BC'] se disponibile.
     quantities : tuple of str
-        Colonne del DataFrame da aggregare.
-        Valori possibili: 'k', 'beta', 'dQdr', 'B0', 'Sigma', 'c_s'.
-
+        Colonne del DataFrame da aggregare nei bin radiali.
     n_rbins : int
-        Numero di bin radiali log-spaziati per l'aggregazione.
-
+        Numero di bin radiali log-spaziati.
     M : float
         Massa del buco nero [M_sun].
-
     verbose : bool
         Stampa progressi e statistiche.
 
@@ -108,62 +96,55 @@ def radial_scan_grid(
     -------
     df_all : pd.DataFrame
         Tutti i punti radiali di tutti i run concatenati.
-        Colonne garantite: r, zone, B0, Sigma, c_s, k, beta, dQdr,
-                           k_valid, beta_valid, shear_valid, aei_valid,
-                           a, B00, Sigma0.
-
+        Contiene le colonne fisiche standard + una colonna per ogni chiave
+        di param_dict.
     df_binned : pd.DataFrame
-        Statistiche per bin radiale aggregate su tutta la griglia.
-        Colonne: r_mid, zone, {qty}_median, {qty}_q1, {qty}_q3,
-                 {qty}_mean, {qty}_std, count, frac_k, frac_beta,
-                 frac_shear, frac_aei.
-
+        Statistiche per bin radiale: r_mid, zone, {qty}_median/q1/q3/mean/std,
+        count, frac_k, frac_beta, frac_shear, frac_aei.
     meta_list : list of dict
-        Metadati (r_AB, r_BC, r_ISCO, mdot, …) per ogni run.
+        Metadati (r_AB, r_BC, r_ISCO, …) per ogni run.
     """
-    vectors = create_param_grid(param_dict, mesh=False)
-    a_vals   = vectors['a']
-    B00_vals = vectors['B00']
-    S0_vals  = vectors['Sigma0']
+    # ── prodotto cartesiano dei parametri ────────────────────────────────────
+    param_keys = list(param_dict.keys())
+    param_arrs = [np.asarray(param_dict[k]) for k in param_keys]
+    grids      = np.meshgrid(*param_arrs, indexing='ij')
+    flat       = {k: g.ravel() for k, g in zip(param_keys, grids)}
+    total      = flat[param_keys[0]].size
 
-    total = len(a_vals) * len(B00_vals) * len(S0_vals)
     if verbose:
-        print(f"Grid scan: {len(a_vals)} × {len(B00_vals)} × {len(S0_vals)} "
-              f"= {total} combinazioni")
+        dims = ' × '.join(str(len(a)) for a in param_arrs)
+        print(f"Grid scan: {dims} = {total} combinazioni")
+        print(f"Parametri: {param_keys}")
 
     all_frames = []
     meta_list  = []
     done = 0
 
-    for a_val in a_vals:
-        for B00_val in B00_vals:
-            for S0_val in S0_vals:
-                params = {'a': a_val, 'B00': B00_val, 'Sigma0': S0_val}
-                try:
-                    df_run, meta = compute_disk_profile(
-                        disk_model = disk_model,
-                        params     = params,
-                        mm         = mm,
-                        hr         = hr,
-                        M          = M,
-                        n_points   = n_r,
-                        r_max      = r_max,   # None → auto via info['r_BC']
-                    )
+    for i in range(total):
+        params = {k: float(flat[k][i]) for k in param_keys}
+        try:
+            df_run, meta = compute_disk_profile(
+                disk_model = disk_model,
+                params     = params,
+                mm         = mm,
+                hr         = hr,
+                M          = M,
+                n_points   = n_r,
+                r_max      = r_max,
+            )
+            for k, v in params.items():
+                df_run[k] = v
+            all_frames.append(df_run)
+            meta_list.append(meta)
 
-                    df_run['a']      = a_val
-                    df_run['B00']    = B00_val
-                    df_run['Sigma0'] = S0_val
-                    all_frames.append(df_run)
-                    meta_list.append(meta)
+        except Exception as e:
+            if verbose:
+                param_str = '  '.join(f'{k}={v:.3g}' for k, v in params.items())
+                print(f"  skip {param_str}: {e}")
 
-                except Exception as e:
-                    if verbose:
-                        print(f"  skip a={a_val:.2f} B={B00_val:.1e} "
-                              f"S={S0_val:.1e}: {e}")
-
-                done += 1
-                if verbose and done % max(1, total // 10) == 0:
-                    print(f"  {done}/{total}  ({done/total*100:.0f}%)")
+        done += 1
+        if verbose and done % max(1, total // 10) == 0:
+            print(f"  {done}/{total}  ({done/total*100:.0f}%)")
 
     if not all_frames:
         raise RuntimeError("Nessun profilo calcolato — controlla i parametri.")
@@ -372,7 +353,7 @@ def plot_radial_grid(df_binned, quantities=('k', 'beta', 'dQdr'),
 # 3.  HEATMAP  frac_aei  nello spazio dei parametri
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def plot_validity_heatmap(df_all, param_x='B00', param_y='Sigma0',
+def plot_validity_heatmap(df_all, param_x='a', param_y='mdot',
                           r_range=(None, None), zone=None,
                           metric='aei_valid',
                           n_bins_x=15, n_bins_y=15, figsize=(10, 7)):
@@ -380,16 +361,19 @@ def plot_validity_heatmap(df_all, param_x='B00', param_y='Sigma0',
     Heatmap 2D: asse x = param_x, asse y = param_y,
     colore = metrica aggregata nel range radiale e zona selezionati.
 
+    Funziona con qualsiasi coppia di parametri presenti in df_all.
+    La scala logaritmica è applicata automaticamente per i parametri
+    che spaziano più di 2 decadi e sono tutti positivi.
+
     Parameters
     ----------
     df_all   : DataFrame da radial_scan_grid
-    param_x  : str  colonna asse x  ('a', 'B00', 'Sigma0')
-    param_y  : str  colonna asse y  ('a', 'B00', 'Sigma0')
-    r_range  : (r_min, r_max) | (None, None)  — None = tutto il range
-    zone     : str | None  — filtra per zona ('A', 'B', 'C')
+    param_x  : str  colonna asse x
+    param_y  : str  colonna asse y
+    r_range  : (r_min, r_max) | (None, None)
+    zone     : str | None
     metric   : str  — colonna booleana da aggregare come media
-               ('aei_valid', 'k_valid', 'beta_valid', 'shear_valid')
-    n_bins_x, n_bins_y : int  — risoluzione della griglia 2D
+    n_bins_x, n_bins_y : int
     figsize  : tuple
 
     Returns
@@ -407,8 +391,15 @@ def plot_validity_heatmap(df_all, param_x='B00', param_y='Sigma0',
         print("Nessun dato nel range / zona selezionati.")
         return None
 
-    log_x = param_x in ('B00', 'Sigma0')
-    log_y = param_y in ('B00', 'Sigma0')
+    def _should_log(col):
+        vals = sub[col].values.astype(float)
+        vals = vals[np.isfinite(vals) & (vals > 0)]
+        if len(vals) == 0:
+            return False
+        return np.log10(vals.max() / vals.min()) > 2
+
+    log_x = _should_log(param_x)
+    log_y = _should_log(param_y)
 
     x_vals = np.log10(sub[param_x].values.astype(float)) if log_x else sub[param_x].values.astype(float)
     y_vals = np.log10(sub[param_y].values.astype(float)) if log_y else sub[param_y].values.astype(float)
@@ -418,7 +409,6 @@ def plot_validity_heatmap(df_all, param_x='B00', param_y='Sigma0',
     y_edges = np.linspace(y_vals.min(), y_vals.max(), n_bins_y + 1)
 
     grid_val = np.full((n_bins_y, n_bins_x), np.nan)
-
     for ix in range(n_bins_x):
         for iy in range(n_bins_y):
             mask = ((x_vals >= x_edges[ix]) & (x_vals < x_edges[ix + 1]) &
@@ -432,13 +422,18 @@ def plot_validity_heatmap(df_all, param_x='B00', param_y='Sigma0',
                    vmin=0, vmax=1, cmap='RdYlGn')
     plt.colorbar(im, ax=ax, label=f'<{metric}>')
 
-    _label = {
-        'B00':    'log₁₀(B₀₀ [G])',
-        'Sigma0': 'log₁₀(Σ₀ [g/cm²])',
+    _known_labels = {
+        'B00':    'B₀₀ [G]',
+        'Sigma0': 'Σ₀ [g/cm²]',
+        'mdot':   'ṁ = Ṁ/Ṁ_Edd',
         'a':      'spin  a',
     }
-    ax.set_xlabel(_label.get(param_x, param_x), fontsize=12)
-    ax.set_ylabel(_label.get(param_y, param_y), fontsize=12)
+    def _axis_label(p, is_log):
+        name = _known_labels.get(p, p)
+        return f'log₁₀({name})' if is_log else name
+
+    ax.set_xlabel(_axis_label(param_x, log_x), fontsize=12)
+    ax.set_ylabel(_axis_label(param_y, log_y), fontsize=12)
 
     zone_str = f"Zona {zone}" if zone else "Tutte le zone"
     ax.set_title(
@@ -471,8 +466,12 @@ def _pl_slope(x, y):
 
 def compute_slopes_grid(df_all):
     """
-    Per ogni run (a, B00, Sigma0) e ogni zona calcola le pendenze
-    delle leggi di potenza  B∝r^α,  Σ∝r^α,  β∝r^α,  k·r∝r^α.
+    Per ogni run e ogni zona calcola le pendenze delle leggi di potenza
+    B∝r^α, Σ∝r^α, β∝r^α.
+
+    Funziona con qualsiasi griglia parametrica (Simple o SS/NT): le chiavi
+    di raggruppamento vengono ricavate automaticamente come le colonne
+    non-fisiche presenti in df_all.
 
     Parameters
     ----------
@@ -481,24 +480,31 @@ def compute_slopes_grid(df_all):
     Returns
     -------
     df_slopes : DataFrame
-        Colonne: a, B00, Sigma0, zone, slope_B, slope_S, slope_beta
+        Colonne: tutte le chiavi di gruppo (es. a/B00/Sigma0 o a/mdot),
+                 zone, slope_B, slope_S, slope_beta.
     """
+    _physics_cols = {'r', 'zone', 'B0', 'Sigma', 'c_s', 'hr', 'k', 'beta',
+                     'dQdr', 'k_valid', 'beta_valid', 'shear_valid', 'aei_valid',
+                     'ilr_valid', 'aei_ilr_valid', 'r_bin'}
+    group_keys = [c for c in df_all.columns if c not in _physics_cols]
+
     records = []
-    zones_present = df_all['zone'].unique().tolist()   # ← usa le zone reali
-    for (a_val, B00_val, S0_val), grp in df_all.groupby(['a', 'B00', 'Sigma0']):
-        for zone in zones_present:                     # ← non ZONE_NAMES fisso
+    zones_present = df_all['zone'].unique().tolist()
+    for combo, grp in df_all.groupby(group_keys):
+        if not isinstance(combo, tuple):
+            combo = (combo,)
+        combo_dict = dict(zip(group_keys, combo))
+        for zone in zones_present:
             sub = grp[grp['zone'] == zone]
             if len(sub) < 5:
                 continue
             r = sub['r'].values
             rec = {
-                'a':         a_val,
-                'B00':       B00_val,
-                'Sigma0':    S0_val,
-                'zone':      zone,
-                'slope_B':   _pl_slope(r, sub['B0'].values)    if 'B0'    in sub else np.nan,
-                'slope_S':   _pl_slope(r, sub['Sigma'].values) if 'Sigma' in sub else np.nan,
-                'slope_beta':_pl_slope(r, sub['beta'].values)  if 'beta'  in sub else np.nan,
+                **combo_dict,
+                'zone':       zone,
+                'slope_B':    _pl_slope(r, sub['B0'].values)    if 'B0'    in sub else np.nan,
+                'slope_S':    _pl_slope(r, sub['Sigma'].values) if 'Sigma' in sub else np.nan,
+                'slope_beta': _pl_slope(r, sub['beta'].values)  if 'beta'  in sub else np.nan,
             }
             records.append(rec)
     return pd.DataFrame(records)
@@ -577,6 +583,9 @@ def summary_table_grid(df_all, df_binned=None, df_slopes=None):
     """
     Stampa statistiche aggregate per zona sulla griglia completa.
 
+    Funziona con qualsiasi griglia parametrica (Simple o SS/NT): il numero
+    di run viene contato raggruppando per le colonne parametriche effettive.
+
     Parameters
     ----------
     df_all     : DataFrame da radial_scan_grid
@@ -587,7 +596,11 @@ def summary_table_grid(df_all, df_binned=None, df_slopes=None):
     -------
     df_summary : pd.DataFrame  con le stesse info stampate
     """
-    n_runs = df_all.groupby(['a', 'B00', 'Sigma0']).ngroups
+    _physics_cols = {'r', 'zone', 'B0', 'Sigma', 'c_s', 'hr', 'k', 'beta',
+                     'dQdr', 'k_valid', 'beta_valid', 'shear_valid', 'aei_valid',
+                     'ilr_valid', 'aei_ilr_valid', 'r_bin'}
+    group_keys = [c for c in df_all.columns if c not in _physics_cols]
+    n_runs = df_all.groupby(group_keys).ngroups
     print("\n" + "=" * 78)
     print("  ANALISI RADIALE — SINTESI GRIGLIA")
     print("=" * 78)
@@ -610,7 +623,12 @@ def summary_table_grid(df_all, df_binned=None, df_slopes=None):
     print("  " + "-" * (len(header) - 2))
 
     rows = []
-    for zone in ZONE_NAMES:
+    zones_iter = df_all['zone'].unique().tolist()
+    # prefer canonical order: A, B, C first, then N/A and others
+    _order = ['A', 'B', 'C']
+    zones_iter = [z for z in _order if z in zones_iter] + \
+                 [z for z in zones_iter if z not in _order]
+    for zone in zones_iter:
         sub = df_all[df_all['zone'] == zone]
         N = len(sub)
         if N == 0:

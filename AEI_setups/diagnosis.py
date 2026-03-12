@@ -45,9 +45,12 @@ def print_disk_boundaries(disk_model, params, M=M_BH, hr=HOR):
     rH    = float(r_horizon(a))
 
     # sonda a r_ISCO per estrarre info
+    # firma attuale: (B0, Sigma, c_s, hr, zone, info) → 6 elementi, info=result[5]
+    # firma vecchia: (B0, Sigma, c_s, zone, info)     → 5 elementi, info=result[4]
     _r_probe = np.array([rISCO * 1.01])
     result   = disk_model(_r_probe, **params)
-    info     = result[4] if len(result) == 5 else {}
+    n_ret    = len(result)
+    info     = result[5] if n_ret >= 6 else (result[4] if n_ret == 5 else {})
 
     print(f"\n{'='*64}")
     label_parts = [f"a={a:.2f}"]
@@ -87,27 +90,27 @@ def print_disk_boundaries(disk_model, params, M=M_BH, hr=HOR):
 
 def scan_disk_grid(
     disk_model,
-    Sigma0_vals, a_vals, extra_params=None,
+    param_vectors, extra_params=None,
     M=M_BH, hr=HOR,
 ):
     """
-    Tabella diagnostica su griglia (Σ₀, a) per qualsiasi modello di disco.
+    Tabella diagnostica su griglia di parametri per qualsiasi modello di disco.
 
     Funziona con qualsiasi ``disk_model`` purché restituisca ``info`` come
-    quinto elemento con almeno ``r_AB`` e ``r_BC``.
+    sesto elemento (nuova firma 6-valori) con almeno ``r_AB`` e ``r_BC``.
 
     Parametri
     ----------
     disk_model : callable
-        disk_model(r_rg, **params) → (B0, Sigma, c_s, zone [, info])
-    Sigma0_vals : array_like
-        Valori di Sigma0 da esplorare.
-    a_vals : array_like
-        Valori di spin da esplorare.
+        disk_model(r_rg, **params) → (B0, Sigma, c_s, hr, zone, info)
+    param_vectors : dict {nome: array_1d}
+        Griglia di parametri da esplorare. Il prodotto cartesiano viene
+        calcolato internamente.
+        Esempi:
+          {'a': np.linspace(-0.9,0.9,5), 'Sigma0': np.logspace(0,7,8)}  ← Simple
+          {'a': np.linspace(-0.9,0.9,5), 'mdot':   np.logspace(-2,1,8)} ← SS/NT
     extra_params : dict, opzionale
-        Parametri fissi aggiuntivi (es. ``{'B00': 1.0, 'alpha_visc': 0.01}``).
-        B00 di solito non influisce su r_AB / r_BC, ma va passato se richiesto
-        dalla firma di disk_model.
+        Parametri fissi aggiuntivi (es. ``{'B00': 1.0}``).
     M : float
         Massa BH [M_sun].
     hr : float
@@ -116,45 +119,51 @@ def scan_disk_grid(
     Restituisce
     -----------
     df : pd.DataFrame
-        Colonne: Sigma0, a, r_ISCO, r_AB, r_BC, r_AB_rISCO, r_BC_rAB,
-                 + eventuali campi extra da info (es. mdot, B0_rAB).
+        Colonne: tutte le chiavi di param_vectors, r_ISCO, r_AB, r_BC,
+                 r_AB_rISCO, r_BC_rAB, + eventuali campi extra da info.
     """
     if extra_params is None:
         extra_params = {}
 
+    keys   = list(param_vectors.keys())
+    arrays = [np.asarray(param_vectors[k]) for k in keys]
+    grids  = np.meshgrid(*arrays, indexing='ij')
+    flat   = {k: g.ravel() for k, g in zip(keys, grids)}
+    N_tot  = flat[keys[0]].size
+
     rows = []
-    for S0 in Sigma0_vals:
-        for a_val in a_vals:
-            try:
-                rISCO = float(r_isco(a_val))
-                params = {'a': float(a_val), 'Sigma0': float(S0), **extra_params}
-                _r_probe = np.array([rISCO * 1.01])
-                result   = disk_model(_r_probe, **params)
-                info     = result[4] if len(result) == 5 else {}
+    for i in range(N_tot):
+        combo  = {k: float(flat[k][i]) for k in keys}
+        params = {**combo, **extra_params}
+        try:
+            rISCO    = float(r_isco(combo['a']))
+            _r_probe = np.array([rISCO * 1.01])
+            result   = disk_model(_r_probe, **params)
+            n_ret    = len(result)
+            info     = result[5] if n_ret >= 6 else (result[4] if n_ret == 5 else {})
 
-                row = dict(Sigma0=S0, a=a_val, r_ISCO=rISCO)
-                if 'r_AB' in info and 'r_BC' in info:
-                    r_AB = float(info['r_AB'])
-                    r_BC = float(info['r_BC'])
-                    row.update(r_AB=r_AB, r_BC=r_BC,
-                               r_AB_rISCO=r_AB / rISCO,
-                               r_BC_rAB=r_BC / r_AB)
-                else:
-                    row.update(r_AB=np.nan, r_BC=np.nan,
-                               r_AB_rISCO=np.nan, r_BC_rAB=np.nan)
+            row = {**combo, 'r_ISCO': rISCO}
+            if 'r_AB' in info and 'r_BC' in info:
+                r_AB = float(info['r_AB'])
+                r_BC = float(info['r_BC'])
+                row.update(r_AB=r_AB, r_BC=r_BC,
+                           r_AB_rISCO=r_AB / rISCO,
+                           r_BC_rAB=r_BC / r_AB)
+            else:
+                row.update(r_AB=np.nan, r_BC=np.nan,
+                           r_AB_rISCO=np.nan, r_BC_rAB=np.nan)
 
-                # campi extra da info (es. mdot, B0_rAB)
-                _skip = {'r_AB', 'r_BC', 'r_ISCO', 'r_H', 'norms'}
-                for k, v in info.items():
-                    if k not in _skip and np.isscalar(v):
-                        row[k] = v
-
-                rows.append(row)
-            except Exception as exc:
-                rows.append(dict(Sigma0=S0, a=a_val, r_ISCO=np.nan,
-                                 r_AB=np.nan, r_BC=np.nan,
-                                 r_AB_rISCO=np.nan, r_BC_rAB=np.nan,
-                                 _error=str(exc)))
+            _skip = {'r_AB', 'r_BC', 'r_ISCO', 'r_H', 'norms'}
+            for k, v in info.items():
+                if k not in _skip and np.isscalar(v):
+                    row[k] = v
+            rows.append(row)
+        except Exception as exc:
+            row = {**combo, 'r_ISCO': np.nan,
+                   'r_AB': np.nan, 'r_BC': np.nan,
+                   'r_AB_rISCO': np.nan, 'r_BC_rAB': np.nan,
+                   '_error': str(exc)}
+            rows.append(row)
 
     df = pd.DataFrame(rows)
     cols_print = [c for c in df.columns if c != '_error']
@@ -221,7 +230,8 @@ def plot_boundary_ratios(
     B0_arr    = result[0]
     Sigma_arr = result[1]
     cs_arr    = result[2]
-    info      = result[4] if len(result) == 5 else {}
+    n_ret     = len(result)
+    info      = result[5] if n_ret >= 6 else (result[4] if n_ret == 5 else {})
 
     # condizioni di default: β/(1-β)
     if condition_funcs is None:
@@ -327,7 +337,8 @@ def scan_boundary_grid(
             rISCO = float(r_isco(combo['a']))
             _r_probe = np.array([rISCO * 1.01])
             result   = disk_model(_r_probe, **params)
-            info     = result[4] if len(result) == 5 else {}
+            n_ret    = len(result)
+            info     = result[5] if n_ret >= 6 else (result[4] if n_ret == 5 else {})
 
             row = {**combo, 'r_ISCO': rISCO}
             if 'r_AB' in info and 'r_BC' in info:

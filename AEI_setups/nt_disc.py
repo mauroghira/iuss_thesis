@@ -1,142 +1,229 @@
 """
-ss_nt_boundaries.py  
-==========================================
-Modello di disco Novikov-Thorne per l'analisi AEI.
+nt_disc.py
+==========
+Modello di disco Novikov-Thorne (1973) per l'analisi AEI.
 
-Parametri liberi del modello:  a,  B00,  Sigma0,  alpha_visc
-                                (mdot è sempre derivato internamente da Sigma0)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STRUTTURA RADIALE — tre zone con fattori relativistici
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-FISICA: COME VENGONO CALCOLATI Σ(r) e B₀(r)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Zona A  [r_ISCO, r_AB]:  P_rad >> P_gas,  opacità e-scattering
+  Zona B  [r_AB,   r_BC]:  P_gas >> P_rad,  opacità e-scattering
+  Zona C  [r_BC,   ∞   ):  P_gas >> P_rad,  opacità free-free
 
-Il disco è diviso in tre zone da due frontiere radiali:
+  Frontiere (Abramowicz review, eqs. 100-101):
+    r_AB: β/(1−β) = 1  →  P_rad = P_gas
+          f_AB(r) = 4×10⁻⁶ · α⁻¹/⁴ · m⁻¹/⁴ · ṁ⁻² · r^{21/8} · [NT_AB] = 1
+    r_BC: τ_ff/τ_es = 1  →  cambio regime opacità
+          f_BC(r) = 2×10⁻⁶ · ṁ⁻¹ · r^{3/2} · [NT_BC] = 1
 
-  r_AB  dove β/(1-β) = 1        →  P_rad = P_gas          (bordo interno zona A)
-  r_BC  dove τ_ff / τ_es = 1    →  cambio regime opacità   (bordo esterno zona B)
+  Zone degeneri:
+    Se la condizione r_AB > r_ISCO non è soddisfatta → zona A assente.
+    Se r_BC ≤ r_AB  → zona B assente.
+    In entrambi i casi le formule sono usate pure, senza fattori di raccordo.
 
-Le frontiere dipendono solo da (a, Sigma0, alpha) — non da B00.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FATTORI RELATIVISTICI NT  A, B, C, D, E, Q
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-──────────────────────────────────────────────────────────────────────────
-Σ(r) — modello ibrido SS / NT
-──────────────────────────────────────────────────────────────────────────
-  Zona A  [r_ISCO, r_AB]:  power-law identica a full_disk_SS
-      Σ_A(r) = Sigma0 · (r / r_ISCO)^{+3/2}   (esponente S&S α_Σ = -3/2)
-      Sigma0 è il valore di Σ all'ISCO — parametro libero assoluto.
-      Continua per costruzione, nessuno smoothing necessario.
+  Con  y = r^{1/2}  (coordinata radiale compatta):
 
-  Zone B e C  [r_AB, ∞):  formule NT analitiche esatte (review Abramowicz)
-      Σ_B(r) = Σ_B_NT(r) × [Σ_A(r_AB) / Σ_B_NT(r_AB)]   ← raccordo a r_AB
-      Σ_C(r) = Σ_C_NT(r) × [Σ_B(r_BC)  / Σ_C_NT(r_BC)]  ← raccordo a r_BC
+    A(r) = 1 + a²/r² + 2a²/r³
+    B(r) = 1 + a/r^{3/2}
+    C(r) = 1 − 3/r + 2a/r^{3/2}       ≥ 0 per r ≥ r_ISCO
+    D(r) = 1 − 2/r + a²/r²
+    E(r) = 1 + 4a²/r² − 4a²/r³ + 3a⁴/r⁴
 
-  I fattori di riscalatura garantiscono continuità esatta alle frontiere.
-  Le formule NT contengono i fattori relativistici A,B,C,D,E,Q (sezione 2)
-  e i prefattori fisici corretti per ogni zona — non semplici power-law.
+    Q(r) = fattore di flusso NT, calcolato con integral analytic di Page & Thorne:
+           Q = B/(y sqrt(C)) · [y−y₀ − (3a/2) ln(y/y₀) − Σᵢ cᵢ ln((y−yᵢ)/(y₀−yᵢ))]
+           Q(r_ISCO) = 0  (zero-torque boundary condition)
 
-  Il parametro ṁ è derivato internamente da Sigma0 e non è mai esposto.
+  Nel limite r → ∞: tutti i fattori → 1 (recupero newtoniano).
+  Nel limite a → 0: recupero del caso Schwarzschild.
 
-──────────────────────────────────────────────────────────────────────────
-B₀(r) — modello ibrido SS / NT
-──────────────────────────────────────────────────────────────────────────
-  Zona A  [r_H, r_AB]:  power-law identica a full_disk_SS
-      B₀_A(r) = B00 · (r / r_H)^{-3/4}
-      B00 è il campo in Gauss all'orizzonte — parametro libero assoluto.
-      Identico alla zona A di full_disk_SS: stessa fisica, stesso parametro.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DENSITÀ SUPERFICIALE Σ(r)  —  formule NT (Abramowicz review eqs. 97-99)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  Zone B e C  [r_AB, ∞):  formule S&S 1973 (eq. 2.16 e 2.19)
-      B₀_B(r) = ss_B0_B(r) × [B₀_A(r_AB) / ss_B0_B(r_AB)]  ← raccordo a r_AB
-      B₀_C(r) = ss_B0_C(r) × [B₀_B(r_BC)  / ss_B0_C(r_BC)] ← raccordo a r_BC
+  Zona A: Σ_A = 5 · α⁻¹ · ṁ⁻¹ · r^{3/2} · A⁻²B³C^{1/2}E Q⁻¹              (99)
+  Zona B: Σ_B = 9×10⁴ · α⁻⁴/⁵ · ṁ^{3/5} · r^{-3/5} · B⁻⁴/⁵C^{1/2}D⁻⁴/⁵Q^{3/5} (98)
+  Zona C: Σ_C = 4×10⁵ · α⁻⁴/⁵ · m^{1/5} · ṁ^{7/10} · r^{-3/4}
+                · A^{1/10}B⁻⁴/⁵C^{1/2}D⁻¹⁷/²⁰E⁻¹/²⁰Q^{7/10}              (97)
 
-  Le formule S&S danno l'andamento radiale fisico di ogni zona
-  (esponenti -51/40 e -21/16, vicini a -5/4).
-  Il fattore di riscalatura aggancia l'ampiezza assoluta a B00 via zona A.
+  Nota: Σ_A → ∞ per r → r_ISCO (Q → 0). Questo è fisicamente corretto:
+  vicino all'ISCO il flusso NT tende a zero (zero-torque) e il gas si accumula.
+  L'inversione mdot ↔ Σ_A usa il minimo di Σ_A nella zona A (non il valore
+  all'ISCO), come descritto in nt_mdot_from_Sigma0().
 
-  DIFFERENZA rispetto a full_disk_SS: le zone B e C hanno l'andamento S&S esatto (leggermente
-  diverso da -5/4) con la stessa normalizzazione assoluta B00.
+  NON si applicano fattori di raccordo o scala.
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SEMISPESSORE H(r) — da SS 1973 + fattori NT di Kerr per la frequenza kepleriana
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Le formule per H nelle zone B e C vengono da SS 1973 ma con la frequenza
+  kepleriana relativistica Ω_K^{NT} = c/R_g · B(r)/r^{3/2} invece di
+  Ω_K^{SS} = c/R_g · r^{-3/2}. Per la zona A, H_A è derivata dalla
+  struttura termica NT con pressione di radiazione dominante.
+
+  In pratica si usa la stessa espressione di SS con fattori NT inclusi nei
+  prefattori fisici delle equazioni di struttura (vedi Abramowicz review).
+  Per semplicità e consistenza con Σ_NT, usiamo:
+
+    H(r) = c_s^{NT}(r) / Ω_K^{NT}(r)
+
+  dove c_s^{NT}(r) = sqrt(P_mid/ρ_mid) e ρ_mid = Σ/(2H) → H = sqrt(P_mid/ρ_mid) / Ω_K
+  → P_mid = Σ · Ω_K^{NT,2} · H / 2  (analogo al caso SS ma con Ω_K di Kerr)
+
+  Per il calcolo di B si usa direttamente questa relazione:
+      P_mid = Σ_NT(r) · Ω_φ^{NT}(r)² · H_SS(r) / 2
+
+  dove Ω_φ = 2π ν_φ(r, a, M) è la frequenza orbitale di Kerr e H_SS è il
+  semispessore SS corretto per i fattori relativistici. Per le zone B e C
+  si usa H_SS(r) moltiplicato per B(r)·C(r)^{-1/2} (fattore NT verticale).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CAMPO MAGNETICO B₀(r)  —  equipartizione dalla P_mid fisica NT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Dall'equilibrio idrostatico verticale in metrica di Kerr:
+
+      P_mid = Σ(r) · Ω_φ^{NT}(r)² · H_NT(r) / 2
+
+  dove H_NT è il semispessore fisico NT derivato dalle equazioni di struttura.
+  Condizione di equipartizione:
+
+      B_eq(r) = sqrt(4π · Σ(r) · Ω_φ^{NT}(r)² · H_NT(r))
+
+  La differenza rispetto al modello SS è nell'uso di Ω_φ di Kerr (non
+  newtoniana) e di H_NT che incorpora i fattori relativistici A,B,C,D.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PARAMETRI LIBERI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  a      — spin adimensionale del BH              [−1, 1]
+  mdot   — tasso di accrescimento ṁ = Ṁc^2/L_Edd  [> 0]   ← PRIMARIO
+            OSS: è diverso rispeto a SS, fattore 13.6 più grande, devi 
+            convertire quando lo usi
+  alpha  — parametro di viscosità α               [adim]
+  M      — massa BH                               [M_sun]
+  hr     — aspect ratio per c_s AEI               [adim] (non entra in Σ né B)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 API PUBBLICA
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  # diagnostica
-  nt_boundaries(a, Sigma0, alpha, M)        → mdot, r_AB, r_BC
-  nt_print_boundaries(a, Sigma0, alpha, M)  → stampa riepilogo
-  nt_scan_grid(Sigma0_vals, a_vals, ...)    → DataFrame diagnostico
+  nt_factors(r, a)                               → dict {A,B,C,D,E,Q0,Q}
+  nt_boundaries(a, mdot, alpha, M)               → r_AB, r_BC, zone_present
+  disk_model_NT(r_rg, a, mdot, ...)              → B0, Sigma, c_s, zone, info
+  disk_inner_values_NT(a, mdot, ...)             → dict {r_ISCO, r_H, Sigma_ISCO, ...}
+  check_continuity_NT(a, mdot, ...)              → dict + stampa diagnostica
 
-  # profili (basso livello, raramente necessari)
-  nt_ABCDEQ(r, a)                           → dict fattori NT
-  ss_B0_B(r, mdot, alpha, M)               → B₀ zona B [G]
-  ss_B0_C(r, mdot, alpha, M)               → B₀ zona C [G]
+  Funzioni di profilo per zona (accesso diretto):
+  Sigma_A_NT(r, a, mdot, alpha)
+  Sigma_B_NT(r, a, mdot, alpha)
+  Sigma_C_NT(r, a, mdot, alpha, M)
+  H_NT(r, a, mdot, alpha, M, r_AB, r_BC)
 
-  # adapter per find_rossby
-  disk_model_NT(r, a, B00, Sigma0, alpha_visc, hr, M)
-      → B0, Sigma, c_s, zone               usare con find_rossby
-
-  # profilo radiale completo (drop-in di compute_full_disk_profile)
-  compute_nt_disk_profile(a, B00, Sigma0, mm, hr, alpha, M, ...)
-      → df, meta                           usare con radial_scan_grid
-
-Dipendenze: numpy, pandas, setup.py, aei_common.py
+Dipendenze: numpy, functools, setup.py, aei_common.py
 """
 
 import numpy as np
-import pandas as pd
 from functools import lru_cache
 
-from .aei_common import (
-    solve_k_aei, compute_beta, compute_dQdr,
-    check_k_wkb, _make_interp,
-    ALPHA_VISC, HOR
-)
+from .aei_common import ALPHA_VISC, HOR
 
 import sys
 sys.path.append("..")
-from setup import r_isco, r_horizon, nu_phi, Rg_SUN, M_BH
+from setup import r_isco, r_horizon, nu_phi, Rg_SUN, M_BH, SigTOM
 
-ZONE_NAMES    = ['A', 'B', 'C']
+ZONE_NAMES = ['A', 'B', 'C']
 
 
-# ═══════════════════════════════════════════════════════════════════════════
-# 1.  COSTANTI DI SPIN  (cache LRU — calcolate una volta per valore di a)
-# ═══════════════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════════════════
+# 1.  COSTANTI DI SPIN  (cache — calcolate una volta per valore di a)
+# ═══════════════════════════════════════════════════════════════════════════════
 
-@lru_cache(maxsize=64)
+@lru_cache(maxsize=128)
 def _nt_spin_constants(a):
-    as_ = float(a)
+    """
+    Costanti y₀, y₁, y₂, y₃, c₁, c₂, c₃ per il fattore Q di NT.
+
+    y_i sono le tre radici reali di  y³ − 3y + 2a = 0  (orbite circolari),
+    con  y = r^{1/2}  e  y₀ = sqrt(r_ISCO).
+
+    c_i sono i coefficienti dei logaritmi nell'integrale analitico del
+    flusso di energia NT (Page & Thorne 1974, eq. 15n):
+        c_i = 3(y_i − a)² / [y_i · ∏_{j≠i}(y_i − y_j)]
+
+    Parametro: a float (hashable) — spin adimensionale
+    """
+    as_   = float(a)
     rISCO = float(r_isco(as_))
-    y0 = np.sqrt(rISCO)
+    y0    = np.sqrt(rISCO)
+
     _acos = np.arccos(np.clip(as_, -1 + 1e-10, 1 - 1e-10))
-    y1 =  2 * np.cos((_acos - np.pi) / 3)
-    y2 =  2 * np.cos((_acos + np.pi) / 3)
-    y3 = -2 * np.cos( _acos          / 3)
+    y1    =  2 * np.cos((_acos - np.pi) / 3)
+    y2    =  2 * np.cos((_acos + np.pi) / 3)
+    y3    = -2 * np.cos( _acos          / 3)
+
     c1 = 3*(y1 - as_)**2 / (y1*(y1-y2)*(y1-y3))
     c2 = 3*(y2 - as_)**2 / (y2*(y2-y1)*(y2-y3))
     c3 = 3*(y3 - as_)**2 / (y3*(y3-y1)*(y3-y2))
+
     return y0, y1, y2, y3, c1, c2, c3
 
 
-# ═══════════════════════════════════════════════════════════════════════════
-# 2.  FATTORI RELATIVISTICI NT  (vettorizzati)
-# ═══════════════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════════════════
+# 2.  FATTORI RELATIVISTICI NT  A, B, C, D, E, Q
+# ═══════════════════════════════════════════════════════════════════════════════
 
-def nt_ABCDEQ(r, a):
+def nt_factors(r, a):
     """
-    Fattori relativistici A,B,C,D,E,Q0,Q di Novikov-Thorne.
-    Tutti su array r senza loop Python.
+    Fattori relativistici di Novikov-Thorne: A, B, C, D, E, Q₀, Q.
 
-    r : float o ndarray [r_g]
-    a : float spin adimensionale
+    Tutti adimensionali, tendono a 1 per r → ∞.
+
+    Definizioni (con y = r^{1/2}):
+        A(r) = 1 + a²/r²  + 2a²/r³
+        B(r) = 1 + a/r^{3/2}
+        C(r) = 1 − 3/r   + 2a/r^{3/2}    (= 0 all'ISCO, ≥ 0 fuori)
+        D(r) = 1 − 2/r   + a²/r²
+        E(r) = 1 + 4a²/r² − 4a²/r³ + 3a⁴/r⁴
+
+        Q₀(r) = B(r) / (y · sqrt(C(r)))
+
+        Q(r)  = Q₀(r) · [y−y₀ − (3a/2) ln(y/y₀)
+                          − c₁ ln((y−y₁)/(y₀−y₁))
+                          − c₂ ln((y−y₂)/(y₀−y₂))
+                          − c₃ ln((y−y₃)/(y₀−y₃))]
+
+    Q è il fattore di flusso NT: zero all'ISCO (zero-torque), positivo fuori.
+    Tutti i logaritmi sono protetti da valori assoluti per stabilità numerica
+    vicino alle radici y_i (che stanno tipicamente dentro r_ISCO).
+
+    Parametri
+    ----------
+    r : array_like   raggio [r_g]
+    a : float        spin adimensionale
+
+    Restituisce
+    -----------
+    dict con chiavi 'A', 'B', 'C', 'D', 'E', 'Q0', 'Q'
     """
     r   = np.asarray(r, dtype=float)
     as_ = float(a)
     y   = np.sqrt(r)
 
-    A  = 1 + as_**2*y**(-4) + 2*as_**2*y**(-6)
-    B  = 1 + as_*y**(-3)
-    C  = 1 - 3*y**(-2) + 2*as_*y**(-3)
-    D  = 1 - 2*y**(-2) + as_**2*y**(-4)
-    E  = 1 + 4*as_**2*y**(-4) - 4*as_**2*y**(-6) + 3*as_**4*y**(-8)
-    Q0 = (1 + as_*y**(-3)) / (y * np.sqrt(np.maximum(C, 1e-30)))
+    A  = 1 + as_**2 * r**(-2) + 2*as_**2 * r**(-3)
+    B  = 1 + as_ * r**(-1.5)
+    C  = 1 - 3*r**(-1) + 2*as_ * r**(-1.5)
+    D  = 1 - 2*r**(-1) + as_**2 * r**(-2)
+    E  = 1 + 4*as_**2*r**(-2) - 4*as_**2*r**(-3) + 3*as_**4*r**(-4)
+
+    C_safe = np.maximum(C, 1e-30)
+    Q0 = B / (y * np.sqrt(C_safe))
 
     y0, y1, y2, y3, c1, c2, c3 = _nt_spin_constants(as_)
     sl = lambda x: np.log(np.maximum(np.abs(x), 1e-300))
@@ -147,427 +234,551 @@ def nt_ABCDEQ(r, a):
                   - c2*sl((y-y2)/(y0-y2))
                   - c3*sl((y-y3)/(y0-y3)))
     Q = np.where(y > y0*1.001, np.maximum(Q_raw, 1e-10), 1e-10)
-    if r.ndim == 0:
-        Q = float(Q)
+
     return dict(A=A, B=B, C=C, D=D, E=E, Q0=Q0, Q=Q)
 
 
-# ═══════════════════════════════════════════════════════════════════════════
-# Funzione per carrdo profili
-# ═══════════════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════════════════
+# 3.  FRONTIERE  r_AB  e  r_BC
+# ═══════════════════════════════════════════════════════════════════════════════
 
-def _log_blend(r, r_c, f_lo, f_hi, width=0.05):
-    """
-    Raccordo log-lineare tra f_lo e f_hi attorno alla frontiera r_c.
-
-    Il blending avviene nella finestra [r_c·(1-w), r_c·(1+w)], con w = width.
-    Il peso t è lineare in log(r) — scelta naturale per grandezze power-law:
-
-        t(r) = [log(r) - log(r_lo)] / [log(r_hi) - log(r_lo)]  ∈ [0, 1]
-
-    Il raccordo è un'interpolazione lineare nei logaritmi delle funzioni:
-
-        log f_blend = (1-t)·log f_lo + t·log f_hi
-
-    ovvero  f_blend = f_lo^(1-t) · f_hi^t.
-
-    Proprietà:
-      - Continuo esatto agli estremi della finestra (t=0 → f_lo, t=1 → f_hi)
-      - Monotono se entrambe le funzioni lo sono in quella regione
-      - Nessun overshoot — rimane sempre tra f_lo e f_hi in log-spazio
-      - Rispecchia la geometria naturale del problema (tutto è power-law)
-
-    Parametri
-    ----------
-    r      : array   raggi in r_g
-    r_c    : float   raggio di frontiera (centro della finestra)
-    f_lo   : array   valori zona a sinistra  (già calcolati su tutto r)
-    f_hi   : array   valori zona a destra    (già calcolati su tutto r)
-    width  : float   semi-ampiezza relativa  (default 0.05 = ±5%)
-    """
-    r_lo = r_c * (1.0 - width)
-    r_hi = r_c * (1.0 + width)
-    t = np.clip(
-        (np.log(r) - np.log(r_lo)) / (np.log(r_hi) - np.log(r_lo)),
-        0.0, 1.0
-    )
-    log_f = (1.0 - t) * np.log(np.maximum(f_lo, 1e-300)) \
-           +        t  * np.log(np.maximum(f_hi, 1e-300))
-    return np.exp(log_f)
-
-
-# ═══════════════════════════════════════════════════════════════════════════
-# 3.  Σ(r) — formule NT esatte per zona
-# ═══════════════════════════════════════════════════════════════════════════
-
-def _Sigma_A(r, a, mdot, alpha):
-    f   = nt_ABCDEQ(r, a)
-    rel = f['A']**(-2) * f['B']**3 * np.sqrt(np.maximum(f['C'], 0)) * f['E'] / f['Q']
-    return 5.0 * alpha**(-1) * mdot**(-1) * np.asarray(r, float)**(3/2) * rel
-
-
-def _Sigma_B(r, a, mdot, alpha):
-    f   = nt_ABCDEQ(r, a)
-    rel = f['B']**(-4/5) * np.sqrt(np.maximum(f['C'], 0)) * f['D']**(-4/5) * f['Q']**(3/5)
-    return 9e4 * alpha**(-4/5) * mdot**(3/5) * np.asarray(r, float)**(-3/5) * rel
-
-
-def _Sigma_C(r, a, mdot, alpha, m):
-    f   = nt_ABCDEQ(r, a)
-    rel = (f['A']**(1/10) * f['B']**(-4/5) * np.sqrt(np.maximum(f['C'], 0))
-           * f['D']**(-17/20) * f['E']**(-1/20) * f['Q']**(7/10))
-    return 4e5 * alpha**(-4/5) * float(m)**(1/5) * mdot**(7/10) * np.asarray(r, float)**(-3/4) * rel
-
-
-def _Sigma_disk(r, a, Sigma0, mdot, alpha, M, r_AB, r_BC, blend_width=0.05):
-    """
-    Σ(r) sull'intero disco — formule NT/SS esatte con raccordo log-lineare.
-
-    Zona A  [r_ISCO, r_AB]:  formula NT inner esatta (review Abramowicz, eq. 99)
-        Σ_A(r) = 5 α⁻¹ ṁ⁻¹ r*^{3/2} · A⁻²B³C^{1/2}EQ⁻¹
-        Normalizzata a Sigma0 per costruzione: nt_mdot_from_Sigma0 inverte
-        Σ_A(r_ISCO) = Sigma0, quindi nessun fattore di scala aggiuntivo.
-
-    Zona B  [r_AB, r_BC]:  formula NT middle esatta (review Abramowicz, eq. 98)
-        Σ_B(r) = 9×10⁴ α⁻⁴/⁵ ṁ^{3/5} r*^{-3/5} · B⁻⁴/⁵C^{1/2}D⁻⁴/⁵Q^{3/5}
-
-    Zona C  [r_BC, ∞):  formula NT outer esatta (review Abramowicz, eq. 97)
-        Σ_C(r) = 4×10⁵ α⁻⁴/⁵ m^{1/5} ṁ^{7/10} r*^{-3/4} ·
-                 A^{1/10}B⁻⁴/⁵C^{1/2}D⁻¹⁷/²⁰E⁻¹/²⁰Q^{7/10}
-
-    Raccordo alle frontiere:
-        Nella regione [r_c·(1-w), r_c·(1+w)] (w = blend_width = 5% di default)
-        le due formule adiacenti sono interpolate log-linearmente in log(r):
-            Σ_blend = Σ_lo^(1-t) · Σ_hi^t,   t ∈ [0,1] lineare in log(r)
-        Fuori dalla finestra ogni zona usa esclusivamente la propria formula.
-
-    Parametri
-    ----------
-    blend_width : float   semi-ampiezza relativa della finestra di raccordo
-                          (default 0.05 → ±5% di r_AB e r_BC)
-    """
-    r = np.asarray(r, float)
-    m = float(M)
-
-    # valori grezzi di ogni zona calcolati su tutto il dominio
-    S_A = _Sigma_A(r, a, mdot, alpha)
-    S_B = _Sigma_B(r, a, mdot, alpha)
-    S_C = _Sigma_C(r, a, mdot, alpha, m)
-
-    # blend A↔B attorno a r_AB  e  B↔C attorno a r_BC
-    S_AB = _log_blend(r, r_AB, S_A, S_B, width=blend_width)
-    S_BC = _log_blend(r, r_BC, S_B, S_C, width=blend_width)
-
-    # maschere di zona (le regioni di blend si sovrappongono ai bordi)
-    w = blend_width
-    in_blend_AB = (r >= r_AB * (1.0 - w)) & (r <  r_AB * (1.0 + w))
-    in_pure_B   = (r >= r_AB * (1.0 + w)) & (r <  r_BC * (1.0 - w))
-    in_blend_BC = (r >= r_BC * (1.0 - w)) & (r <  r_BC * (1.0 + w))
-    in_pure_C   =  r >= r_BC * (1.0 + w)
-
-    result = S_A.copy()                          # default: pura zona A
-    result[in_blend_AB] = S_AB[in_blend_AB]
-    result[in_pure_B]   = S_B[in_pure_B]
-    result[in_blend_BC] = S_BC[in_blend_BC]
-    result[in_pure_C]   = S_C[in_pure_C]
-    return result
-
-
-# ═══════════════════════════════════════════════════════════════════════════
-# 4.  B₀(r) — formule S&S 1973 con raccordo log-lineare
-# ═══════════════════════════════════════════════════════════════════════════
-
-def _ss_f(r):
-    """Fattore non-relativista f = max(1 - r^{-1/2}, ε)."""
-    return np.maximum(1.0 - np.asarray(r, float)**(-0.5), 1e-10)
-
-
-def ss_B0_B(r, mdot, alpha, M=M_BH):
-    """
-    B₀ zona B [G] — S&S 1973 eq. 2.16.
-        H_B = 1.5×10⁹ · α^{1/20} · ṁ^{2/5} · m^{-9/20} · r^{-51/40} · f^{2/5}
-    Esponente esatto -51/40 = -1.275  (vs approssimazione -5/4 = -1.25).
-    Prefattore fisico assoluto in Gauss.
-    """
-    r = np.asarray(r, float)
-    return 1.5e9 * alpha**(1/20) * mdot**(2/5) * float(M)**(-9/20) * r**(-51/40) * _ss_f(r)**(2/5)
-
-
-def ss_B0_C(r, mdot, alpha, M=M_BH):
-    """
-    B₀ zona C [G] — S&S 1973 eq. 2.19.
-        H_C = 2.1×10⁹ · α^{1/20} · ṁ^{17/40} · m^{-9/20} · r^{-21/16} · f^{17/40}
-    Esponente esatto -21/16 = -1.3125  (vs approssimazione -5/4 = -1.25).
-    Prefattore fisico assoluto in Gauss.
-    """
-    r = np.asarray(r, float)
-    return 2.1e9 * alpha**(1/20) * mdot**(17/40) * float(M)**(-9/20) * r**(-21/16) * _ss_f(r)**(17/40)
-
-
-def _B0_disk(r, a, B00, mdot, alpha, M, r_AB, r_BC, blend_width=0.05):
-    """
-    B₀(r) sull'intero disco — formule S&S 1973 esatte con raccordo log-lineare.
-
-    Zona A  [r_H, r_AB]:  power-law con parametro libero B00
-        B₀_A(r) = B00 · (r / r_H)^{-3/4}
-        B00 è il valore di B₀ in Gauss all'orizzonte degli eventi r_H.
-
-    Zona B  [r_AB, r_BC]:  formula S&S 1973 eq. 2.16
-        B₀_B(r) = 1.5×10⁹ · α^{1/20} · ṁ^{2/5} · m^{-9/20} · r^{-51/40} · f^{2/5}
-
-    Zona C  [r_BC, ∞):  formula S&S 1973 eq. 2.19
-        B₀_C(r) = 2.1×10⁹ · α^{1/20} · ṁ^{17/40} · m^{-9/20} · r^{-21/16} · f^{17/40}
-
-    Raccordo alle frontiere:
-        Come per Σ, si usa un'interpolazione log-lineare in log(r):
-            B_blend = B_lo^(1-t) · B_hi^t,   t ∈ [0,1] lineare in log(r)
-        nella finestra [r_c·(1-w), r_c·(1+w)] con w = blend_width.
-
-    Parametri
-    ----------
-    blend_width : float   semi-ampiezza relativa della finestra di raccordo
-                          (default 0.05 → ±5% di r_AB e r_BC)
-    """
-    r  = np.asarray(r, float)
-    rH = float(r_horizon(a))
-
-    B0_A = B00 * (r / rH)**(-3/4)
-    B0_B = ss_B0_B(r, mdot, alpha, M)
-    B0_C = ss_B0_C(r, mdot, alpha, M)
-
-    B_AB = _log_blend(r, r_AB, B0_A, B0_B, width=blend_width)
-    B_BC = _log_blend(r, r_BC, B0_B, B0_C, width=blend_width)
-
-    w = blend_width
-    in_blend_AB = (r >= r_AB * (1.0 - w)) & (r <  r_AB * (1.0 + w))
-    in_pure_B   = (r >= r_AB * (1.0 + w)) & (r <  r_BC * (1.0 - w))
-    in_blend_BC = (r >= r_BC * (1.0 - w)) & (r <  r_BC * (1.0 + w))
-    in_pure_C   =  r >= r_BC * (1.0 + w)
-
-    result = B0_A.copy()                         # default: pura zona A
-    result[in_blend_AB] = B_AB[in_blend_AB]
-    result[in_pure_B]   = B0_B[in_pure_B]
-    result[in_blend_BC] = B_BC[in_blend_BC]
-    result[in_pure_C]   = B0_C[in_pure_C]
-    return result
-
-
-# ═══════════════════════════════════════════════════════════════════════════
-# 5.  Σ₀ → ṁ  e  frontiere r_AB, r_BC
-# ═══════════════════════════════════════════════════════════════════════════
-
-def nt_mdot_from_Sigma0(Sigma0, a, alpha=ALPHA_VISC):
-    """
-    Inverte min[Sigma_A(r)] = Sigma0 per ricavare mdot.
-
-    Sigma_A = 5 * alpha^-1 * mdot^-1 * r^(3/2) * A^-2 B^3 C^(1/2) E Q^-1
-
-    Non si puo' ancorare all'ISCO perche' Q->0 li' (torque nullo NT),
-    rendendo Sigma_A divergente. Il minimo fisico di Sigma_A si trova
-    a r ~ 2 r_ISCO e corrisponde al valore piu' basso e rappresentativo
-    nella zona A. L'inversione e' lineare in mdot:
-        mdot = 5 * alpha^-1 * r_min^(3/2) * rel(r_min) / Sigma0
-    dove r_min e' trovato numericamente una volta per (a, alpha).
-    """
-    rISCO = float(r_isco(a))
-    # scansione del minimo di Sigma_A nella zona A (r in [1.05, 10] * r_ISCO)
-    r_scan = np.geomspace(rISCO * 1.05, rISCO * 10.0, 300)
-    f      = nt_ABCDEQ(r_scan, a)
-    rel    = (f['A']**(-2) * f['B']**3
-              * np.sqrt(np.maximum(f['C'], 0)) * f['E']
-              / np.maximum(f['Q'], 1e-10))
-    # Sigma_A = 5/alpha * (1/mdot) * r^(3/2) * rel  -->  minimo in rel/r^(3/2)
-    shape = rel * r_scan**(3/2)          # proporzionale a mdot * Sigma_A
-    i_min = int(np.argmin(shape))
-    r_min = float(r_scan[i_min])
-    rel_min = float(rel[i_min])
-    # mdot tale che Sigma_A(r_min) = Sigma0
-    return float(5.0 * r_min**(3/2) * rel_min / (alpha * float(Sigma0)))
-
-
-def _bisect_vec(func_vec, r_lo, r_hi, n_scan=200, n_bisect=40):
-    """Trova r dove func(r)=1 tramite bisezione vettorizzata."""
-    r_arr  = np.geomspace(r_lo, r_hi, n_scan)
-    f_arr  = func_vec(r_arr) - 1.0
-    sc     = np.where(np.diff(np.sign(f_arr)))[0]
+def _bisect_vec(func, r_lo, r_hi, n_scan=400, n_bisect=60):
+    """Bisezione vettorizzata: trova r dove func(r) = 1."""
+    r_arr = np.geomspace(r_lo, r_hi, n_scan)
+    f_arr = func(r_arr) - 1.0
+    sc    = np.where(np.diff(np.sign(f_arr)))[0]
     if len(sc) == 0:
         return None
     a_r, b_r = r_arr[sc[0]], r_arr[sc[0]+1]
     for _ in range(n_bisect):
         mid = (a_r + b_r) / 2
-        if func_vec(np.array([mid]))[0] - 1.0 < 0:
+        if func(np.array([mid]))[0] - 1.0 < 0:
             a_r = mid
         else:
             b_r = mid
-    return (a_r + b_r) / 2
+    return float((a_r + b_r) / 2)
 
 
-def _r_AB_search_limit(mdot, alpha, M):
+def nt_boundaries(a, mdot, alpha=ALPHA_VISC, M=M_BH):
     """
-    Limite superiore dinamico per la bisezione di r_AB.
+    Calcola le frontiere radiali r_AB, r_BC e le zone presenti.
 
-    Nel limite r >> r_ISCO i fattori NT → 1, quindi f_AB si riduce a:
-        f_AB ~ 4e-6 · α^{-1/4} · M^{-1/4} · ṁ^{-2} · r^{21/8}
-    Imponendo f_AB = 1:
-        r_AB_est = (4e-6)^{-8/21} · α^{2/21} · M^{2/21} · ṁ^{16/21}
+    Frontiere (Abramowicz review, eqs. 100-101):
 
-    Si usa 3× la stima come margine (i fattori NT rallentano la crescita
-    vicino all'ISCO, quindi il crossing reale è sempre ≤ r_est per r grandi).
-    Nessun clip superiore fisso: il limite si adatta a qualsiasi M e ṁ.
-    """
-    r_est = (alpha**(1/4) * float(M)**(1/4) * mdot**2 / 4e-6)**(8/21)
-    return r_est
+      r_AB: P_rad = P_gas  →  β/(1−β) = 1
+            f_AB(r) = 4×10⁻⁶ · α⁻¹/⁴ · m⁻¹/⁴ · ṁ⁻² · r^{21/8}
+                      · A(r)^{-5/2} · B(r)^{9/2} · D(r) · E(r)^{5/4} / Q(r)² = 1
 
+      r_BC: τ_ff/τ_es = 1  →  cambio regime opacità
+            f_BC(r) = 2×10⁻⁶ · ṁ⁻¹ · r^{3/2}
+                      · A(r)^{-1} · B(r)² · sqrt(D(r)) · sqrt(E(r)) / Q(r) = 1
 
-def _r_BC_search_limit(mdot):
-    """
-    Limite superiore dinamico per la bisezione di r_BC.
+    I limiti superiori per la bisezione sono stimati nel limite r >> r_ISCO
+    (fattori NT → 1):
+      r_AB_est ~ [α^{1/4} m^{1/4} ṁ² / 4×10⁻⁶]^{8/21}
+      r_BC_est ~ [ṁ / 2×10⁻⁶]^{2/3}
 
-    Nel limite r >> r_ISCO i fattori NT → 1, quindi f_BC si riduce a:
-        f_BC ~ 2e-6 · ṁ^{-1} · r^{3/2}
-    Imponendo f_BC = 1:
-        r_BC_est = (ṁ / 2e-6)^{2/3}
+    Zone degeneri:
+      Se f_AB(r_ISCO) ≥ 1 → zona A assente (r_AB = r_ISCO)
+      Se f_BC(r_AB) ≥ 1   → zona B assente (r_BC = r_AB)
 
-    Si usa 3× la stima come margine.
-    """
-    r_est = (mdot / 2e-6)**(2/3)
-    return r_est
+    Parametri
+    ----------
+    a     : float   spin adimensionale
+    mdot  : float   ṁ = Ṁ/Ṁ_Edd > 0
+    alpha : float   parametro di viscosità α
+    M     : float   massa BH [M_sun]
 
-
-def nt_boundaries(a, Sigma0, alpha=ALPHA_VISC, M=M_BH):
-    """
-    Calcola mdot, r_AB, r_BC dai parametri liberi (a, Sigma0, alpha).
-
-    Frontiere definite dalle condizioni fisiche:
-      r_AB:  β/(1-β) = 1       →  P_rad = P_gas
-             f_AB = 4e-6 · α^{-1/4} · M^{-1/4} · ṁ^{-2} · r^{21/8} · [NT] = 1
-      r_BC:  τ_ff / τ_es = 1   →  cambio regime opacità
-             f_BC = 2e-6 · ṁ^{-1} · r^{3/2} · [NT] = 1
-
-    I limiti superiori di bisezione sono stimati analiticamente dal
-    limite r >> r_ISCO (fattori NT → 1) e scalano con M e ṁ — nessun
-    limite fisso a 1e5 che fallirebbe per BH massicci.
-
-    Returns
-    -------
-    mdot  : float   ṁ = Ṁc²/L_Edd  (derivato da Sigma0)
-    r_AB  : float   frontiera A-B  [r_g]
-    r_BC  : float   frontiera B-C  [r_g]
+    Restituisce
+    -----------
+    r_AB        : float   frontiera A-B [r_g]
+    r_BC        : float   frontiera B-C [r_g]
+    zone_present: dict    {'A': bool, 'B': bool, 'C': bool}
     """
     rISCO = float(r_isco(a))
     m     = float(M)
-    mdot  = nt_mdot_from_Sigma0(Sigma0, a, alpha)
 
-    # ── r_AB: β/(1-β) = 1  (P_rad = P_gas) ──────────────────────────────
+    # ── r_AB ────────────────────────────────────────────────────────────────
     def f_AB(r_arr):
-        f   = nt_ABCDEQ(r_arr, a)
-        rel = f['A']**(-5/2) * f['B']**(9/2) * f['D'] * f['E']**(5/4) / f['Q']**2
-        return 4e-6 * alpha**(-1/4) * m**(-1/4) * mdot**(-2) * np.asarray(r_arr)**(21/8) * rel
+        f   = nt_factors(r_arr, a)
+        rel = (np.maximum(f['A'], 1e-30)**(-5.0/2) * f['B']**(9.0/2)
+               * np.maximum(f['D'], 1e-30) * np.maximum(f['E'], 1e-30)**(5.0/4)
+               / f['Q']**2)
+        return 4e-6 * alpha**(-0.25) * m**(-0.25) * mdot**(-2) \
+               * np.asarray(r_arr)**(21.0/8) * rel
 
-    f_at_ISCO = float(f_AB(np.array([rISCO * 1.01]))[0])
-
+    f_at_ISCO = float(f_AB(np.array([rISCO * 1.001]))[0])
     if f_at_ISCO >= 1.0:
-        # disco dominato da pressione di gas già all'ISCO: zona A assente
-        r_AB = rISCO
+        r_AB   = rISCO
+        zone_A = False
     else:
-        r_AB_hi = _r_AB_search_limit(mdot, alpha, m)
-        r_AB    = _bisect_vec(f_AB, rISCO * 1.01, r_AB_hi)
+        r_AB_est = (alpha**(0.25) * m**(0.25) * mdot**2 / 4e-6)**(8.0/21)
+        r_AB_hi  = float(max(r_AB_est * 3.0, rISCO * 10.0))
+        r_AB     = _bisect_vec(f_AB, rISCO * 1.001, r_AB_hi)
         if r_AB is None:
-            r_AB = r_AB_hi      # crossing oltre il limite → usiamo il limite
-        r_AB = float(max(r_AB, rISCO))
+            r_AB = r_AB_hi
+        r_AB   = float(max(r_AB, rISCO))
+        zone_A = True
 
-    # ── r_BC: τ_ff/τ_es = 1  (cambio regime opacità) ────────────────────
+    # ── r_BC ────────────────────────────────────────────────────────────────
     def f_BC(r_arr):
-        f   = nt_ABCDEQ(r_arr, a)
-        rel = (f['A']**(-1) * f['B']**2
-               * np.sqrt(np.maximum(f['D'], 0)) * np.sqrt(np.maximum(f['E'], 0)) / f['Q'])
-        return 2e-6 * mdot**(-1) * np.asarray(r_arr)**(3/2) * rel
+        f   = nt_factors(r_arr, a)
+        rel = (np.maximum(f['A'], 1e-30)**(-1)
+               * f['B']**2
+               * np.sqrt(np.maximum(f['D'], 1e-30))
+               * np.sqrt(np.maximum(f['E'], 1e-30))
+               / f['Q'])
+        return 2e-6 * mdot**(-1) * np.asarray(r_arr)**(1.5) * rel
 
-    f_at_rAB = float(f_BC(np.array([r_AB * 1.01]))[0])
-
+    f_at_rAB = float(f_BC(np.array([r_AB * 1.001]))[0])
     if f_at_rAB >= 1.0:
-        # τ_ff/τ_es > 1 già a r_AB: zona B assente, tutto zona C da r_AB
-        r_BC = r_AB
+        r_BC   = r_AB
+        zone_B = False
     else:
-        r_BC_hi = _r_BC_search_limit(mdot)
-        r_BC    = _bisect_vec(f_BC, r_AB * 1.01, r_BC_hi)
+        r_BC_est = (mdot / 2e-6)**(2.0/3)
+        r_BC_hi  = float(max(r_BC_est * 3.0, r_AB * 10.0))
+        r_BC     = _bisect_vec(f_BC, r_AB * 1.001, r_BC_hi)
         if r_BC is None:
-            r_BC = r_BC_hi      # crossing oltre il limite → usiamo il limite
-        r_BC = float(max(r_BC, r_AB))
+            r_BC = r_BC_hi
+        r_BC   = float(max(r_BC, r_AB))
+        zone_B = True
 
-    return mdot, r_AB, r_BC
+    return r_AB, r_BC, {'A': zone_A, 'B': zone_B, 'C': True}
 
 
-# ═══════════════════════════════════════════════════════════════════════════
-# 6.  ADAPTER PER find_rossby  e  compute_disk_profile
-# ═══════════════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════════════════
+# 4.  DENSITÀ SUPERFICIALE Σ(r)  —  formule NT raw
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def Sigma_A_NT(r, a, mdot, alpha):
+    """
+    Σ zona A  [g/cm²]  —  NT eq. 99 (Abramowicz review)
+
+        Σ_A = 5 · α⁻¹ · ṁ⁻¹ · r^{3/2} · A⁻² B³ C^{1/2} E Q⁻¹
+
+    P_rad dominante, opacità e-scattering. I fattori NT A,B,C,E,Q modificano
+    l'andamento radiale rispetto alla zona A SS (prefattore 4.6 vs 5, stessa
+    dipendenza da α e ṁ).
+
+    NOTA: Σ_A → ∞ per r → r_ISCO perché Q → 0 (zero-torque NT).
+    """
+    r   = np.asarray(r, float)
+    f   = nt_factors(r, a)
+    rel = (f['A']**(-2) * f['B']**3
+           * np.sqrt(np.maximum(f['C'], 0))
+           * f['E'] / np.maximum(f['Q'], 1e-10))
+    return 5.0 * alpha**(-1.0) * mdot**(-1.0) * r**(1.5) * rel
+
+
+def Sigma_B_NT(r, a, mdot, alpha, m=M_BH):
+    """
+    Σ zona B  [g/cm²]  —  NT eq. 98 (Abramowicz review)
+
+    P_gas dominante, opacità e-scattering. Confronto con SS zona B:
+    prefattore NT 9×10⁴ vs SS 1.7×10⁵ (fattori NT riducono l'ampiezza).
+    """
+    r   = np.asarray(r, float)
+    f   = nt_factors(r, a)
+    rel = (f['B']**(-4.0/5)
+           * np.sqrt(np.maximum(f['C'], 0))
+           * np.maximum(f['D'], 1e-30)**(-4.0/5)
+           * f['Q']**(3.0/5))
+    return 9e4 * alpha**(-4.0/5) * mdot**(3.0/5) * m**(1/5) * r**(-3.0/5) * rel
+
+
+def Sigma_C_NT(r, a, mdot, alpha, M=M_BH):
+    """
+    Σ zona C  [g/cm²]  —  NT eq. 97 (Abramowicz review)
+
+        Σ_C = 4×10⁵ · α⁻⁴/⁵ · m^{1/5} · ṁ^{7/10} · r^{-3/4}
+              · A^{1/10} B^{-4/5} C^{1/2} D^{-17/20} E^{-1/20} Q^{7/10}
+
+    P_gas dominante, opacità free-free. L'esponente m^{1/5} (diverso da m^{1/2}
+    del modello SS) emerge dalla diversa combinazione di fattori relativistici.
+    """
+    r   = np.asarray(r, float)
+    f   = nt_factors(r, a)
+    rel = (f['A']**(1.0/10) * f['B']**(-4.0/5)
+           * np.sqrt(np.maximum(f['C'], 0))
+           * np.maximum(f['D'], 1e-30)**(-17.0/20)
+           * np.maximum(f['E'], 1e-30)**(-1.0/20)
+           * f['Q']**(7.0/10))
+    return 4e5 * alpha**(-4.0/5) * float(M)**(1.0/5) * mdot**(7.0/10) \
+           * r**(-3/4) * rel
+
+
+def _Sigma_disk(r, a, mdot, alpha, M, r_AB, r_BC):
+    """
+    Σ(r) sull'intero disco — formule NT raw, nessun raccordo.
+
+    Assegna Σ_A, Σ_B, Σ_C in base alla zona, gestendo le zone degeneri.
+    """
+    r  = np.asarray(r, float)
+    SA = Sigma_A_NT(r, a, mdot, alpha)
+    SB = Sigma_B_NT(r, a, mdot, alpha)
+    SC = Sigma_C_NT(r, a, mdot, alpha, M)
+
+    result = SA.copy()
+    result[r > r_AB] = SB[r > r_AB]
+    result[r > r_BC] = SC[r > r_BC]
+    return result
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 5.  SEMISPESSORE H_NT(r)  —  con frequenza orbitale di Kerr
+# ═══════════════════════════════════════════════════════════════════════════════
+def H_A(r, a, mdot, m=M_BH):
+    """
+    r : array_like   raggio [3r_g, adimensionale]
+    m : float        massa BH [M_sun]
+    """
+    r = np.asarray(r, float)
+    f   = nt_factors(r, a)
+    rel = (f['A']**2 * f['B']**(-3)
+           * np.sqrt(np.maximum(f['C'], 0))
+           * np.maximum(f['D'], 1e-30)**(-1)
+           * np.maximum(f['E'], 1e-30)**(-1)
+           * f['Q'])
+    return 1e5 * mdot * rel
+
+
+def H_B(r, a, mdot, alpha, M):
+    """
+    Semispessore fisico zona B  [cm]  —  SS 1973 eq. 2.16
+    Zona gas-dominated, opacità e-scattering.
+
+    r     : array_like   raggio [r_g]
+    mdot  : float        ṁ = Ṁ/Ṁ_Edd
+    alpha : float        parametro viscosità α
+    M     : float        massa BH [M_sun]
+    """
+    r = np.asarray(r, float)
+    f   = nt_factors(r, a)
+    rel = (f['A'] * f['B']**(-6/5)
+           * np.sqrt(np.maximum(f['C'], 0))
+           * np.maximum(f['D'], 1e-30)**(-3/5)
+           * np.maximum(f['E'], 1e-30)**(-1/2)
+           * f['Q']**(1/5))
+    return 1e3 * alpha**(-1/10) * mdot**(1/5) * float(M)**(9/10) \
+           * r**(21/20) * rel
+
+
+def H_C(r, a, mdot, alpha, M):
+    """
+    Semispessore fisico zona C  [cm]  —  SS 1973 eq. 2.19
+    Zona gas-dominated, opacità free-free (Kramers: κ_ff ∝ ρ T^{-7/2}).
+
+    r     : array_like   raggio [r_g]
+    mdot  : float        ṁ = Ṁ/Ṁ_Edd
+    alpha : float        parametro viscosità α
+    M     : float        massa BH [M_sun]
+    """
+    r = np.asarray(r, float)
+    f   = nt_factors(r, a)
+    rel = (f['A']**(19/20) * f['B']**(-11/10)
+           * np.sqrt(np.maximum(f['C'], 0))
+           * np.maximum(f['D'], 1e-30)**(-23/40)
+           * np.maximum(f['E'], 1e-30)**(-19/40)
+           * f['Q']**(3/20))
+    return 4e2 * alpha**(-1/10) * mdot**(3/20) * float(M)**(9/10) \
+           * r**(9/8) * rel
+
+def H_NT(r, a, mdot, alpha, M, r_AB, r_BC):
+    """
+    Semispessore fisico NT  H(r)  [cm] per zona.
+
+    Derivazione: dall'equilibrio idrostatico verticale in metrica di Kerr,
+    il semispessore è:
+        H(r) = c_s^{NT}(r) / Ω_φ^{NT}(r)
+
+    dove c_s^{NT} è la velocità del suono che include P_tot zona per zona.
+
+    Per mantener consistenza con le formule di Σ_NT e la struttura termica,
+    usiamo:
+        H(r) = H_SS_zona(r) × fattore_NT_verticale(r)
+
+    I fattori SS per H sono (da Tab. 1 SS 1973):
+        H_A^{SS} = 1.0e8 · m^{-1/2} · r^{-3/4}
+        H_B^{SS} = 1.5e9 · α^{1/20} · ṁ^{2/5}   · m^{-9/20} · r^{-51/40} · f^{2/5}
+        H_C^{SS} = 2.1e9 · α^{1/20} · ṁ^{17/40} · m^{-9/20} · r^{-21/16} · f^{17/40}
+
+    Il fattore NT verticale è  B(r) / sqrt(C(r)), che corregge la frequenza
+    kepleriana e la frequenza epicliclica verticale in metrica di Kerr.
+
+    Per zona A usiamo H_A^{SS} × B/sqrt(C) (struttura verticale rad-dominated NT).
+    Per zone B e C usiamo H_B,C^{SS} × B/sqrt(C) (gas-dominated NT).
+
+    Parametri
+    ----------
+    r     : array_like   raggio [r_g]
+    a     : float        spin
+    mdot  : float        ṁ
+    alpha : float        α
+    M     : float        massa BH [M_sun]
+    r_AB, r_BC : float   frontiere [r_g]
+    """
+    r   = np.asarray(r, float)
+    HA  = H_A(r, a, mdot, M)
+    HB  = H_B(r, a, mdot, alpha, M)
+    HC  = H_C(r, a, mdot, alpha, M)
+
+    result = HA.copy()
+    result[r > r_AB] = HB[r > r_AB]
+    result[r > r_BC] = HC[r > r_BC]
+    return result
+
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 5.  campo magnetico e velocità suono
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _B0_disk(r, a, mdot, alpha, M, r_AB, r_BC):
+    """
+    B₀(r) in equipartizione — usa Σ_NT e H_NT per zona.
+
+        B_eq(r) = sqrt(4π · Σ_NT(r) · Ω_φ^{NT}(r)² · H_NT(r))
+
+    Ω_φ^{NT} = 2π ν_φ(r, a, M) è la frequenza orbitale di Kerr.
+    """
+    r  = np.asarray(r, float)
+    Rg = Rg_SUN * float(M)
+
+    S  = _Sigma_disk(r, a, mdot, alpha, M, r_AB, r_BC)
+    Hv = H_NT(r, a, mdot, alpha, M, r_AB, r_BC)
+    Omega_phi = 2.0 * np.pi * nu_phi(r, a, M)   # [rad/s]
+    return np.sqrt(4.0 * np.pi * S * Omega_phi**2 * Hv)
+
+
+def _sound_speed(r, a, Hv=None, hr=None, M=M_BH):
+    """
+    Velocità del suono effettiva per la relazione di dispersione AEI  [cm/s].
+
+        c_s(r) = hr · r · R_g · Ω_φ(r)
+
+    hr è l'aspect ratio fenomenologico per il solver AEI.
+    Non entra in Σ né in B (che usano H_NT dalla fisica di ogni zona).
+
+    r  : array_like   raggio [r_g]
+    a  : float        spin del BH
+    hr : float        aspect ratio H/r per la dispersione AEI
+    M  : float        massa BH [M_sun]
+    """
+    r  = np.asarray(r, dtype=float)
+    if Hv is not None:
+        cs = Hv * np.sqrt(nu_phi(r, a, M))
+    elif hr is not None:
+        cs = hr * r * Rg_SUN * M * nu_phi(r, a, M)
+    return cs
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 7.  INDICE DI ZONA
+# ═══════════════════════════════════════════════════════════════════════════════
 
 def _zone_array(r, r_AB, r_BC):
-    zi = np.zeros(np.asarray(r).shape, dtype=int)
-    zi[np.asarray(r) > r_AB] = 1
-    zi[np.asarray(r) > r_BC] = 2
+    """Restituisce array di etichette zona ('A','B','C') per ogni r."""
+    r  = np.asarray(r)
+    zi = np.zeros(r.shape, dtype=int)
+    zi[r > r_AB] = 1
+    zi[r > r_BC] = 2
     return np.array([ZONE_NAMES[i] for i in zi])
 
 
-def _sound_speed(r, a, hr, M):
-    return hr * 2*np.pi * nu_phi(np.asarray(r, float), a, M) * np.asarray(r, float) * Rg_SUN * M
+# ═══════════════════════════════════════════════════════════════════════════════
+# 8.  ADAPTER PRINCIPALE  —  disk_model_NT
+# ═══════════════════════════════════════════════════════════════════════════════
 
-
-def disk_model_NT(r_rg, a, B00, Sigma0, alpha_visc=ALPHA_VISC, hr=HOR, M=M_BH):
+def disk_model_NT(r_rg, a, mdot, alpha_visc=ALPHA_VISC, hr=None, M=M_BH):
     """
-    Adapter per aei_common.find_rossby — firma standard:
+    Profili fisici del disco NT 1973 — firma standard per find_rossby.
 
-        B0, Sigma, c_s, zone = disk_model_NT(r_rg, **row)
+    Calcola su un array radiale:
+      - Σ(r): formule NT raw per zona, nessun raccordo
+      - B(r): equipartizione da P_mid = Σ_NT · Ω_φ^{NT,2} · H_NT / 2
+      - c_s(r): thin-disc fenomenologica c_s = hr·r·R_g·Ω_φ (per solver AEI)
 
-    Parametri liberi: a, B00, Sigma0
-    Parametri fissi (passare con lambda o partial): alpha_visc, hr, M
+    Parametri liberi: a, mdot, alpha_visc, M.
+    hr entra solo in c_s.
 
-    Esempio d'uso con find_rossby:
-        df = find_rossby(
-            r_vec, param_grid,
-            disk_model = lambda r, **p: disk_model_NT(
-                             r, **p, alpha_visc=alpha_visc, hr=hr, M=M_BH),
-            m=m, hr=hr, M=M_BH, ...
-        )
+    Parametri
+    ----------
+    r_rg      : array_like   raggi [r_g]
+    a         : float        spin adimensionale [−1, 1]
+    mdot      : float        ṁ = Ṁ/Ṁ_Edd > 0
+    alpha_visc: float        parametro α di viscosità
+    hr        : float        aspect ratio H/r per c_s AEI
+    M         : float        massa BH [M_sun]
+
+    Restituisce
+    -----------
+    B0    : ndarray   campo magnetico in equipartizione [G]
+    Sigma : ndarray   densità superficiale [g/cm²]
+    c_s   : ndarray   velocità del suono AEI [cm/s]
+    zone  : ndarray   etichette zona ('A', 'B', 'C')
+    info  : dict      r_AB, r_BC, zone_present, mdot, alpha
     """
-    r   = np.asarray(r_rg, float)
-    mdot, r_AB, r_BC = nt_boundaries(a, Sigma0, alpha_visc, M)
-    B0    = _B0_disk(r, a, B00, mdot, alpha_visc, M, r_AB, r_BC)
-    Sigma = _Sigma_disk(r, a, Sigma0, mdot, alpha_visc, M, r_AB, r_BC)
-    c_s   = _sound_speed(r, a, hr, M)
-    zone  = _zone_array(r, r_AB, r_BC)
-    info  = {'r_AB': r_AB, 'r_BC': r_BC, 'mdot': mdot, 'alpha': alpha_visc}
-    return B0, Sigma, c_s, zone, info
+    r_rg = np.asarray(r_rg, float)
+    r_AB, r_BC, zone_present = nt_boundaries(a, mdot, alpha=alpha_visc, M=M)
+
+    Sigma = _Sigma_disk(r_rg, a, mdot, alpha_visc, M, r_AB, r_BC)
+    if hr is None:
+        Hv = H_NT(r_rg, a, mdot, alpha_visc, M, r_AB, r_BC)
+        hr = Hv / (r_rg * Rg_SUN * M)  # aspect ratio
+    else:
+        Hv = hr * r_rg * Rg_SUN * M
+    c_s   = _sound_speed(r_rg, a, hr=hr, M=M)
+    B0    = _B0_disk(r_rg, a, mdot, alpha_visc, M, r_AB, r_BC)
+    zone  = _zone_array(r_rg, r_AB, r_BC)
+
+    # Se la zona B è assente r_BC coincide con r_ISCO e non rappresenta
+    # l'estensione radiale del disco (il disco è tutto zona C, illimitato).
+    # In questo caso usiamo lo stimatore analitico r_BC_est = (mdot/2e-6)^(2/3)
+    # come proxy per r_max, così compute_disk_profile costruisce una griglia sensata.
+    if not zone_present['B']:
+        r_max_hint = float((mdot / 2e-6) ** (2.0 / 3.0))
+        r_max_hint = max(r_max_hint, r_AB * 10.0)
+    else:
+        r_max_hint = r_BC
+
+    info = {
+        'r_AB':         r_AB,
+        'r_BC':         r_BC,        # frontiera fisica reale (= r_ISCO se zona B assente)
+        'r_max_hint':   r_max_hint,  # usato da compute_disk_profile per r_max
+        'zone_present': zone_present,
+        'mdot':         mdot,
+        'alpha':        alpha_visc,
+    }
+    return B0, Sigma, c_s, hr, zone, info
 
 
-# ═══════════════════════════════════════════════════════════════════════════
-# 7.  DIAGNOSTICA
-# ═══════════════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════════════════
+# 9.  VALORI AI BORDI INTERNI
+# ═══════════════════════════════════════════════════════════════════════════════
 
-def nt_print_boundaries(a, Sigma0, alpha=ALPHA_VISC, M=M_BH):
+def disk_inner_values_NT(a, mdot, alpha_visc=ALPHA_VISC, hr=HOR, M=M_BH):
     """
-    Stampa riepilogo di frontiere per il modello NT.
+    Restituisce Σ, H_NT e B ai bordi interni fisicamente significativi.
 
-    Wrapper di ``aei_common.print_disk_boundaries`` con firma compatibile
-    alle versioni precedenti. Per usare con altri modelli:
+    Bordi:
+      r_ISCO — Inner Stable Circular Orbit (bordo del disco)
+      r_H    — orizzonte degli eventi
 
-        from AEI_setups.aei_common import print_disk_boundaries
-        print_disk_boundaries(disk_model, params)
+    Restituisce
+    -----------
+    dict con:
+      r_ISCO      [r_g]     raggio ISCO
+      r_H         [r_g]     raggio orizzonte
+      r_AB        [r_g]     frontiera A-B
+      r_BC        [r_g]     frontiera B-C
+      zone_present          {'A': bool, 'B': bool, 'C': bool}
+      Sigma_ISCO  [g/cm²]   Σ all'ISCO
+      B_rH        [G]       B_eq all'orizzonte
     """
-    _model = lambda r, **p: disk_model_NT(r, **p, alpha_visc=alpha, M=M)
-    print_disk_boundaries(_model, {'a': a, 'B00': 1.0, 'Sigma0': Sigma0}, M=M)
+    rISCO = float(r_isco(a))
+    rH    = float(r_horizon(a))
+    r_AB, r_BC, zone_present = nt_boundaries(a, mdot, alpha=alpha_visc, M=M)
+
+    r_pts = np.array([rISCO, rH])
+    S_pts = _Sigma_disk(r_pts, a, mdot, alpha_visc, M, r_AB, r_BC)
+    H_pts = H_NT(r_pts, a, mdot, alpha_visc, M, r_AB, r_BC)
+    B_pts = _B0_disk(r_pts, a, mdot, alpha_visc, M, r_AB, r_BC)
+
+    return {
+        'r_ISCO':       rISCO,
+        'r_H':          rH,
+        'r_AB':         r_AB,
+        'r_BC':         r_BC,
+        'zone_present': zone_present,
+        'Sigma_ISCO':   float(S_pts[0]),
+        'B_ISCO':       float(B_pts[0]),   # bordo fisico del disco per NT
+        'B_rH':         float(B_pts[1]),
+    }
 
 
-def nt_scan_grid(Sigma0_vals, a_vals, alpha=ALPHA_VISC, M=M_BH):
+# ═══════════════════════════════════════════════════════════════════════════════
+# 10.  DIAGNOSTICA  —  check_continuity_NT
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def check_continuity_NT(a, mdot, alpha_visc=ALPHA_VISC, hr=HOR, M=M_BH,
+                        tol=0.5, verbose=True, only_multizone=True):
     """
-    Tabella diagnostica su griglia (Σ₀, a) per il modello NT.
+    Misura le discontinuità reali di Σ, H_NT e B alle frontiere r_AB e r_BC.
 
-    Wrapper di ``aei_common.scan_disk_grid`` con firma compatibile alle
-    versioni precedenti. Per usare con altri modelli:
+    Calcola il salto relativo  |f(r⁺) − f(r⁻)| / |f(r⁻)|  a distanza
+    ε = 10⁻⁴ · r₀ da ogni frontiera.
 
-        from AEI_setups.aei_common import scan_disk_grid
-        scan_disk_grid(disk_model, Sigma0_vals, a_vals, extra_params=...)
+    I salti riflettono la coerenza fisica delle frontiere NT: in un modello
+    perfettamente coerente dovrebbero essere piccoli (le formule sono derivate
+    proprio imponendo la continuità delle condizioni termodinamiche alle frontiere).
+    Salti grandi indicano problemi nei prefattori numerici delle formule NT.
+
+    tol : float   soglia per il flag 'ok' (default 0.5 = 50%)
+
+    Restituisce
+    -----------
+    results : dict
+        Per ogni frontiera ('r_AB', 'r_BC') e variabile ('Sigma', 'H', 'B'):
+            {'value_in', 'value_out', 'jump_rel', 'ok'}
     """
-    _model = lambda r, **p: disk_model_NT(r, **p, alpha_visc=alpha, M=M)
-    return scan_disk_grid(_model, Sigma0_vals, a_vals,
-                          extra_params={'B00': 1.0}, M=M)
+    r_AB, r_BC, zone_present = nt_boundaries(a, mdot, alpha=alpha_visc, M=M)
+    rISCO = float(r_isco(a))
+    eps   = 1e-4
+
+    # filtro dischi monotoni
+    if only_multizone and not (zone_present['A'] or zone_present['B']):
+        if verbose:
+            print("Disco NT monotona (solo zona C) — check saltato.")
+        return {}, zone_present
+
+    results = {}
+
+    if verbose:
+        print(f"┌─ Salti NT raw  (a={a:.3f}, mdot={mdot:.3e}, α={alpha_visc}, M={M:.2e} Msun)")
+        print(f"│  r_ISCO = {rISCO:.4g} rg")
+        print(f"│  r_AB   = {r_AB:.4g} rg  [zona A {'presente' if zone_present['A'] else 'ASSENTE'}]")
+        print(f"│  r_BC   = {r_BC:.4g} rg  [zona B {'presente' if zone_present['B'] else 'ASSENTE'}]")
+        print(f"├{'─'*68}")
+
+    # selezione frontiere fisicamente presenti
+    boundaries = []
+    if zone_present['A']:
+        boundaries.append(('r_AB', r_AB))
+    if zone_present['B']:
+        boundaries.append(('r_BC', r_BC))
+
+    for label, r0 in boundaries:
+        r_in  = np.array([r0 * (1.0 - eps)])
+        r_out = np.array([r0 * (1.0 + eps)])
+
+        S_in  = float(_Sigma_disk(r_in,  a, mdot, alpha_visc, M, r_AB, r_BC)[0])
+        S_out = float(_Sigma_disk(r_out, a, mdot, alpha_visc, M, r_AB, r_BC)[0])
+        Hi_in = float(H_NT(r_in,  a, mdot, alpha_visc, M, r_AB, r_BC)[0])
+        Hi_out= float(H_NT(r_out, a, mdot, alpha_visc, M, r_AB, r_BC)[0])
+        B_in  = float(_B0_disk(r_in,  a, mdot, alpha_visc, M, r_AB, r_BC)[0])
+        B_out = float(_B0_disk(r_out, a, mdot, alpha_visc, M, r_AB, r_BC)[0])
+
+        dS = abs(S_in  - S_out)  / max(abs(S_in),  1e-300)
+        dH = abs(Hi_in - Hi_out) / max(abs(Hi_in), 1e-300)
+        dB = abs(B_in  - B_out)  / max(abs(B_in),  1e-300)
+
+        results[label] = {
+            'Sigma': {'value_in': S_in,  'value_out': S_out,  'jump_rel': dS, 'ok': dS < tol},
+            'H':     {'value_in': Hi_in, 'value_out': Hi_out, 'jump_rel': dH, 'ok': dH < tol},
+            'B':     {'value_in': B_in,  'value_out': B_out,  'jump_rel': dB, 'ok': dB < tol},
+        }
+
+        if verbose:
+            def fmtrow(v_in, v_out, dv, ok):
+                factor = max(v_in, v_out) / max(min(v_in, v_out), 1e-300)
+                flag   = '✓' if ok else f'✗  (fattore {factor:.1f}×)'
+                return f"{v_in:.3e} → {v_out:.3e}  |  Δ/val = {dv:.2e}  {flag}"
+            print(f"│  {label} = {r0:.4g} rg")
+            print(f"│    Σ:  {fmtrow(S_in, S_out, dS, dS < tol)}")
+            print(f"│    H:  {fmtrow(Hi_in, Hi_out, dH, dH < tol)}")
+            print(f"│    B:  {fmtrow(B_in, B_out, dB, dB < tol)}")
+
+    if verbose:
+        print(f"└{'─'*68}")
+
+    return results, zone_present

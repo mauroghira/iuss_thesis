@@ -101,13 +101,18 @@ def _iter_zones(df):
 # 1.  PLOT PROFILI COMPLETI
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def plot_full_disk_profiles(df, meta, alpha_visc=None, figsize=(16, 12)):
+def plot_full_disk_profiles(df, meta, alpha_visc=None, figsize=(18, 13)):
     """
-    Figura con 4 pannelli: B₀ e Σ, k, β, dQ/dr
+    Figura con 6 pannelli: B₀, Σ, H/r, k, β, dQ/dr.
 
     Funziona con qualsiasi output di compute_disk_profile:
       • modelli con zone A/B/C (SS, NT): ogni curva è colorata per zona
       • modelli senza zone (simple_disc):  un'unica curva grigia
+
+    Il pannello H/r (aspect ratio) mostra il valore fisico calcolato dal
+    modello (SS/NT zona-per-zona) o il valore costante HOR (Simple).
+    La colonna 'hr' nel DataFrame viene prodotta da compute_disk_profile
+    come quarto elemento del return di disk_model.
 
     Parameters
     ----------
@@ -120,34 +125,73 @@ def plot_full_disk_profiles(df, meta, alpha_visc=None, figsize=(16, 12)):
     -------
     fig : matplotlib.figure.Figure
     """
-
     fig = plt.figure(figsize=figsize)
     fig.suptitle(_build_title(meta, alpha_visc), fontsize=13)
-    gs   = gridspec.GridSpec(2, 2, hspace=0.38, wspace=0.32)
-    axes = [fig.add_subplot(gs[i, j]) for i in range(2) for j in range(2)]
+    gs   = gridspec.GridSpec(2, 3, hspace=0.40, wspace=0.34)
+    axes = [fig.add_subplot(gs[i, j]) for i in range(2) for j in range(3)]
 
-    # ── pannello 1: B₀ e Σ ───────────────────────────────────────────────────
-    ax  = axes[0]
-    ax2 = ax.twinx()
+    aei = df[df['aei_valid']]
+
+    # ── pannello 0: B₀ ────────────────────────────────────────────────────────
+    ax = axes[0]
     for label, sub, col in _iter_zones(df):
         valid_B = sub[sub['B0'] > 0]
-        valid_S = sub[sub['Sigma'] > 0]
         if not valid_B.empty:
             ax.semilogy(valid_B['r'], valid_B['B0'],
-                        color=col, lw=2, label=f"B₀  {label}")
-        if not valid_S.empty:
-            ax2.semilogy(valid_S['r'], valid_S['Sigma'],
-                         color=col, lw=2, ls='--')
+                        color=col, lw=2, label=f"Zona {label}")
     ax.set_xscale('log')
     ax.set_xlabel('r [rg]')
     ax.set_ylabel('B₀  [G]')
-    ax2.set_ylabel('Σ  [g/cm²]', color='#94a3b8')
-    ax.set_title('Radial profiles B₀(r)  —  Σ(r) (dashed)')
+    ax.set_title('Magnetic field  B₀(r)')
     _zone_vlines(ax, meta)
     ax.legend(fontsize=8, loc='upper right')
 
-    # ── pannello 2: k ───────────────────────────────────────────────────────
+    # ── pannello 1: Σ ─────────────────────────────────────────────────────────
     ax = axes[1]
+    for label, sub, col in _iter_zones(df):
+        valid_S = sub[sub['Sigma'] > 0]
+        if not valid_S.empty:
+            ax.semilogy(valid_S['r'], valid_S['Sigma'],
+                        color=col, lw=2, label=f"Zona {label}")
+    ax.set_xscale('log')
+    ax.set_xlabel('r [rg]')
+    ax.set_ylabel('Σ  [g/cm²]')
+    ax.set_title('Surface density  Σ(r)')
+    _zone_vlines(ax, meta)
+    ax.legend(fontsize=8, loc='upper right')
+
+    # ── pannello 2: H/r ───────────────────────────────────────────────────────
+    ax = axes[2]
+    has_hr = 'hr' in df.columns and df['hr'].notna().any() and (df['hr'] > 0).any()
+    if has_hr:
+        for label, sub, col in _iter_zones(df):
+            valid_hr = sub[sub['hr'] > 0]
+            if not valid_hr.empty:
+                ax.semilogy(valid_hr['r'], valid_hr['hr'],
+                            color=col, lw=2, label=f"Zona {label}")
+        # se il valore è costante (Simple), evidenziarlo
+        hr_std = df['hr'].std()
+        if hr_std < 1e-10 * df['hr'].mean():
+            hr_val = df['hr'].mean()
+            ax.axhline(hr_val, color='white', ls=':', lw=1.2, alpha=0.5,
+                       label=f'H/r = {hr_val:.3f} (costante)')
+    else:
+        # fallback: usa hr da meta se disponibile
+        hr_val = meta.get('hr', None)
+        if hr_val is not None:
+            ax.axhline(hr_val, color='#94a3b8', ls='--', lw=2,
+                       label=f'H/r = {hr_val:.3f} (meta)')
+        ax.text(0.5, 0.5, 'hr non disponibile', ha='center', va='center',
+                transform=ax.transAxes, color='gray', fontsize=10)
+    ax.set_xscale('log')
+    ax.set_xlabel('r [rg]')
+    ax.set_ylabel('H/r')
+    ax.set_title('Aspect ratio  H/r(r)')
+    _zone_vlines(ax, meta)
+    ax.legend(fontsize=8)
+
+    # ── pannello 3: k ─────────────────────────────────────────────────────────
+    ax = axes[3]
     for label, sub, col in _iter_zones(df):
         valid = sub[sub['k'].notna() & (sub['k'] > 0)]
         if not valid.empty:
@@ -155,7 +199,6 @@ def plot_full_disk_profiles(df, meta, alpha_visc=None, figsize=(16, 12)):
                         color=col, lw=2, label=f"Zona {label}")
     ax.axhline(0.1, color='gray', ls=':', lw=1, alpha=0.7)
     ax.axhline(10,  color='gray', ls=':', lw=1, alpha=0.7, label='limiti WKB')
-    aei = df[df['aei_valid']]
     if not aei.empty:
         ax.scatter(aei['r'], aei['k'],
                    color='yellow', s=8, zorder=5, alpha=0.5, label='AEI valida')
@@ -166,8 +209,8 @@ def plot_full_disk_profiles(df, meta, alpha_visc=None, figsize=(16, 12)):
     _zone_vlines(ax, meta)
     ax.legend(fontsize=8)
 
-    # ── pannello 3: β ─────────────────────────────────────────────────────────
-    ax = axes[2]
+    # ── pannello 4: β ─────────────────────────────────────────────────────────
+    ax = axes[4]
     for label, sub, col in _iter_zones(df):
         valid = sub[sub['beta'] > 0]
         if not valid.empty:
@@ -181,8 +224,8 @@ def plot_full_disk_profiles(df, meta, alpha_visc=None, figsize=(16, 12)):
     _zone_vlines(ax, meta)
     ax.legend(fontsize=8)
 
-    # ── pannello 4: dQ/dr ─────────────────────────────────────────────────────
-    ax = axes[3]
+    # ── pannello 5: dQ/dr ─────────────────────────────────────────────────────
+    ax = axes[5]
     for label, sub, col in _iter_zones(df):
         ax.plot(sub['r'], sub['dQdr'], color=col, lw=2, label=f"Zona {label}")
     ax.axhline(0, color='red', ls='--', lw=1.2, label='dQ/dr = 0')
@@ -193,7 +236,7 @@ def plot_full_disk_profiles(df, meta, alpha_visc=None, figsize=(16, 12)):
     ax.set_xscale('log')
     ax.set_xlabel('r [rg]')
     ax.set_ylabel('dQ/dr  [u.a.]')
-    ax.set_title('Shear conndition  dQ/dr(r)')
+    ax.set_title('Shear condition  dQ/dr(r)')
     _zone_vlines(ax, meta)
     ax.legend(fontsize=8)
 
@@ -402,10 +445,14 @@ def plot_summary_table(df, meta, alpha_visc=None):
 # 4.  PLOT COMPARATIVO  (più modelli / più run sullo stesso asse)
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def plot_profiles_comparison(runs, figsize=(16, 12)):
+def plot_profiles_comparison(runs, figsize=(18, 13)):
     """
     Sovrappone i profili di più run (modelli o parametri diversi)
-    sugli stessi 4 pannelli.
+    sugli stessi 6 pannelli: B₀, Σ, H/r, k, β, dQ/dr.
+
+    Il pannello H/r mostra il profilo fisico per SS/NT (zona-per-zona)
+    oppure la costante HOR per i modelli Simple. La colonna 'hr' deve
+    essere presente nel DataFrame (prodotta da compute_disk_profile).
 
     Parameters
     ----------
@@ -420,39 +467,34 @@ def plot_profiles_comparison(runs, figsize=(16, 12)):
     Returns
     -------
     fig : matplotlib.figure.Figure
-
-    Esempio
-    -------
-    plot_profiles_comparison([
-        ('SS  a=0.5',  df_ss,  meta_ss),
-        ('NT  a=0.5',  df_nt,  meta_nt),
-        ('Simple',     df_s1,  meta_s1),
-    ])
     """
     cmap      = plt.cm.tab10
     run_cols  = {label: cmap(i) for i, (label, _, _) in enumerate(runs)}
-    ls_cycle  = ['-', '--', ':', '-.']
+    ls_cycle  = ['-', '--', ':', '-.', (0,(3,1,1,1))]
 
     fig = plt.figure(figsize=figsize)
     fig.suptitle("Disk profiles comparison", fontsize=13)
-    gs   = gridspec.GridSpec(2, 2, hspace=0.38, wspace=0.32)
-    axes = [fig.add_subplot(gs[i, j]) for i in range(2) for j in range(2)]
+    gs   = gridspec.GridSpec(2, 3, hspace=0.40, wspace=0.34)
+    axes = [fig.add_subplot(gs[i, j]) for i in range(2) for j in range(3)]
 
     panels = [
         # (qty_y, ylabel, logscale_y, hlines)
-        ('B0',   'B₀  [G]',              True,  []),
-        ('Sigma', 'Σ  [g/cm³]',        True, []),
-        ('k',   'k  (dimensionless)', True,  [(0.1,'gray',':'), (10,'gray',':')]),
-        ('beta', 'β',                    True,  [(1.0,'red','--')]),
+        ('B0',    'B₀  [G]',            True,  []),
+        ('Sigma', 'Σ  [g/cm²]',         True,  []),
+        ('hr',    'H/r',                True,  []),
+        ('k',     'k  (dimensionless)', True,  [(0.1,'gray',':'), (10,'gray',':')]),
+        ('beta',  'β',                  True,  [(1.0,'red','--')]),
+        ('dQdr',  'dQ/dr  [u.a.]',      False, [(0.0,'red','--')]),
     ]
 
     for (label, df, meta), ls in zip(runs, ls_cycle):
         col = run_cols[label]
 
         for ax, (qty, ylabel, log_y, hrefs) in zip(axes, panels):
-            # un'unica curva per run (mediana sulle zone, o diretto se no zone)
+            if qty not in df.columns:
+                continue
             valid = df[df[qty].notna()]
-            if qty in ('B0', 'beta', 'k'):
+            if qty in ('B0', 'Sigma', 'beta', 'k', 'hr'):
                 valid = valid[valid[qty] > 0]
             if not valid.empty:
                 ax.plot(valid['r'], valid[qty],
