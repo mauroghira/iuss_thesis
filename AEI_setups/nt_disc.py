@@ -495,9 +495,9 @@ def _apply_plunge_raccordo(r, a, Sigma, H, B, Q_threshold=0.1):
     Sigma_out          = Sigma.copy()
     H_out              = H.copy()
     B_out              = B.copy()
-    Sigma_out[plunge]  = Sigma_m * w[plunge]
+    Sigma_out[plunge]  = Sigma_m * w[plunge] #se decommento va a 0
     H_out[plunge]      = H_m     * w[plunge]
-    B_out[plunge]      = B_m                  # plateau
+    B_out[plunge]      = B_m     # plateau
 
     return Sigma_out, H_out, B_out, rm
 
