@@ -389,6 +389,98 @@ def B_eq_zone(r, Sigma, H, M):
     return np.sqrt(4.0 * np.pi * Sigma * OmKsq * H)
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# 5b.  RACCORDO REGIONE DI PLUNGE  r_ISCO(a) < r < r_match
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _r_match_ss(f_threshold=0.1):
+    """
+    Raggio di raccordo per il modello SS, analogo a _r_match nel NT.
+
+    Il modello SS è newtoniano: il fattore zero-torque è
+        f(r) = 1 − sqrt(3/r)
+    che si annulla a r = 3 r_g indipendentemente dallo spin.
+
+    Per spin alti (a > 0.6 circa) l'ISCO relativistico scende sotto 3 r_g,
+    e il fattore f(r) diventa negativo per r_ISCO(a) < r < 3 r_g — una regione
+    fisicamente non coperta dal modello SS newtoniano. Il codice regolarizza
+    con max(f, 1e-10), producendo Σ_A enormi in quella zona.
+
+    Il raggio di raccordo è definito analogamente al NT come il punto dove
+    f(r) = f_threshold, ovvero:
+        r_match = 3 / (1 − f_threshold)²
+
+    Parametri
+    ----------
+    f_threshold : float   soglia su f(r) (default 0.1)
+        Corrisponde alla soglia Q=0.1 usata nel NT.
+        f=0.1 → r_match ≈ 3.70 r_g   (~1.60 r_ISCO per a=0.9)
+        f=0.05 → r_match ≈ 3.32 r_g  (~1.43 r_ISCO per a=0.9)
+
+    Restituisce
+    -----------
+    r_match : float   [r_g], fisso indipendentemente dallo spin
+    """
+    return 3.0 / (1.0 - float(f_threshold))**2
+
+
+def _apply_plunge_raccordo_ss(r, a, Sigma, H, B, f_threshold=0.1):
+    """
+    Raccordo plateau nella regione r_ISCO(a) < r < r_match per il modello SS.
+
+    Per r < r_match i profili SS raw non sono fisicamente validi (il modello
+    newtoniano non è applicabile vicino all'ISCO relativistico per alto spin).
+    Si applica un plateau costante identico a quello del NT con inner_bc='flat':
+        Σ(r) = Σ(r_match)
+        H(r) = H(r_match)
+        B(r) = B(r_match)
+
+    Questo elimina gli artefatti numerici (multipli cambi di segno di dQ/dr)
+    prodotti dall'applicazione di Σ_A ∝ f^{-1} con f → 0 per r < 3 r_g.
+
+    Nota: a differenza del NT, questo raccordo è rilevante SOLO per spin alti
+    (a ≳ 0.7) dove r_ISCO(a) < r_match. Per spin bassi r_ISCO > r_match e la
+    funzione restituisce i profili originali invariati.
+
+    Parametri
+    ----------
+    r           : array_like   raggi [r_g]
+    a           : float        spin
+    Sigma, H, B : ndarray      profili fisici da raccordare
+    f_threshold : float        soglia su f(r) per r_match (default 0.1)
+
+    Restituisce
+    -----------
+    Sigma_out, H_out, B_out : ndarray   profili raccordati
+    r_match                 : float     raggio di raccordo [r_g]
+    """
+    r     = np.asarray(r, float)
+    rISCO = float(r_isco(a))
+    rm    = _r_match_ss(f_threshold)
+
+    # Se r_ISCO >= r_match (spin basso), il raccordo non è mai attivo
+    plunge = (r < rm) & (r >= rISCO)
+    if not np.any(plunge):
+        return Sigma.copy(), H.copy(), B.copy(), rm
+
+    # Valore di ancoraggio: primo punto con r >= r_match
+    outside = r >= rm
+    i_ref   = int(np.argmax(outside)) if np.any(outside) else len(r) - 1
+
+    Sigma_m = float(Sigma[i_ref])
+    H_m     = float(H[i_ref])
+    B_m     = float(B[i_ref])
+
+    Sigma_out          = Sigma.copy()
+    H_out              = H.copy()
+    B_out              = B.copy()
+    Sigma_out[plunge]  = Sigma_m
+    H_out[plunge]      = H_m
+    B_out[plunge]      = B_m
+
+    return Sigma_out, H_out, B_out, rm
+
+
 def _B0_disk(r, mdot, alpha, M, r_AB, r_BC):
     """
     B₀(r) in equipartizione — usa H e Σ della zona fisica corretta.
@@ -464,12 +556,13 @@ def _zone_array(r, r_AB, r_BC):
 # 8.  ADAPTER PRINCIPALE  —  disk_model_SS
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def disk_model_SS(r_rg, a, mdot, alpha_visc=ALPHA_VISC, hr=None, M=M_BH):
+def disk_model_SS(r_rg, a, mdot, alpha_visc=ALPHA_VISC, hr=None, M=M_BH,
+                  plunge=False, f_threshold=0.1):
     """
     Profili fisici del disco SS 1973 — firma standard per find_rossby.
 
     Calcola su un array radiale:
-    - Σ(r): formule SS raw per zona, nessun raccordo o fattore di scala
+    - Σ(r): formule SS raw per zona, con raccordo opzionale nella regione di plunge
     - B(r): equipartizione da P_mid = Σ · Ω_K² · H_zona / 2
     - c_s(r): thin-disc fenomenologica c_s = H · Ω_φ (per solver AEI)
 
@@ -479,15 +572,23 @@ def disk_model_SS(r_rg, a, mdot, alpha_visc=ALPHA_VISC, hr=None, M=M_BH):
     a         : float        spin adimensionale [−1, 1]
     mdot      : float        ṁ = Ṁ/Ṁ_Edd > 0
     alpha_visc: float        parametro α di viscosità
+    hr        : float|None   aspect ratio H/r per c_s AEI (None = usa H fisico)
     M         : float        massa BH [M_sun]
+    plunge    : bool         Se True, applica raccordo plateau per r < r_match_ss.
+                             Rilevante solo per spin alti (a ≳ 0.7) dove
+                             r_ISCO(a) < r_match = 3/(1-f_threshold)² r_g.
+                             Elimina gli artefatti numerici da f(r)→0 in quella zona.
+    f_threshold: float       Soglia su f(r) per definire r_match (default 0.1,
+                             corrispondente a r_match ≈ 3.70 r_g).
 
     Restituisce
     -----------
     B0    : ndarray   campo magnetico in equipartizione [G]
     Sigma : ndarray   densità superficiale [g/cm²]
     c_s   : ndarray   velocità del suono AEI [cm/s]
+    hr    : ndarray   aspect ratio H/r per punto
     zone  : ndarray   etichette zona ('A', 'B', 'C')
-    info  : dict      r_AB, r_BC, zone_present, mdot, alpha
+    info  : dict      r_AB, r_BC, r_match, plunge, zone_present, mdot, alpha
     """
     r_rg = np.asarray(r_rg, float)
     r_AB, r_BC, zone_present = ss_boundaries(a, mdot, alpha=alpha_visc, M=M)
@@ -495,12 +596,21 @@ def disk_model_SS(r_rg, a, mdot, alpha_visc=ALPHA_VISC, hr=None, M=M_BH):
     Sigma = _Sigma_disk(r_rg, mdot, alpha_visc, M, r_AB, r_BC)
     if hr is None:
         Hv = _H_disk(r_rg, mdot, alpha_visc, M, r_AB, r_BC)
-        hr = Hv / (r_rg * Rg_SUN * M)  # aspect ratio
+        hr = Hv / np.maximum(r_rg * Rg_SUN * M, 1e-30)
     else:
         Hv = hr * r_rg * Rg_SUN * M
-    B0    = B_eq_zone(r_rg, Sigma, Hv, M)
-    c_s   = _sound_speed(r_rg, Hv, M)
-    zone  = _zone_array(r_rg, r_AB, r_BC)
+    B0 = B_eq_zone(r_rg, Sigma, Hv, M)
+
+    # raccordo plunge opzionale
+    r_match = _r_match_ss(f_threshold)
+    if plunge:
+        Sigma, Hv, B0, _ = _apply_plunge_raccordo_ss(
+            r_rg, a, Sigma, Hv, B0, f_threshold=f_threshold
+        )
+        hr = Hv / np.maximum(r_rg * Rg_SUN * M, 1e-30)
+
+    c_s  = _sound_speed(r_rg, Hv, M)
+    zone = _zone_array(r_rg, r_AB, r_BC)
 
     if not zone_present['B']:
         r_max_hint = float((mdot / 2e-6) ** (2.0 / 3.0))
@@ -510,8 +620,10 @@ def disk_model_SS(r_rg, a, mdot, alpha_visc=ALPHA_VISC, hr=None, M=M_BH):
 
     info = {
         'r_AB':         r_AB,
-        'r_BC':         r_BC,        # frontiera fisica reale (= r_ISCO se zona B assente)
-        'r_max_hint':   r_max_hint,  # usato da compute_disk_profile per r_max
+        'r_BC':         r_BC,
+        'r_match':      r_match,
+        'plunge':       plunge,
+        'r_max_hint':   r_max_hint,
         'zone_present': zone_present,
         'mdot':         mdot,
         'alpha':        alpha_visc,

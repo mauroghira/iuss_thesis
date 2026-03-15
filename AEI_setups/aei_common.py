@@ -65,7 +65,7 @@ from setup import (
     Rg_SUN, M_BH, NU0,
 )
 
-HOR = 0.05
+HOR = 0.001
 mm = 1
 ALPHA_VISC = 0.1
 
@@ -140,25 +140,50 @@ def solve_k_aei(r_rg, a, B0, Sigma, c_s, m=mm, M=M_BH):
 # 2.  CHECK FISICI  (tutti operano su k adimensionale)
 # ═══════════════════════════════════════════════════════════════════════════
 
-def check_k_wkb(k, k_min=0.1, k_max=10.0):
+def check_k_wkb(k, k_min=1.0, k_max=None, hr=None):
     """
     Vincolo WKB sul numero d'onda adimensionale k = k_fis · r_cm.
 
-    Il limite WKB richiede  k_fis ≫ 1/r,  cioè  k ≫ 1.
-    In pratica si usa il range conservativo  [0.1, 10]
+    Il vincolo WKB corretto richiede che la lunghezza d'onda della
+    perturbazione sia sub-orbitale ma sopra-disco:
+
+        1/r  ≪  k_fis  ≪  1/H   →   1  ≪  k  ≪  r/H = 1/(H/r)
+
+    Limiti:
+      k_min = 1          : perturbazione sub-orbitale  (k_fis · r > 1)
+      k_max = r/H = 1/hr : perturbazione sopra-disco   (k_fis · H < 1)
+
+    k_max può essere un array (quando hr(r) non è costante, es. modelli SS/NT),
+    oppure uno scalare, oppure None (nel qual caso si usa hr per calcolarlo).
 
     Parametri
     ----------
-    k     : array_like   numero d'onda adimensionale
-    k_min : float        limite inferiore (default 0.1)
-    k_max : float        limite superiore (default 10.0)
+    k     : array_like         numero d'onda adimensionale
+    k_min : float              limite inferiore (default 1.0)
+    k_max : float | array | None
+        Se fornito esplicitamente, viene usato direttamente.
+        Se None, viene derivato da hr come k_max = 1/hr.
+        Può essere un array della stessa forma di k.
+    hr    : float | array | None
+        Aspect ratio H/r. Usato solo se k_max is None.
+        Se None e k_max is None, si usa il valore globale HOR.
 
     Restituisce
     -----------
     mask : ndarray bool
     """
-    k = np.asarray(k)
-    return np.isfinite(k) & (k >= k_min) & (k <= k_max)
+    k = np.asarray(k, dtype=float)
+
+    # ── calcola k_max ─────────────────────────────────────────────────────
+    if k_max is None:
+        if hr is None:
+            hr = HOR          # fallback al valore globale del modulo
+        hr_arr = np.asarray(hr, dtype=float)
+        k_max_arr = 1.0 / np.where(hr_arr > 0, hr_arr, np.inf)
+    else:
+        k_max_arr = np.asarray(k_max, dtype=float)
+
+    return np.isfinite(k) & (k >= k_min) & (k <= k_max_arr)
 
 
 def compute_beta(B0, Sigma, c_s, r_rg, hr=HOR, M=M_BH):
@@ -392,12 +417,11 @@ def r_olr(a, nu_obs=NU0, m=mm, M=M_BH, n_scan=8000):
 # 3.  FINDER VETTORIZZATO
 # ═══════════════════════════════════════════════════════════════════════════
 
-
 def find_rossby(
     r_vec, param_grid, disk_model,
     m=mm, hr=HOR, M=M_BH,
     check_k=True, check_beta=True, check_shear=True, check_ilr=False,
-    k_min=0.1, k_max=10.0, beta_max=1.0, dr_frac=0.01,
+    k_min=1.0, k_max=None, beta_max=1.0, dr_frac=0.01,
 ):
     """
     Finder vettorizzato della relazione di dispersione AEI.
@@ -442,7 +466,7 @@ def find_rossby(
         Vedi sezione adapter in fondo al file.
  
     m, hr, M   : int, float, float
-        Modo azimutale, aspect ratio, massa BH.
+        Modo azimutale, aspect ratio di fallback, massa BH.
  
     check_k, check_beta, check_shear : bool
         Attiva/disattiva i tre constraint fisici standard.
@@ -455,8 +479,16 @@ def find_rossby(
         r_ILR dipende solo da (a, ν₀, m, M) — viene pre-calcolata una volta
         per ogni valore unico di spin per efficienza.
  
-    k_min, k_max : float
-        Range WKB per k adimensionale.
+    k_min : float (default 1.0)
+        Limite inferiore WKB: k > 1 garantisce che la perturbazione
+        sia sub-orbitale (λ < 2πr).
+ 
+    k_max : float | None (default None)
+        Limite superiore WKB.
+        Se None (default): k_max(r) = 1/hr(r) — dipende dal punto radiale
+        e dal modello (corretto fisicamente: λ > 2πH).
+        Se fornito come scalare, viene usato come limite fisso per tutti i
+        punti (comportamento legacy; utile solo per test o confronti).
  
     beta_max : float
         Soglia per il check β.
@@ -470,7 +502,7 @@ def find_rossby(
     df : DataFrame
         Una riga per ogni (r, **params) che supera tutti i check attivi.
         Colonne garantite:
-          r, a, k, beta, dQdr
+          r, a, k, beta, dQdr, k_max
           + tutte le chiavi di param_grid
           + 'zone' (se disk_model la restituisce, altrimenti assente)
     """
@@ -539,7 +571,18 @@ def find_rossby(
         mask = np.isfinite(k_i) & (k_i > 0)
  
         if check_k:
-            mask &= check_k_wkb(k_i, k_min, k_max)
+            # k_max fisicamente corretto: 1/hr(r).
+            # Se k_max è passato esplicitamente come scalare (uso legacy),
+            # si usa quello; altrimenti si calcola da hr_i punto per punto,
+            # con lo stesso guard (pavimento = hr di fallback) usato in
+            # compute_disk_profile.
+            if k_max is not None:
+                _k_max = k_max                        # scalare fisso (legacy)
+            else:
+                hr_floor = max(float(hr), 1e-4)
+                hr_eff   = np.maximum(hr_i, hr_floor)
+                _k_max   = 1.0 / hr_eff               # array radiale
+            mask &= check_k_wkb(k_i, k_min=k_min, k_max=_k_max)
  
         # beta e dQdr calcolati solo dove k è già valido (risparmio CPU)
         beta_i = np.full_like(r_i, np.nan)
@@ -576,15 +619,23 @@ def find_rossby(
  
         r_ILR_entry = _ilr_cache.get(a_val, np.nan) if check_ilr else np.nan
  
+        # k_max per output (scalare o array a seconda della modalità)
+        if k_max is not None:
+            _k_max_out = np.full_like(r_i, float(k_max))
+        else:
+            hr_floor = max(float(hr), 1e-4)
+            _k_max_out = 1.0 / np.maximum(hr_i, hr_floor)
+ 
         idx_ok = np.where(mask)[0]
         for j in idx_ok:
             entry = dict(row_params)
             entry['r']     = r_i[j]
             entry['k']     = k_i[j]
+            entry['k_max'] = _k_max_out[j]
             entry['beta']  = beta_i[j]
             entry['dQdr']  = dQdr_i[j]
             entry['m']     = m
-            entry['hr']    = hr
+            entry['hr']    = float(hr_i[j])
             entry['r_ILR'] = r_ILR_entry
             if zone_i is not None:
                 entry['zone'] = zone_i[j]
@@ -643,7 +694,8 @@ def compute_disk_profile(
         Modo azimutale m della perturbazione AEI.
  
     hr : float
-        Aspect ratio H/r (per i check β e c_s se non già in disk_model).
+        Aspect ratio H/r di fallback (usato se disk_model non restituisce
+        hr per punto). Entra nel vincolo WKB superiore: k_max = r/H = 1/hr.
  
     M : float
         Massa BH [M_sun].
@@ -661,11 +713,25 @@ def compute_disk_profile(
     n_points : int
         Numero di punti radiali log-spaziati.
  
+    Vincolo WKB
+    -----------
+    Il check sul numero d'onda usa ora i limiti fisicamente corretti:
+
+        k_min = 1          →  perturbazione sub-orbitale  (λ < 2πr)
+        k_max(r) = 1/hr(r) →  perturbazione sopra-disco   (λ > 2πH)
+
+    k_max dipende dal raggio quando hr(r) non è costante (modelli SS/NT):
+    il valore hr(r) viene estratto direttamente dall'output di disk_model
+    (quarto elemento della tupla restituita), garantendo coerenza con la
+    struttura termica calcolata dal modello.
+
     Restituisce
     -----------
     df : pd.DataFrame
-        Colonne: r, zone, B0, Sigma, c_s, k, beta, dQdr,
-                 k_valid, beta_valid, shear_valid, aei_valid
+        Colonne: r, zone, B0, Sigma, c_s, hr, k, k_max,
+                 beta, dQdr, k_valid, beta_valid, shear_valid,
+                 aei_valid, ilr_valid, aei_ilr_valid.
+        k_max è il limite WKB superiore per ogni punto: r/H(r) = 1/hr(r).
  
     meta : dict
         Contiene almeno: r_H, r_ISCO, a, mm, hr, M, + tutto ciò che
@@ -793,7 +859,29 @@ def compute_disk_profile(
                                            _make_interp(r_aei, Sigma_arr[aei_zone]), M)
  
     # ── maschere di validità ──────────────────────────────────────────────
-    k_valid     = np.where(aei_zone, ~np.isnan(k_arr) & check_k_wkb(np.nan_to_num(k_arr)), False)
+    # k_max(r) = r/H(r) = 1/hr(r)  — dipende dal modello e dal raggio.
+    #
+    # Guard: se hr(r) ≈ 0 (es. NT vicino all'ISCO dove Σ→0 e c_s→0),
+    # il modello non è fisicamente significativo in quel punto per l'analisi
+    # WKB; usiamo il valore di fallback `hr` passato a compute_disk_profile
+    # come pavimento, per evitare k_max=∞ che non filtra nulla.
+    #
+    # Fisicamente: quando hr_modello < hr_fallback il disco è geometricamente
+    # più sottile del caso isotermo di riferimento; in quel limite l'approssimazione
+    # WKB è ancora più stringente, non più permissiva.
+    k_max_arr = np.full(len(r_arr), np.inf)
+    if aei_zone.any():
+        hr_aei    = hr_arr[aei_zone]
+        #hr_floor  = max(float(hr), 1e-4)          # mai sotto 10^-4 per stabilità
+        #hr_eff    = np.maximum(hr_aei, hr_floor)   # prende il massimo tra i due
+        k_max_arr[aei_zone] = 1.0 / hr_aei
+
+    k_valid     = np.where(aei_zone,
+                           ~np.isnan(k_arr) & check_k_wkb(
+                               np.nan_to_num(k_arr),
+                               k_min=1.0,
+                               k_max=k_max_arr),
+                           False)
     beta_valid  = np.where(aei_zone, beta_arr <= 1.0, False)
     shear_valid = np.where(aei_zone, dQdr_arr > 0,    False)
     aei_valid   = k_valid & beta_valid & shear_valid
@@ -812,6 +900,7 @@ def compute_disk_profile(
         'c_s':           cs_arr,
         'hr':            hr_arr,
         'k':             k_arr,
+        'k_max':         k_max_arr,   # r/H(r) — limite WKB superiore per punto
         'beta':          beta_arr,
         'dQdr':          dQdr_arr,
         'k_valid':       k_valid,

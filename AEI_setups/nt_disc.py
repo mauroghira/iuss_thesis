@@ -423,7 +423,7 @@ def Sigma_C_NT(r, a, mdot, alpha, M=M_BH):
 # 3b.  RACCORDO REGIONE DI PLUNGE  r_ISCO < r < r_match
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def _r_match(a, Q_threshold=0.1):
+def _r_match(a, Q_threshold=0.01):
     """
     Trova il raggio r_match dove Q(r) = Q_threshold.
 
