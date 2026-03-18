@@ -423,67 +423,196 @@ def Sigma_C_NT(r, a, mdot, alpha, M=M_BH):
 # 3b.  RACCORDO REGIONE DI PLUNGE  r_ISCO < r < r_match
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def _r_match(a, Q_threshold=0.01):
+def _r_match(a, r_scan_profiles=None, Q_threshold=0.1):
     """
-    Trova il raggio r_match dove Q(r) = Q_threshold.
-
-    Per r < r_match il modello NT non è fisicamente valido (regione di plunge):
-    la materia segue geodetiche di caduta libera, non orbite circolari.
-    Q_threshold = 0.1 corrisponde a ~1.65–1.72 r_ISCO per tutti gli spin,
-    dove la divergenza artificiale di Σ ∝ 1/Q inizia a dominare.
-
-    Usa bisezione su Q(r) con scansione log-spaziata.
+    r_scan_profiles : tuple (r, Sigma, B0, Omega) già calcolati
+                      su una griglia fine vicino all'ISCO.
+                      Se None: fallback su Q_NT = Q_threshold.
     """
     rISCO = float(r_isco(a))
-    r_scan = np.geomspace(rISCO * 1.001, rISCO * 6, 2000)
-    Q_scan = nt_factors(r_scan, a)['Q']
-    idx = np.searchsorted(Q_scan, Q_threshold)
-    if idx >= len(r_scan):
-        return rISCO * 1.7   # fallback conservativo
-    return float(r_scan[idx])
+
+    if r_scan_profiles is not None:
+        r_s, S_s, B0_s, Om_s = r_scan_profiles
+        Q_aei = Om_s * S_s / np.maximum(B0_s**2, 1e-300)
+        i_min = int(np.argmin(Q_aei))
+        return float(r_s[i_min])
+    else:
+        r_scan = np.geomspace(rISCO * 1.001, rISCO * 6, 2000)
+        Q_scan = nt_factors(r_scan, a)['Q']
+        idx    = np.searchsorted(Q_scan, Q_threshold)
+        if idx >= len(r_scan):
+            return rISCO * 1.7
+        return float(r_scan[idx])
 
 
-def _apply_plunge_raccordo(r, a, Sigma, H, B, Q_threshold=0.1):
+def _hermite_interp(t, f0, f1, d0, d1):
     """
-    Applica il raccordo fisico nella regione di plunge r_ISCO < r < r_match.
-
-    Fisica della regione di plunge (Noble et al. 2006, Krolik & Hawley 2002):
-      - Σ e H decrescono a zero con profilo sqrt (conservazione flusso di massa
-        con v_r crescente)
-      - B si satura al valore B(r_match): il flusso magnetico è congelato nel
-        plasma e non decade come la densità termica
-
-    Profili raccordati:
-      Σ(r) = Σ(r_match) · sqrt((r - r_ISCO) / (r_match - r_ISCO))
-      H(r) = H(r_match) · stessa legge
-      B(r) = B(r_match)  [costante — plateau di flusso magnetico]
-
-    Parametri
-    ----------
-    r          : array_like   raggi [r_g]
-    a          : float        spin
-    Sigma      : ndarray      profilo Σ non raccordato [g/cm²]
-    H          : ndarray      profilo H non raccordato [cm]
-    B          : ndarray      profilo B non raccordato [G]
-    Q_threshold: float        soglia su Q per individuare r_match
-
-    Restituisce
-    -----------
-    Sigma_out, H_out, B_out : ndarray   profili raccordati
-    r_match                 : float     raggio di raccordo [r_g]
+    Cubic Hermite interpolant on t in [0, 1].
+ 
+    Boundary conditions
+    -------------------
+    f(0) = f0,  f(1) = f1
+    f'(0) = d0, f'(1) = d1   (derivatives w.r.t. t)
+ 
+    The four Hermite basis polynomials:
+      h00 = 2t³ − 3t² + 1
+      h10 = t³  − 2t² + t
+      h01 = −2t³ + 3t²
+      h11 = t³  − t²
     """
+    t2 = t * t
+    t3 = t2 * t
+    h00 =  2*t3 - 3*t2 + 1
+    h10 =    t3 - 2*t2 + t
+    h01 = -2*t3 + 3*t2
+    h11 =    t3 -   t2
+    return h00*f0 + h10*d0 + h01*f1 + h11*d1
+ 
+ 
+def _numerical_deriv(r, f, i_ref, n_pts=4):
+    """
+    Estimate df/dr at index i_ref using a one-sided finite-difference
+    stencil on log(f) vs r (power-law assumption), falling back to linear
+    finite differences if fewer than n_pts points are available.
+ 
+    Returns the derivative in *linear* space: df/dr.
+    """
+    # use the n_pts points immediately to the right of i_ref (physical side)
+    i0  = i_ref
+    i1  = min(i_ref + n_pts, len(r) - 1)
+    sub_r = r[i0:i1 + 1]
+    sub_f = f[i0:i1 + 1]
+ 
+    if len(sub_r) < 2:
+        return 0.0
+ 
+    pos = sub_f > 0
+    if pos.sum() >= 2:
+        # fit in log–log space: log f = slope * log r + const
+        log_r = np.log(sub_r[pos])
+        log_f = np.log(sub_f[pos])
+        if log_r.max() - log_r.min() > 0:
+            slope = np.polyfit(log_r, log_f, 1)[0]   # power-law index
+            # df/dr = slope * f / r  evaluated at r_match
+            return slope * sub_f[0] / sub_r[0]
+ 
+    # fallback: simple linear finite difference
+    return (sub_f[-1] - sub_f[0]) / (sub_r[-1] - sub_r[0])
+ 
+ 
+def _apply_plunge_raccordo(r, a, Sigma, H, B,
+                            mdot=None, alpha=None,
+                            r_AB=None, zone_present=None,
+                            r_scan_profiles=None,
+                            Q_threshold=0.1):
     r     = np.asarray(r, float)
     rISCO = float(r_isco(a))
-    rm    = _r_match(a, Q_threshold)
+    rm    = _r_match(a, r_scan_profiles=r_scan_profiles,
+                     Q_threshold=Q_threshold)
 
-    plunge = r < rm
+    plunge  = r < rm
     if not np.any(plunge):
         return Sigma.copy(), H.copy(), B.copy(), rm
 
-    # primo punto fuori dalla regione di plunge → valori di ancoraggio
     outside = r >= rm
     i_ref   = int(np.argmax(outside)) if np.any(outside) else len(r) - 1
 
+    Sigma_out = Sigma.copy()
+    H_out     = H.copy()
+    B_out     = B.copy()
+
+    delta_r  = rm - rISCO
+    t        = np.clip((r[plunge] - rISCO) / delta_r, 0.0, 1.0)
+    t2, t3   = t**2, t**3
+
+    for qty_arr, out_arr in [(Sigma, Sigma_out), (H, H_out)]:
+        f_m   = float(qty_arr[i_ref])
+        df_dr = _numerical_deriv(r, qty_arr, i_ref, n_pts=4)
+
+        # df/dt at t=1 (derivative w.r.t. t, not r)
+        d_match = df_dr * delta_r
+
+        # Hermite basis with f(0)=0, f'(0)=0, f(1)=f_m, f'(1)=d_match
+        # h01 = 3t² - 2t³  (rises from 0 to 1 with zero slope at both ends)
+        # h11 = t³ - t²    (derivative shape)
+        vals = f_m * (3*t2 - 2*t3) + d_match * (t3 - t2)
+        vals = np.clip(vals, 0.0, None)
+
+        out_arr[plunge] = vals
+
+    # B: linear extrapolation from r_match inward (C¹ at r_match)
+    B_m   = float(B[i_ref])
+    dB_dr = _numerical_deriv(r, B, i_ref, n_pts=4)
+
+    B_linear             = B_m + dB_dr * (r[plunge] - rm)
+    B_out[plunge]        = np.clip(B_linear, 0.0, None)
+
+    return Sigma_out, H_out, B_out, rm
+
+
+def _apply_plunge_raccordo_old(r, a, Sigma, H, B,
+                            mdot=None, alpha=None,
+                            r_AB=None, zone_present=None,
+                            r_scan_profiles=None,
+                            Q_threshold=0.1):
+    """
+    C¹-continuous plunge raccordo for r_ISCO < r < r_match.
+ 
+    Strategy
+    --------
+    For each quantity X in {Sigma, H}:
+ 
+    1.  At r_match: read the physical value X_m and estimate the derivative
+        dX/dr|_match from the NT profile (log-space power-law fit on the
+        4 nearest points on the physical side).
+ 
+    2.  Extrapolate linearly inward to find the value at r_ISCO:
+            X_ISCO = X_m + (dX/dr)|_match * (r_ISCO - r_match)
+        This is the value the linear tangent reaches at the inner boundary.
+ 
+    3.  Build a **cubic Hermite** spline on [r_ISCO, r_match] with
+        boundary conditions:
+            X(r_match) = X_m,        X'(r_match) = dX/dr|_match
+            X(r_ISCO)  = X_ISCO,     X'(r_ISCO)  = dX/dr|_match
+        The identical derivative at both ends makes the plunge region
+        a smooth, monotone tangent-continuation — the curve enters r_ISCO
+        with the same slope it had at r_match (i.e. a "linear-like" trend
+        that curves gently to avoid overshoot).
+ 
+    4.  Clip X to be non-negative everywhere (numerical safety).
+ 
+    5.  B is recomputed from equipartition rather than interpolated:
+            B(r) = sqrt(4π · Sigma(r) · Omega_phi(r)² · H(r))
+        This guarantees B is always physically consistent with the
+        raccorded Sigma and H.
+ 
+    Parameters
+    ----------
+    r, a, Sigma, H, B : as in the original function
+    mdot, alpha, r_AB, zone_present, Q_threshold : forwarded to _r_match
+ 
+    Returns
+    -------
+    Sigma_out, H_out, B_out : ndarray  (same shape as input)
+    rm                      : float    r_match [r_g]
+    """
+    r     = np.asarray(r, float)
+    rISCO = float(r_isco(a))
+    rm    = _r_match(a, r_scan_profiles=r_scan_profiles, Q_threshold=Q_threshold)
+ 
+    plunge  = r < rm
+    if not np.any(plunge):
+        return Sigma.copy(), H.copy(), B.copy(), rm
+
+    outside = r >= rm
+    # ── reference index: first point on the physical (outside) side ─────────
+    i_ref = int(np.argmax(outside)) if np.any(outside) else len(r) - 1
+ 
+    Sigma_out = Sigma.copy()
+    H_out     = H.copy()
+    B_out     = B.copy()
+    
+    #""" v1
     Sigma_m = float(Sigma[i_ref])
     H_m     = float(H[i_ref])
     B_m     = float(B[i_ref])
@@ -499,7 +628,46 @@ def _apply_plunge_raccordo(r, a, Sigma, H, B, Q_threshold=0.1):
     H_out[plunge]      = H_m     * w[plunge]
     B_out[plunge]      = B_m     # plateau
 
+    """#version 2
+    r_plunge = r[plunge]
+ 
+    # ── parametric coordinate t ∈ [0, 1]:  t=0 → r_ISCO,  t=1 → r_match ──
+    delta_r = rm - rISCO
+    t       = np.clip((r_plunge - rISCO) / delta_r, 0.0, 1.0)
+ 
+    for qty_arr, out_arr in [(Sigma, Sigma_out), (H, H_out)]:
+ 
+        # value and derivative at r_match (physical side)
+        f_m   = float(qty_arr[i_ref])
+        df_dr = _numerical_deriv(r, qty_arr, i_ref, n_pts=4)
+ 
+        # derivative in t-space: df/dt = df/dr * delta_r
+        d_match = df_dr * delta_r   # df/dt at t = 1
+ 
+        # linear extrapolation to r_ISCO → value at t = 0
+        f_isco = f_m + df_dr * (rISCO - rm)   # = f_m - df_dr * delta_r
+        f_isco = max(f_isco, 0.0)              # physical floor
+ 
+        # derivative at r_ISCO: keep the same slope (linear tangent)
+        d_isco = d_match                       # df/dt at t = 0
+ 
+        # cubic Hermite: t=0 is r_ISCO, t=1 is r_match
+        vals = _hermite_interp(t, f_isco, f_m, d_isco, d_match)
+        vals = np.clip(vals, 0.0, None)        # non-negative safety
+ 
+        out_arr[plunge] = vals
+ 
+    # ── recompute B from equipartition with the raccorded Sigma and H ───────
+    Omega_phi_sq = (2.0 * np.pi * nu_phi(r[plunge], a, M_BH)) ** 2
+    B_recomp     = np.sqrt(np.maximum(
+        4.0 * np.pi * Sigma_out[plunge] * Omega_phi_sq * H_out[plunge], 0.0
+    ))
+    B_out[plunge] = B_recomp
+    #"""
+ 
     return Sigma_out, H_out, B_out, rm
+
+
 
 def _Sigma_disk(r, a, mdot, alpha, M, r_AB, r_BC):
     """
@@ -533,7 +701,7 @@ def H_A(r, a, mdot, m=M_BH):
            * np.maximum(f['D'], 1e-30)**(-1)
            * np.maximum(f['E'], 1e-30)**(-1)
            * f['Q'])
-    return 1e5 * mdot * rel
+    return 1e5 * mdot * m * rel
 
 
 def H_B(r, a, mdot, alpha, M):
@@ -718,12 +886,26 @@ def disk_model_NT(r_rg, a, mdot, alpha_visc=ALPHA_VISC, hr=None, M=M_BH):
     r_rg = np.asarray(r_rg, float)
     r_AB, r_BC, zone_present = nt_boundaries(a, mdot, alpha=alpha_visc, M=M)
 
-    Sigma     = _Sigma_disk(r_rg, a, mdot, alpha_visc, M, r_AB, r_BC)
-    Hv        = H_NT(r_rg, a, mdot, alpha_visc, M, r_AB, r_BC)
-    Omega_phi = 2.0 * np.pi * nu_phi(r_rg, a, M)
-    B_raw     = np.sqrt(np.maximum(4.0 * np.pi * Sigma * Omega_phi**2 * Hv, 0.0))
-    # raccordo plunge: Sigma,H → 0 (sqrt), B → plateau a r_match
-    Sigma, Hv, B0, r_match = _apply_plunge_raccordo(r_rg, a, Sigma, Hv, B_raw)
+    Sigma = _Sigma_disk(r_rg, a, mdot, alpha_visc, M, r_AB, r_BC)
+    Hv    = H_NT(r_rg, a, mdot, alpha_visc, M, r_AB, r_BC)
+    Omega = 2.0 * np.pi * nu_phi(r_rg, a, M)
+    B0    = np.sqrt(np.maximum(4.0 * np.pi * Sigma * Omega**2 * Hv, 0.0))
+
+    # trova r_match dal minimo di Q_AEI sui profili raw
+    # usa una griglia fine vicino all'ISCO, non r_rg (troppo sparsa)
+    rISCO = float(r_isco(a))
+    r_fine  = np.geomspace(rISCO * 1.001, rISCO * 6, 2000)
+    S_fine  = _Sigma_disk(r_fine, a, mdot, alpha_visc, M, r_AB, r_BC)
+    H_fine  = H_NT(r_fine, a, mdot, alpha_visc, M, r_AB, r_BC)
+    Om_fine = 2.0 * np.pi * nu_phi(r_fine, a, M)
+    B_fine  = np.sqrt(np.maximum(4.0 * np.pi * S_fine * Om_fine**2 * H_fine, 0.0))
+
+    Sigma, Hv, B0, r_match = _apply_plunge_raccordo(
+        r_rg, a, Sigma, Hv, B0,
+        #r_scan_profiles=(r_fine, S_fine, B_fine, Om_fine),
+        Q_threshold=0.1
+    )
+    
     if hr is None:
         hr = Hv / np.maximum(r_rg * Rg_SUN * M, 1e-30)
     else:
@@ -779,29 +961,45 @@ def disk_inner_values_NT(a, mdot, alpha_visc=ALPHA_VISC, hr=HOR, M=M_BH):
     Nota: per NT r_H cade fuori dal dominio del disco (r_H < r_ISCO sempre),
     quindi B_rH è strutturalmente zero. Usare B_ISCO come parametro di normalizzazione.
     """
+def disk_inner_values_NT(a, mdot, alpha_visc=ALPHA_VISC, hr=HOR, M=M_BH):
     rISCO = float(r_isco(a))
     rH    = float(r_horizon(a))
     r_AB, r_BC, zone_present = nt_boundaries(a, mdot, alpha=alpha_visc, M=M)
- 
-    # B_ISCO: il raccordo di plunge usa B(r_match) come plateau e poi applica
-    # w=sqrt(0)=0 all'ISCO esatto → B_pts[0]=0 se si valuta a r_ISCO.
-    # Il valore fisico del campo al bordo del disco è B(r_match), non B(r_ISCO).
-    # Valutiamo quindi appena fuori dalla regione di plunge.
-    r_match = _r_match(a)
-    rs = np.array([rISCO, r_match])
 
-    B_pts   = _B0_disk(rs, a, mdot, alpha_visc, M, r_AB, r_BC)
-    S_pts   = _Sigma_disk(rs, a, mdot, alpha_visc, M, r_AB, r_BC)
-    H_pts   = H_NT(rs, a, mdot, alpha_visc, M, r_AB, r_BC)
- 
+    # griglia fine interna
+    r_fine  = np.geomspace(rISCO * 1.001, rISCO * 6, 2000)
+    S_fine  = _Sigma_disk(r_fine, a, mdot, alpha_visc, M, r_AB, r_BC)
+    H_fine  = H_NT(r_fine, a, mdot, alpha_visc, M, r_AB, r_BC)
+    Om_fine = 2.0 * np.pi * nu_phi(r_fine, a, M)
+    B_fine  = np.sqrt(np.maximum(4.0 * np.pi * S_fine * Om_fine**2 * H_fine, 0.0))
+
+    r_match = _r_match(a, r_scan_profiles=(r_fine, S_fine, B_fine, Om_fine))
+
+    # applica il raccordo agli stessi profili fini
+    S_racc, H_racc, B_racc, _ = _apply_plunge_raccordo(
+        r_fine, a, S_fine, H_fine, B_fine,
+        r_scan_profiles=(r_fine, S_fine, B_fine, Om_fine),
+    )
+
+    # Sigma_ref: massimo di Σ raccordata nel tratto [r_ISCO, r_match]
+    plunge_mask = r_fine <= r_match
+    if plunge_mask.any():
+        Sigma_ref = float(np.max(S_racc[plunge_mask]))
+    else:
+        Sigma_ref = float(S_racc[0])
+
+    # B_ISCO: valore di B raccordata al primo punto della griglia (≈ r_ISCO)
+    B_ISCO = float(B_racc[0])
+
     return {
         'r_ISCO':       rISCO,
         'r_H':          rH,
         'r_AB':         r_AB,
         'r_BC':         r_BC,
+        'r_match':      r_match,
         'zone_present': zone_present,
-        'Sigma_ISCO':   float(S_pts[1]),
-        'B_ISCO':       float(B_pts[1]),   # plateau magnetico al bordo del disco
+        'Sigma_ISCO':   Sigma_ref,
+        'B_ISCO':       B_ISCO,
     }
 
 # ═══════════════════════════════════════════════════════════════════════════════
