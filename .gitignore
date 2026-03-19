@@ -11,4 +11,4 @@ __pycache__
 *.pdf
 *.svg
 paper_figs
-AEI_plots
+*.tex
