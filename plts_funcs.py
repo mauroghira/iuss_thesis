@@ -186,8 +186,15 @@ def plot_param_colormap(mesh_arrays, labels, freq_grid,
     # 4) COLORMAP (pcolormesh) — usa F_masked
     # -----------------------------------------
     valid_vals = F_masked.compressed()
-    vmin = valid_vals[valid_vals > 0].min() if (valid_vals > 0).any() else None
-    vmax = valid_vals.max() if len(valid_vals) else None
+    valid_vals = valid_vals[valid_vals > 0]
+    if len(valid_vals) == 0:
+        plt.text(0.5, 0.5, "No valid data", transform=plt.gca().transAxes,
+                ha="center", va="center", fontsize=12, color="gray")
+        plt.title(title or f"Colormap of frequency vs {x_param}, {y_param}")
+        plt.xlabel(x_param); plt.ylabel(y_param)
+        return
+    vmin = valid_vals.min()
+    vmax = valid_vals.max()
 
     pcm = plt.pcolormesh(
         X, Y, F_masked,
