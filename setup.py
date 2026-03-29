@@ -201,7 +201,8 @@ def nu_r(r, a, M=M_BH):
     a = np.asarray(a)
     M = np.asarray(M)
     vphi = nu_phi(r, a, M)
-    factor = np.sqrt(1 - (6)/r + (8*a)/r**1.5 - (3*a**2)/r**2)
+    arg = 1 - 6/r + 8*a/r**1.5 - 3*a**2/r**2
+    factor = np.sqrt(np.maximum(arg, 0))   # clamp a 0 sotto ISCO
     return vphi * factor
 
 # Kerr ISCO radius
@@ -218,6 +219,48 @@ def r_isco(a):
 def r_horizon(a):
     a = np.asarray(a)
     return 1 + np.sqrt(1 - a**2)
+
+
+# lindlblad resonances
+def r_ilr(a, nu_obs=NU0, m=1, M=M_BH, n_scan=8000):
+    a = float(a)
+    isco = float(r_isco(a))
+    r = np.geomspace(isco * 1.001, 5000.0, n_scan)
+
+    kappa    = 2*np.pi * nu_r(r, a, M)
+    om_tilde = 2*np.pi*nu_obs - m * 2*np.pi * nu_phi(r, a, M)
+
+    # ILR: omega_tilde + kappa = 0  (transizione da negativo a positivo)
+    diff = om_tilde + kappa
+    sign_changes = np.where(np.diff(np.sign(diff)) > 0)[0]
+    if len(sign_changes) == 0:
+        return np.nan
+
+    i = sign_changes[0]
+    denom = diff[i+1] - diff[i]
+    if denom == 0:
+        return float(r[i])
+    return float(r[i] - diff[i] * (r[i+1] - r[i]) / denom)
+
+def r_olr(a, nu_obs=NU0, m=1, M=M_BH, n_scan=8000):
+    a = float(a)
+    isco = float(r_isco(a))
+    r = np.geomspace(isco * 1.001, 5000.0, n_scan)
+
+    kappa    = 2*np.pi * nu_r(r, a, M)
+    om_tilde = 2*np.pi*nu_obs - m * 2*np.pi * nu_phi(r, a, M)
+
+    # OLR: om_tilde − kappa = 0
+    diff = om_tilde - kappa
+    sign_changes = np.where(np.diff(np.sign(diff)) != 0)[0]
+    if len(sign_changes) == 0:
+        return np.nan
+
+    i = sign_changes[0]
+    denom = diff[i+1] - diff[i]
+    if denom == 0:
+        return float(r[i])
+    return float(r[i] - diff[i] * (r[i+1] - r[i]) / denom)
 
 
 

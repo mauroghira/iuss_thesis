@@ -12,3 +12,4 @@ __pycache__
 *.svg
 paper_figs
 *.tex
+cmodes_plots
