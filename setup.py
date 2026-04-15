@@ -300,3 +300,31 @@ def nu_solid_vect(a, rin, rout, zeta, M=M_BH, n_rad=2000):
     den = np.trapezoid(weight, x, axis=-1)
 
     return num / den
+
+
+import matplotlib.pyplot as plt
+
+def set_style():
+    plt.rcParams.update({
+        #"figure.figsize": (3.4, 2.4),
+        # 3.4 per 1 col, 7 per 2 col
+        "font.family": "serif",
+        "font.size": 8,
+        "axes.titlesize": 8,
+        "axes.labelsize": 8,
+        "xtick.labelsize": 7,
+        "ytick.labelsize": 7,
+        "legend.fontsize": 7,
+        "xtick.direction": "in",
+        "ytick.direction": "in",
+        "xtick.top": True,
+        "ytick.right": True,
+        "xtick.major.size": 4,
+        "ytick.major.size": 4,
+        "xtick.minor.size": 2,
+        "ytick.minor.size": 2,
+        "axes.linewidth": 0.5,
+    })
+def fix_spines(ax):
+    for side in ['top', 'right', 'left', 'bottom']:
+        ax.spines[side].set_visible(True)

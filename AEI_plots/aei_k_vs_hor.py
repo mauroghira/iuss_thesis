@@ -144,7 +144,7 @@ if __name__ == '__main__':
             d['n'].append(k_arr.size)
 
     # ── plot ──────────────────────────────────────────────────────────────────
-    fig, ax = plt.subplots(figsize=(8, 5))
+    fig, ax = plt.subplots(figsize=(6, 3.5))
 
     for label, cfg in MODELS.items():
         d = results[label]
@@ -165,7 +165,7 @@ if __name__ == '__main__':
 
     ax.set_xscale('log')
     ax.set_yscale('log')
-    ax.set_xlabel(r'$H/r$', fontsize=13)
+    ax.set_xlabel(r'$H/R$', fontsize=13)
     ax.set_ylabel(r'median $k$  (dimensionless)', fontsize=13)
     """
     ax.set_title(
