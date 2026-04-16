@@ -14,6 +14,9 @@ from mpl_toolkits.mplot3d import Axes3D          # noqa: F401
 from matplotlib.colors import Normalize, LightSource
 from matplotlib.cm import ScalarMappable
 import matplotlib.cm as cm
+from setup import set_style, fix_spines
+
+set_style()
 
 # ──────────────────────────────────────────────────────────────
 # PARAMETRI
@@ -119,13 +122,13 @@ ELEV, AZIM = 24, -52
 # ──────────────────────────────────────────────────────────────
 # FIGURA
 # ──────────────────────────────────────────────────────────────
-fig = plt.figure(figsize=(11, 9.5), facecolor='white')
+fig = plt.figure(figsize=(7, 5.5), facecolor='white')
 
 # Riserva colonna sinistra per le etichette di riga e colonna destra per colorbar
 gs_outer = gridspec.GridSpec(
     1, 3,
     figure=fig,
-    left=0.07, right=0.91,
+    left=0.015, right=0.87,
     top=0.91, bottom=0.04,
     wspace=0.02
 )
@@ -166,12 +169,12 @@ def style_ax(ax, zlim=1.6):
     ax.set_xticks([-8, 0, 8])
     ax.set_yticks([-8, 0, 8])
     ax.set_zticks([-1, 0, 1])
-    ax.set_xlabel(r'$x\,[r_g]$', fontsize=6, color='#333333',
+    ax.set_xlabel(r'$x\,[r_g]$', color='#333333',
                   labelpad=-7)
-    ax.set_ylabel(r'$y\,[r_g]$', fontsize=6, color='#333333',
+    ax.set_ylabel(r'$y\,[r_g]$', color='#333333',
                   labelpad=-7)
-    ax.set_zlabel(r'$z/H$',      fontsize=6, color='#333333',
-                  labelpad=-5)
+    ax.set_zlabel(r'$z/H$', fontsize=7, color='#333333',labelpad=-9)
+        
     ax.view_init(elev=ELEV, azim=AZIM)
 
 def draw_midplane(ax):
@@ -309,7 +312,7 @@ for col, t in enumerate(T_SNAP):
 # ──────────────────────────────────────────────────────────────
 for col, tlab in enumerate(T_LABELS):
     ax_top = axes[0][col]
-    ax_top.set_title(tlab, fontsize=10, color='#222222',
+    ax_top.set_title(tlab, color='#222222',
                      pad=4, fontstyle='italic')
 
 # ──────────────────────────────────────────────────────────────
@@ -321,8 +324,8 @@ row_y_positions = [0.77, 0.50, 0.23]
 for row, (title, color, ypos) in enumerate(
         zip(ROW_TITLES, ROW_COLORS, row_y_positions)):
     fig.text(
-        0.035, ypos, title,
-        fontsize=9, color=color,
+        0.02, ypos, title,
+        color=color,
         fontweight='bold', fontstyle='italic',
         ha='center', va='center',
         rotation=90
@@ -331,12 +334,12 @@ for row, (title, color, ypos) in enumerate(
 # ──────────────────────────────────────────────────────────────
 # COLORBAR
 # ──────────────────────────────────────────────────────────────
-cbar_ax = fig.add_axes([0.885, 0.12, 0.015, 0.72])
+cbar_ax = fig.add_axes([0.905, 0.12, 0.015, 0.72])
 sm = ScalarMappable(cmap=CMAP, norm=NORM)
 sm.set_array([])
 cbar = fig.colorbar(sm, cax=cbar_ax)
 cbar.set_label(r'$\delta\rho\,/\,\rho_0$  (normalized)',
-               fontsize=7, color='#333333', labelpad=8)
+            color='#333333', labelpad=8)
 cbar.ax.yaxis.set_tick_params(color='#333333', labelsize=6)
 plt.setp(cbar.ax.yaxis.get_ticklabels(), color='#333333')
 cbar.outline.set_edgecolor('#aaaaaa')
@@ -348,7 +351,7 @@ cbar.set_ticks([-1, -0.5, 0, 0.5, 1])
 """
 fig.suptitle(
     "Oscillation modes of a geometrically thin relativistic accretion disk",
-    fontsize=11, color='#d8d0be', y=0.975, fontstyle='italic'
+     color='#d8d0be', y=0.975, fontstyle='italic'
 )
 
 caption = (
@@ -382,7 +385,7 @@ caption_plain = (
 fig.text(
     0.5, 0.005, caption_plain,
     ha='center', va='bottom',
-    fontsize=5.8, color='#7a7a9a',
+    , color='#7a7a9a',
     wrap=True,
     style='italic',
     transform=fig.transFigure
