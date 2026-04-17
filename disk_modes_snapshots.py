@@ -59,8 +59,9 @@ k_c = 0.8 * np.pi / (R_TRAP_OUT - R_TRAP_IN)
 
 def p_mode(t, A=0.9):
     """n=0, m=0: compressione radiale, piano piatto."""
-    dr    = 0.18 * A * ENV * np.cos(k_p * R - t)
-    drho  = A * ENV * np.cos(k_p * R - t)
+    spatial = ENV * np.cos(k_p * R)          # struttura spaziale fissa
+    dr    = 0.18 * A * spatial * np.cos(t)   # onda stazionaria
+    drho  = A * spatial * np.cos(t)
     X     = (R + dr) * np.cos(PHI)
     Y     = (R + dr) * np.sin(PHI)
     Z     = np.zeros_like(R)
@@ -71,10 +72,10 @@ def g_mode(t, A=1.0):
     amp = ENV * cos(k_g*R) * cos(t)  →  zero globale esatto a t=pi/2.
     """
     radial   = np.cos(k_g * R)          # struttura spaziale fissa
-    amp      = A * H_loc * ENV * radial * np.cos(t)
+    amp      = A * H_loc * ENV * radial
     Z_upper  =  amp
     Z_lower  = -amp
-    drho     = A * ENV * radial * np.cos(t)
+    drho     = A * ENV * radial * (np.cos(t))**2
     return X0, Y0, Z_upper, Z_lower, drho
 
 def c_mode(t, A=1.0):
@@ -212,53 +213,21 @@ for col, t in enumerate(T_SNAP):
     # ── G-MODE (riga 1) ──────────────────────────────────────
     ax = axes[1][col]
     Xg, Yg, Zu, Zl, drho_g = g_mode(t)
+    
     fc_up  = CMAP(NORM( drho_g))
     fc_low = CMAP(NORM(-drho_g))
+
     draw_midplane(ax)
 
-    # ── Corpo solido con ordine dinamico ──────────────────────────
-    # mean_amp > 0  → Zu è la faccia superiore (caso normale)
-    # mean_amp < 0  → Zu e Zl si sono invertite → swap ordine di plot
-    mean_amp = float(np.nanmean(Zu))
-
-    if mean_amp >= 0:
-        Z_first, fc_first = Zl, fc_low
-        Z_last,  fc_last  = Zu, fc_up
-        wall_sign = 1.0
-    else:
-        Z_first, fc_first = Zu, fc_up
-        Z_last,  fc_last  = Zl, fc_low
-        wall_sign = -1.0
-
-    # 1) Faccia inferiore
-    ax.plot_surface(Xg, Yg, Z_first,
-                    facecolors=fc_first,
+    # superficie inferiore
+    ax.plot_surface(Xg, Yg, Zl,
+                    facecolors=fc_low,
                     rstride=2, cstride=2,
                     alpha=0.88, shade=True)
 
-    # 2) Pareti laterali (bordo interno e bordo esterno del disco)
-    phi_ring = np.linspace(0, 2 * np.pi, Nphi)
-    for r_edge in [R_IN, R_OUT]:
-        env_e = envelope(np.array([r_edge]))[0]
-        amp_e = abs(H_OVER_R * r_edge * env_e * np.cos(k_g * r_edge) * np.cos(t))
-        # z va sempre dal valore più basso al più alto tra le due superfici
-        z_lo, z_hi = -amp_e, amp_e
-        z_wall = np.linspace(z_lo, z_hi, 12)
-        PHI_W, Z_W = np.meshgrid(phi_ring, z_wall)
-        X_w = r_edge * np.cos(PHI_W)
-        Y_w = r_edge * np.sin(PHI_W)
-        # colore: interpolazione lineare del drho lungo z, coerente con l'ordine attuale
-        t_lin = np.linspace(-1, 1, 12)[:, None] * wall_sign
-        drho_w = t_lin * env_e * np.abs(np.cos(k_g * r_edge) * np.cos(t))
-        fc_w = CMAP(NORM(drho_w * np.ones_like(PHI_W)))
-        ax.plot_surface(X_w, Y_w, Z_W,
-                        facecolors=fc_w,
-                        rstride=1, cstride=4,
-                        alpha=0.88, shade=True)
-
-    # 3) Faccia superiore — ultima: occulta tutto ciò che è dietro
-    ax.plot_surface(Xg, Yg, Z_last,
-                    facecolors=fc_last,
+    # superficie superiore
+    ax.plot_surface(Xg, Yg, Zu,
+                    facecolors=fc_up,
                     rstride=2, cstride=2,
                     alpha=0.88, shade=True)
 
