@@ -24,7 +24,7 @@ from AEI_setups.aei_common import (
     solve_k_aei, compute_beta, compute_dQdr,
     mm, _make_interp,
 )
-from AEI_setups.nt_disc import disk_model_NT
+from aei_2.nt_disc import disk_model_NT
 
 # ══════════════════════════════════════════════════════════════════════════════
 # PARAMETERS

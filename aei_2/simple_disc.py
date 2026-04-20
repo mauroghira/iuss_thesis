@@ -1,5 +1,3 @@
-from .aei_common import HOR
-
 import sys
 sys.path.append("..")
 from setup import *
@@ -80,7 +78,7 @@ def sound_speed_thin(r, a, hr=0.05, M=M_BH):
 # ═══════════════════════════════════════════════════════════════════════════════
 # 2.  ADAPTER PER FZ UNIVERSASLI
 # ═══════════════════════════════════════════════════════════════════════════════
-def disk_model_simple(r_rg, a, B00, Sigma0, alpha_B, alpha_S, hr=HOR, M=M_BH):
+def disk_model_simple(r_rg, a, B00, Sigma0, alpha_B, alpha_S, hr, M=M_BH):
     """
     Modello di disco semplificato con leggi di potenza per B₀ e Σ.
 

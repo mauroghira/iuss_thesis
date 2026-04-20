@@ -21,8 +21,8 @@ warnings.filterwarnings('ignore')
 sys.path.append('..')
 
 from setup import r_isco, Rg_SUN, M_BH
-from AEI_setups.simple_disc import disk_model_simple
-from AEI_setups.nt_disc     import disk_model_NT
+from aei_2.simple_disc import disk_model_simple
+from aei_2.nt_disc     import disk_model_NT
 
 M_SUN_G = 1.989e33   # g
 RG      = Rg_SUN * M_BH   # cm per r_g

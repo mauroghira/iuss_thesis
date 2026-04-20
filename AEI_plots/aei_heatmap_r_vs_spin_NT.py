@@ -36,7 +36,7 @@ from AEI_setups.aei_common import (
     r_ilr, r_olr, r_corotation,
     HOR, ALPHA_VISC, mm, _make_interp,
 )
-from AEI_setups.nt_disc import disk_model_NT
+from aei_2.nt_disc import disk_model_NT
 
 # ══════════════════════════════════════════════════════════════════════════════
 # PARAMETERS

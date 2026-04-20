@@ -118,8 +118,8 @@ def solve_k_aei(r_rg, a, B0, Sigma, c_s, m=mm, M=M_BH):
     om_tilde  = 2 * np.pi * NU0 - m * Omega_phi  # ω_obs − m Ω_φ
 
     # Coefficienti  A k² + B k + C = 0  (tutti in s⁻²)
-    A  = c_s**2   / r_cm**2
-    B  = 2*B0**2  / (Sigma * r_cm)
+    A  = c_s**2 / r_cm**2
+    B  = 2*B0**2  / (Sigma*r_cm)
     C  = kappa_sq - om_tilde**2
 
     Delta = B**2 - 4*A*C

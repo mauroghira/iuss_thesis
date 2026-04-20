@@ -32,7 +32,7 @@ from AEI_setups.aei_common import (
     compute_beta,
     ALPHA_VISC, HOR, mm,
 )
-from AEI_setups.nt_disc import disk_model_NT, nt_boundaries
+from aei_2.nt_disc import disk_model_NT, nt_boundaries
 
 # ══════════════════════════════════════════════════════════════════════════════
 # USER SETTINGS

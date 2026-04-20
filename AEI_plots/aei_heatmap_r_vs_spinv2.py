@@ -27,7 +27,7 @@ from AEI_setups.aei_common import (
     r_ilr, r_olr, r_corotation,
     HOR, mm, _make_interp,
 )
-from AEI_setups.simple_disc import disk_model_simple
+from aei_2.simple_disc import disk_model_simple
 
 # ══════════════════════════════════════════════════════════════════════════════
 # PARAMETERS

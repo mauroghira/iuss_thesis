@@ -132,7 +132,7 @@ Dipendenze: numpy, functools, setup.py, aei_common.py
 import numpy as np
 from functools import lru_cache
 
-from .aei_common import ALPHA_VISC, HOR
+from ..AEI_setups.aei_common import ALPHA_VISC, HOR
 
 import sys
 sys.path.append("..")

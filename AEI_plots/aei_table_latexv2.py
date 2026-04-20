@@ -30,7 +30,7 @@ from AEI_setups.aei_common import (
     solve_k_aei, compute_beta, compute_dQdr,
     mm, _make_interp,
 )
-from AEI_setups.simple_disc import disk_model_simple
+from aei_2.simple_disc import disk_model_simple
 
 # ══════════════════════════════════════════════════════════════════════════════
 # PARAMETERS
