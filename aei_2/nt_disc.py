@@ -132,7 +132,7 @@ Dipendenze: numpy, functools, setup.py, aei_common.py
 import numpy as np
 from functools import lru_cache
 
-from aei_setup import ALPHA_VISC, HOR
+ALPHA_VISC=0.001
 
 import sys
 sys.path.append("..")
@@ -681,8 +681,8 @@ def _Sigma_disk(r, a, mdot, alpha, M, r_AB, r_BC):
     SC = Sigma_C_NT(r, a, mdot, alpha, M)
 
     result = SA.copy()
-    result[r > r_AB] = SB[r > r_AB]
-    result[r > r_BC] = SC[r > r_BC]
+    result[r >= r_AB] = SB[r >= r_AB]
+    result[r >= r_BC] = SC[r >= r_BC]
     return result
 
 
@@ -890,23 +890,6 @@ def disk_model_NT(r_rg, a, mdot, alpha_visc=ALPHA_VISC, hr=None, M=M_BH):
     Hv    = H_NT(r_rg, a, mdot, alpha_visc, M, r_AB, r_BC)
     Omega = 2.0 * np.pi * nu_phi(r_rg, a, M)
     B0    = np.sqrt(np.maximum(4.0 * np.pi * Sigma * Omega**2 * Hv, 0.0))
-
-    # trova r_match dal minimo di Q_AEI sui profili raw
-    # usa una griglia fine vicino all'ISCO, non r_rg (troppo sparsa)
-    rISCO = float(r_isco(a))
-    r_fine  = np.geomspace(rISCO * 1.001, rISCO * 6, 2000)
-    S_fine  = _Sigma_disk(r_fine, a, mdot, alpha_visc, M, r_AB, r_BC)
-    H_fine  = H_NT(r_fine, a, mdot, alpha_visc, M, r_AB, r_BC)
-    Om_fine = 2.0 * np.pi * nu_phi(r_fine, a, M)
-    B_fine  = np.sqrt(np.maximum(4.0 * np.pi * S_fine * Om_fine**2 * H_fine, 0.0))
-
-    """
-    Sigma, Hv, B0, r_match = _apply_plunge_raccordo(
-        r_rg, a, Sigma, Hv, B0,
-        #r_scan_profiles=(r_fine, S_fine, B_fine, Om_fine),
-        Q_threshold=0.1
-    )
-    #"""
     if hr is None:
         hr = Hv / np.maximum(r_rg * Rg_SUN * M, 1e-30)
     else:
@@ -924,6 +907,25 @@ def disk_model_NT(r_rg, a, mdot, alpha_visc=ALPHA_VISC, hr=None, M=M_BH):
     else:
         r_max_hint = r_BC
 
+    r_lo = r_isco(a) * 1.01          # evita la singolarità Q=0 all'ISCO
+    if zone_present['A']:
+        r_hi = r_AB   * 0.999         # resto dentro la zona A
+        r_scan = np.geomspace(r_lo, r_hi, 50)
+        S_scan = _Sigma_disk(r_scan, a, mdot, alpha_visc, M, r_AB, r_BC)
+        S_ref  = float(np.min(S_scan))
+    elif zone_present['B']:
+        r_hi = r_BC   * 0.999         # resto dentro la zona A
+        r_scan = np.geomspace(r_lo, r_hi, 50)
+        S_scan = _Sigma_disk(r_scan, a, mdot, alpha_visc, M, r_AB, r_BC)
+        S_ref  = float(np.max(S_scan))
+    else:
+        r_hi = 25
+        r_scan = np.geomspace(r_lo, r_hi, 50)
+        S_scan = _Sigma_disk(r_scan, a, mdot, alpha_visc, M, r_AB, r_BC)
+        S_ref  = float(np.max(S_scan))        
+
+    B_ref = float(np.max(B0))
+
     info = {
         'r_AB':         r_AB,
         'r_BC':         r_BC,        # frontiera fisica reale (= r_ISCO se zona B assente)
@@ -931,6 +933,8 @@ def disk_model_NT(r_rg, a, mdot, alpha_visc=ALPHA_VISC, hr=None, M=M_BH):
         'zone_present': zone_present,
         'mdot':         mdot,
         'alpha':        alpha_visc,
+        'Sigma_ref':    S_ref,       # riferimento per normalizzazione Σ (min zona A o Σ all'ISCO)
+        'B_ref':        B_ref,      # riferimento per normalizzazione B (B 
     }
     return B0, Sigma, c_s, hr, zone, info
 
@@ -939,7 +943,7 @@ def disk_model_NT(r_rg, a, mdot, alpha_visc=ALPHA_VISC, hr=None, M=M_BH):
 # 9.  VALORI AI BORDI INTERNI
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def disk_inner_values_NT(a, mdot, alpha_visc=ALPHA_VISC, hr=HOR, M=M_BH):
+def disk_inner_values_NT(a, mdot, alpha_visc=ALPHA_VISC, hr=None, M=M_BH):
     """
     Restituisce Σ, H_NT e B ai bordi interni fisicamente significativi.
 
@@ -1006,7 +1010,7 @@ def disk_inner_values_NT(a, mdot, alpha_visc=ALPHA_VISC, hr=HOR, M=M_BH):
 # 10.  DIAGNOSTICA  —  check_continuity_NT
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def check_continuity_NT(a, mdot, alpha_visc=ALPHA_VISC, hr=HOR, M=M_BH,
+def check_continuity_NT(a, mdot, alpha_visc=ALPHA_VISC, hr=None, M=M_BH,
                         tol=0.5, verbose=True, only_multizone=True):
     """
     Misura le discontinuità reali di Σ, H_NT e B alle frontiere r_AB e r_BC.
