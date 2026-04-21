@@ -132,7 +132,7 @@ Dipendenze: numpy, functools, setup.py, aei_common.py
 import numpy as np
 from functools import lru_cache
 
-from ..AEI_setups.aei_common import ALPHA_VISC, HOR
+from aei_setup import ALPHA_VISC, HOR
 
 import sys
 sys.path.append("..")
@@ -810,8 +810,8 @@ def _B0_disk(r, a, mdot, alpha, M, r_AB, r_BC):
     S         = _Sigma_disk(r, a, mdot, alpha, M, r_AB, r_BC)
     Hv        = H_NT(r, a, mdot, alpha, M, r_AB, r_BC)
     Omega_phi = 2.0 * np.pi * nu_phi(r, a, M)
-    B_raw     = np.sqrt(np.maximum(4.0 * np.pi * S * Omega_phi**2 * Hv, 0.0))
-    _, _, B_out, _ = _apply_plunge_raccordo(r, a, S, Hv, B_raw)
+    B_out     = np.sqrt(np.maximum(4.0 * np.pi * S * Omega_phi**2 * Hv, 0.0))
+    #_, _, B_out, _ = _apply_plunge_raccordo(r, a, S, Hv, B_raw)
     return B_out
 
 
@@ -900,12 +900,13 @@ def disk_model_NT(r_rg, a, mdot, alpha_visc=ALPHA_VISC, hr=None, M=M_BH):
     Om_fine = 2.0 * np.pi * nu_phi(r_fine, a, M)
     B_fine  = np.sqrt(np.maximum(4.0 * np.pi * S_fine * Om_fine**2 * H_fine, 0.0))
 
+    """
     Sigma, Hv, B0, r_match = _apply_plunge_raccordo(
         r_rg, a, Sigma, Hv, B0,
         #r_scan_profiles=(r_fine, S_fine, B_fine, Om_fine),
         Q_threshold=0.1
     )
-    
+    #"""
     if hr is None:
         hr = Hv / np.maximum(r_rg * Rg_SUN * M, 1e-30)
     else:
@@ -961,7 +962,6 @@ def disk_inner_values_NT(a, mdot, alpha_visc=ALPHA_VISC, hr=HOR, M=M_BH):
     Nota: per NT r_H cade fuori dal dominio del disco (r_H < r_ISCO sempre),
     quindi B_rH è strutturalmente zero. Usare B_ISCO come parametro di normalizzazione.
     """
-def disk_inner_values_NT(a, mdot, alpha_visc=ALPHA_VISC, hr=HOR, M=M_BH):
     rISCO = float(r_isco(a))
     rH    = float(r_horizon(a))
     r_AB, r_BC, zone_present = nt_boundaries(a, mdot, alpha=alpha_visc, M=M)
@@ -976,7 +976,7 @@ def disk_inner_values_NT(a, mdot, alpha_visc=ALPHA_VISC, hr=HOR, M=M_BH):
     r_match = _r_match(a, r_scan_profiles=(r_fine, S_fine, B_fine, Om_fine))
 
     # applica il raccordo agli stessi profili fini
-    S_racc, H_racc, B_racc, _ = _apply_plunge_raccordo(
+    S_racc, H_racc, B_racc, _ = _apply_plunge_raccordo_old(
         r_fine, a, S_fine, H_fine, B_fine,
         r_scan_profiles=(r_fine, S_fine, B_fine, Om_fine),
     )

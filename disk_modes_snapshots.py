@@ -88,9 +88,9 @@ def c_mode(t, A=1.0):
 # TEMPI DEGLI SNAPSHOT
 # ──────────────────────────────────────────────────────────────
 T_SNAP   = [0.0, np.pi / 4, np.pi / 2]
-T_LABELS = [r"$\omega_g t = 0$",
-            r"$\omega_g t = \pi/4$",
-            r"$\omega_g t = \pi/2$"]
+T_LABELS = [r"$\omega t = 0$",
+            r"$\omega t = \pi/4$",
+            r"$\omega t = \pi/2$"]
 
 # ──────────────────────────────────────────────────────────────
 # STILE PUBBLICAZIONE

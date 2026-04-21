@@ -1,4 +1,8 @@
 
+from xml.parsers.expat import model
+
+from xml.parsers.expat import model
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -9,7 +13,6 @@ import sys, os
 sys.path.insert(0, os.path.dirname(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from simple_disc import disk_model_simple
 from setup import (
     r_isco, nu_phi, nu_r, r_horizon,
     Rg_SUN, M_BH, NU0,
@@ -20,33 +23,45 @@ mm = 1
 ALPHA_VISC = 0.1
 
 
+#  ═══════════════════════════════════════════════════════════════════════════════
+# HELPERS
 # ═══════════════════════════════════════════════════════════════════════════════
-# GLOBAL SETTINGS
-# ═══════════════════════════════════════════════════════════════════════════════
+def make_disk(model, params):
+    """Wrapper for Simple-v1 disk model."""
+    r= params[0]
+    a= params[1]
+    if model.__name__ == 'disk_model_simple':
+        B00 = params[2]
+        Sigma0 = params[3]
+        ALP_B = params[4]
+        ALP_S = params[5]
+        hor = params[6]
+        return model(r, a, B00, Sigma0, ALP_B, ALP_S, hor, M=M_BH)
+    else:
+        mdot = params[2]
+        alpha_visc = params[3]
+        return model(r, a, mdot, alpha_visc=alpha_visc, M=M_BH)
 
-ALP_B = 5 / 4    # Simple-v1 magnetic field exponent
-ALP_S = 3 / 5    # Simple-v1 surface density exponent
+def get_resonances(a, mm):
+    """Compute (r_ILR, r_OLR, r_CR) for given spin and azimuthal mode."""
+    return (r_ilr(a, NU0, mm, M_BH),
+            r_olr(a, NU0, mm, M_BH),
+            r_corotation(a, NU0, mm, M_BH))
 
-CONFIGS = [
-    dict(mm=1, hor=0.05,  color='#3b82f6', ls='-',  label=r'$m=1,\ H/r=0.05$'),
-    dict(mm=1, hor=0.001, color='#f97316', ls='-',  label=r'$m=1,\ H/r=10^{-3}$'),
-    dict(mm=2, hor=0.05,  color='#22c55e', ls='--', label=r'$m=2,\ H/r=0.05$'),
-    dict(mm=2, hor=0.001, color='#ef4444', ls='--', label=r'$m=2,\ H/r=10^{-3}$'),
-]
+def _make_interp(r_nodes, y_nodes):
+    """
+    Restituisce una funzione  f(r) → y  tramite interpolazione lineare
+    in spazio log-log (power-law locale tra i nodi).
+    Usato internamente da find_rossby per calcolare dQ/dr senza
+    richiamare disk_model una seconda volta.
+    """
+    log_r = np.log(r_nodes)
+    log_y = np.log(np.maximum(y_nodes, 1e-300))
 
-A_GRID      = np.linspace(-1, 1, 100)   # spin grid
-B00_GRID    = np.logspace(1,  8, 48)          # B00 [G]
-SIGMA0_GRID = np.logspace(2,  7, 36)          # Sigma0 [g/cm²]
-
-N_R        = 300   # radial points for full profile (ISCO → OLR)
-N_R_CAV    = 200   # radial points for cavity (ISCO → ILR)
-
-# Reference values for dQ/dr plots (only sign matters, not amplitude)
-B00_REF    = 1e4
-SIGMA0_REF = 1e4
-
-# Spins to show in the multi-spin dQ/dr panel
-A_SUBPLOT = [-1, -0.5, 0.0, 0.5, 0.90, 1]
+    def interp(r_query):
+        r_query = np.asarray(r_query, dtype=float)
+        return np.exp(np.interp(np.log(r_query), log_r, log_y))
+    return interp
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -546,34 +561,3 @@ def compute_disk_profile(
     meta = dict(r_H=rH, r_ISCO=rISCO, r_ILR=rILR, r_CR=rCR,
                 mm=mm, hr=hr, M=M, **_merged)
     return df, meta
-
-
-#  ═══════════════════════════════════════════════════════════════════════════════
-# HELPERS
-# ═══════════════════════════════════════════════════════════════════════════════
-def make_disk(r, a, B00, Sigma0, hor):
-    """Wrapper for Simple-v1 disk model."""
-    return disk_model_simple(r, a, B00, Sigma0,
-                             alpha_B=ALP_B, alpha_S=ALP_S, hr=hor, M=M_BH)
-
-def get_resonances(a, mm):
-    """Compute (r_ILR, r_OLR, r_CR) for given spin and azimuthal mode."""
-    return (r_ilr(a, NU0, mm, M_BH),
-            r_olr(a, NU0, mm, M_BH),
-            r_corotation(a, NU0, mm, M_BH))
-
-def _make_interp(r_nodes, y_nodes):
-    """
-    Restituisce una funzione  f(r) → y  tramite interpolazione lineare
-    in spazio log-log (power-law locale tra i nodi).
-    Usato internamente da find_rossby per calcolare dQ/dr senza
-    richiamare disk_model una seconda volta.
-    """
-    log_r = np.log(r_nodes)
-    log_y = np.log(np.maximum(y_nodes, 1e-300))
-
-    def interp(r_query):
-        r_query = np.asarray(r_query, dtype=float)
-        return np.exp(np.interp(np.log(r_query), log_r, log_y))
-
-    return interp
