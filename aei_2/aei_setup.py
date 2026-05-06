@@ -39,9 +39,7 @@ def make_disk(model, params):
 
 def get_resonances(a, mm):
     """Compute (r_ILR, r_OLR, r_CR) for given spin and azimuthal mode."""
-    return (r_ilr(a, NU0, mm, M_BH),
-            r_olr(a, NU0, mm, M_BH),
-            r_corotation(a, NU0, mm, M_BH))
+    return _resonance_radii(a, m=mm)
 
 def _make_interp(r_nodes, y_nodes):
     """
@@ -183,124 +181,72 @@ def compute_dQdr(r_rg, a, B0_func, Sigma_func, M=M_BH, dr_frac=0.01):
 # 2b.  RISONANZE LINDBLAD E COROTAZIONE
 # ═══════════════════════════════════════════════════════════════════════════
 
-def r_corotation(a, nu_obs=NU0, m=mm, M=M_BH, n_scan=8000):
+def _resonance_radii(a, nu_obs=NU0, m=mm, M=M_BH, n_scan=8000):
     """
-    Raggio di corotazione: il raggio dove ω̃ = ω_obs − m Ω_φ = 0,
-    ovvero dove Ω_φ(r_CR) = ω_obs / m.
-
-    Al raggio di corotazione l'onda spirale AEI ruota solidalmente con
-    il disco — è il centro geometrico dell'instabilità di Rossby.
-
-    Parametri
-    ----------
-    a      : float   spin adimensionale  [−1, 1]
-    nu_obs : float   frequenza osservata [Hz]  (default NU0)
-    m      : int     numero d'onda azimutale
-    M      : float   massa BH [M_sun]
-    n_scan : int     punti di scansione radiale
+    Calcola tutti e tre i raggi di risonanza in un'unica passata,
+    evitando ricalcoli ridondanti di nu_phi e nu_r.
 
     Restituisce
     -----------
-    r_CR : float   raggio di corotazione in r_g  (NaN se non trovato)
+    r_CR, r_ILR, r_OLR : float  raggi in r_g (NaN se non trovati)
     """
-    a = float(a)
-    isco = float(r_isco(a))
-    r = np.geomspace(isco * 1.001, 5000.0, n_scan)
-    om_tilde = 2*np.pi*nu_obs - m * 2*np.pi * nu_phi(r, a, M)
-    # corotation: om_tilde cambia segno (da positivo a negativo procedendo verso l'interno)
-    idx = np.where(np.diff(np.sign(om_tilde)) != 0)[0]
-    if len(idx) == 0:
-        return np.nan
-    # interpolazione lineare al punto di zero
-    i = idx[0]
-    r_cr = r[i] - om_tilde[i] * (r[i+1] - r[i]) / (om_tilde[i+1] - om_tilde[i])
-    return float(r_cr)
+    a     = float(a)
+    isco  = float(r_isco(a))
+    r     = np.geomspace(isco * 1.001, 5000.0, n_scan)
 
+    # calcolo unico delle frequenze
+    om_phi   = 2 * np.pi * nu_phi(r, a, M)   # Ω_φ(r)
+    kappa    = 2 * np.pi * nu_r(r, a, M)      # κ(r)
+    om_obs   = 2 * np.pi * nu_obs
+    om_tilde = om_obs - m * om_phi             # ω̃(r)
+
+    def _find_zero(f, sign_condition=None):
+        """
+        Trova il primo zero di f(r) per interpolazione lineare.
+        sign_condition: 'pos_to_neg', 'neg_to_pos', o None (qualsiasi cambio)
+        """
+        signs = np.sign(f)
+        diffs = np.diff(signs)
+
+        if sign_condition == 'pos_to_neg':
+            idx = np.where(diffs < 0)[0]
+        elif sign_condition == 'neg_to_pos':
+            idx = np.where(diffs > 0)[0]
+        else:
+            idx = np.where(diffs != 0)[0]
+
+        if len(idx) == 0:
+            return np.nan
+
+        i = idx[0]
+        denom = f[i+1] - f[i]
+        if denom == 0:
+            return float(r[i])
+        return float(r[i] - f[i] * (r[i+1] - r[i]) / denom)
+
+    # corotation: ω̃ = 0, da positivo a negativo verso l'interno
+    # (siccome andiamo da r grande a r piccolo, lo scan è inverso:
+    #  usiamo il primo cambio qualsiasi e lasciamo la fisica guidare)
+    r_cr  = _find_zero(om_tilde)
+
+    # ILR: ω̃ + κ = 0
+    r_ilr = _find_zero(om_tilde + kappa, sign_condition='neg_to_pos')
+
+    # OLR: ω̃ − κ = 0
+    r_olr = _find_zero(om_tilde - kappa)
+
+    return r_cr, r_ilr, r_olr
+
+
+# wrapper per retrocompatibilità
+def r_corotation(a, nu_obs=NU0, m=mm, M=M_BH, n_scan=8000):
+    return _resonance_radii(a, nu_obs, m, M, n_scan)[0]
 
 def r_ilr(a, nu_obs=NU0, m=mm, M=M_BH, n_scan=8000):
-    """
-    Inner Lindblad Resonance (ILR): confine esterno della cavity AEI.
-
-    Condizione: ω̃ + κ = 0  (dove ω̃ = ν_obs - m Ω_φ < 0 vicino all ISCO).
-
-    Significato fisico
-    ------------------
-    Vicino all ISCO, Ω_φ >> ν_obs/m → ω̃ < 0.
-    La cavity di propagazione dell onda AEI è r_ISCO < r < r_ILR
-    dove ω̃² > κ², ovvero ω̃ < -κ (lato interno della risonanza).
-    Alla ILR (ω̃ = -κ) le onde vengono riflesse e formano standing waves
-    con autofequenze discrete — le uniche configurazioni che producono QPO.
-
-    Parametri
-    ----------
-    a      : float   spin adimensionale
-    nu_obs : float   frequenza osservata [Hz]
-    m      : int     numero d onda azimutale
-    M      : float   massa BH [M_sun]
-    n_scan : int     punti di scansione radiale
-
-    Restituisce
-    -----------
-    r_ILR : float   raggio ILR in r_g  (NaN se non trovato)
-    """
-    a = float(a)
-    isco = float(r_isco(a))
-    r = np.geomspace(isco * 1.001, 5000.0, n_scan)
-
-    kappa    = 2*np.pi * nu_r(r, a, M)
-    om_tilde = 2*np.pi*nu_obs - m * 2*np.pi * nu_phi(r, a, M)
-
-    # ILR: omega_tilde + kappa = 0  (transizione da negativo a positivo)
-    diff = om_tilde + kappa
-    sign_changes = np.where(np.diff(np.sign(diff)) > 0)[0]
-    if len(sign_changes) == 0:
-        return np.nan
-
-    i = sign_changes[0]
-    denom = diff[i+1] - diff[i]
-    if denom == 0:
-        return float(r[i])
-    return float(r[i] - diff[i] * (r[i+1] - r[i]) / denom)
+    return _resonance_radii(a, nu_obs, m, M, n_scan)[1]
 
 def r_olr(a, nu_obs=NU0, m=mm, M=M_BH, n_scan=8000):
-    """
-    Outer Lindblad Resonance (OLR): ω̃ − κ = 0.
-
-    The OLR marks the outer boundary of the propagation region for
-    outward-propagating density waves. It satisfies:
-
-        ω_obs − m·Ω_φ(r) = +κ(r)
-
-    Parameters
-    ----------
-    a      : float   dimensionless spin  [−1, 1]
-    nu_obs : float   observed frequency  [Hz]  (default NU0)
-    m      : int     azimuthal wavenumber
-    M      : float   BH mass [M_sun]
-    n_scan : int     radial scan points
-
-    Returns
-    -------
-    r_OLR : float   OLR radius in r_g  (NaN if not found)
-    """
-    a = float(a)
-    isco = float(r_isco(a))
-    r = np.geomspace(isco * 1.001, 5000.0, n_scan)
-
-    kappa    = 2*np.pi * nu_r(r, a, M)
-    om_tilde = 2*np.pi*nu_obs - m * 2*np.pi * nu_phi(r, a, M)
-
-    # OLR: om_tilde − kappa = 0
-    diff = om_tilde - kappa
-    sign_changes = np.where(np.diff(np.sign(diff)) != 0)[0]
-    if len(sign_changes) == 0:
-        return np.nan
-
-    i = sign_changes[0]
-    denom = diff[i+1] - diff[i]
-    if denom == 0:
-        return float(r[i])
-    return float(r[i] - diff[i] * (r[i+1] - r[i]) / denom)
+    return _resonance_radii(a, nu_obs, m, M, n_scan)[2]
 
 
 

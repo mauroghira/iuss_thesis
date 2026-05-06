@@ -221,46 +221,72 @@ def r_horizon(a):
     return 1 + np.sqrt(1 - a**2)
 
 
-# lindlblad resonances
-def r_ilr(a, nu_obs=NU0, m=1, M=M_BH, n_scan=8000):
-    a = float(a)
-    isco = float(r_isco(a))
-    r = np.geomspace(isco * 1.001, 5000.0, n_scan)
+def _resonance_radii(a, m, nu_obs=NU0, M=M_BH, n_scan=8000):
+    """
+    Calcola tutti e tre i raggi di risonanza in un'unica passata,
+    evitando ricalcoli ridondanti di nu_phi e nu_r.
 
-    kappa    = 2*np.pi * nu_r(r, a, M)
-    om_tilde = 2*np.pi*nu_obs - m * 2*np.pi * nu_phi(r, a, M)
+    Restituisce
+    -----------
+    r_CR, r_ILR, r_OLR : float  raggi in r_g (NaN se non trovati)
+    """
+    a     = float(a)
+    isco  = float(r_isco(a))
+    r     = np.geomspace(isco * 1.001, 5000.0, n_scan)
 
-    # ILR: omega_tilde + kappa = 0  (transizione da negativo a positivo)
-    diff = om_tilde + kappa
-    sign_changes = np.where(np.diff(np.sign(diff)) > 0)[0]
-    if len(sign_changes) == 0:
-        return np.nan
+    # calcolo unico delle frequenze
+    om_phi   = 2 * np.pi * nu_phi(r, a, M)   # Ω_φ(r)
+    kappa    = 2 * np.pi * nu_r(r, a, M)      # κ(r)
+    om_obs   = 2 * np.pi * nu_obs
+    om_tilde = om_obs - m * om_phi             # ω̃(r)
 
-    i = sign_changes[0]
-    denom = diff[i+1] - diff[i]
-    if denom == 0:
-        return float(r[i])
-    return float(r[i] - diff[i] * (r[i+1] - r[i]) / denom)
+    def _find_zero(f, sign_condition=None):
+        """
+        Trova il primo zero di f(r) per interpolazione lineare.
+        sign_condition: 'pos_to_neg', 'neg_to_pos', o None (qualsiasi cambio)
+        """
+        signs = np.sign(f)
+        diffs = np.diff(signs)
 
-def r_olr(a, nu_obs=NU0, m=1, M=M_BH, n_scan=8000):
-    a = float(a)
-    isco = float(r_isco(a))
-    r = np.geomspace(isco * 1.001, 5000.0, n_scan)
+        if sign_condition == 'pos_to_neg':
+            idx = np.where(diffs < 0)[0]
+        elif sign_condition == 'neg_to_pos':
+            idx = np.where(diffs > 0)[0]
+        else:
+            idx = np.where(diffs != 0)[0]
 
-    kappa    = 2*np.pi * nu_r(r, a, M)
-    om_tilde = 2*np.pi*nu_obs - m * 2*np.pi * nu_phi(r, a, M)
+        if len(idx) == 0:
+            return np.nan
 
-    # OLR: om_tilde − kappa = 0
-    diff = om_tilde - kappa
-    sign_changes = np.where(np.diff(np.sign(diff)) != 0)[0]
-    if len(sign_changes) == 0:
-        return np.nan
+        i = idx[0]
+        denom = f[i+1] - f[i]
+        if denom == 0:
+            return float(r[i])
+        return float(r[i] - f[i] * (r[i+1] - r[i]) / denom)
 
-    i = sign_changes[0]
-    denom = diff[i+1] - diff[i]
-    if denom == 0:
-        return float(r[i])
-    return float(r[i] - diff[i] * (r[i+1] - r[i]) / denom)
+    # corotation: ω̃ = 0, da positivo a negativo verso l'interno
+    # (siccome andiamo da r grande a r piccolo, lo scan è inverso:
+    #  usiamo il primo cambio qualsiasi e lasciamo la fisica guidare)
+    r_cr  = _find_zero(om_tilde)
+
+    # ILR: ω̃ + κ = 0
+    r_ilr = _find_zero(om_tilde + kappa, sign_condition='neg_to_pos')
+
+    # OLR: ω̃ − κ = 0
+    r_olr = _find_zero(om_tilde - kappa)
+
+    return r_cr, r_ilr, r_olr
+
+
+# wrapper per retrocompatibilità
+def r_corotation(a, m,  nu_obs=NU0, M=M_BH, n_scan=8000):
+    return _resonance_radii(a, m, nu_obs, M, n_scan)[0]
+
+def r_ilr(a, m,  nu_obs=NU0, M=M_BH, n_scan=8000):
+    return _resonance_radii(a, m, nu_obs, M, n_scan)[1]
+
+def r_olr(a, m, nu_obs=NU0, M=M_BH, n_scan=8000):
+    return _resonance_radii(a, m, nu_obs, M, n_scan)[2]
 
 
 
@@ -303,6 +329,38 @@ def nu_solid_vect(a, rin, rout, zeta, M=M_BH, n_rad=2000):
 
 
 import matplotlib.pyplot as plt
+
+def set_style_beamer():
+    # Beamer 16:9: textwidth ≈ 12.8 cm = 5.04 in
+    # figura intera = ~5 in, mezza figura = ~2.4 in
+    # font size base beamer = 11pt → label ~10pt nei grafici
+    
+    plt.rcParams.update({
+        # "figure.figsize": (5.0, 3.1),   # figura intera (aspect 16:10 circa)
+        # "figure.figsize": (2.4, 2.4),   # figura quadrata mezza colonna
+        # "figure.figsize": (5.0, 2.4),   # figura wide intera larghezza
+        
+        "font.family": "serif",
+        "font.size": 11,
+        "axes.titlesize": 11,
+        "axes.labelsize": 11,
+        "xtick.labelsize": 10,
+        "ytick.labelsize": 10,
+        "legend.fontsize": 9,
+        
+        "xtick.direction": "in",
+        "ytick.direction": "in",
+        "xtick.top": True,
+        "ytick.right": True,
+        
+        "xtick.major.size": 5,
+        "ytick.major.size": 5,
+        "xtick.minor.size": 2.5,
+        "ytick.minor.size": 2.5,
+        "axes.linewidth": 0.8,
+        "lines.linewidth": 1.5,      # linee più visibili su schermo
+        "lines.markersize": 5,
+    })
 
 def set_style():
     plt.rcParams.update({
