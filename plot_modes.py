@@ -90,9 +90,9 @@ PANE_COL = 'white'
 
 MODE_COLORS = ['#1a6bbf', '#b07800', '#1a8a1a']
 MODE_TITLES = [
-    r"(0,0) p-mode",
-    r"(0,1) g-mode",
-    r"(1,1) c-mode",
+    f"m=0, n=0\n p-mode",
+    f"m=0, n=1\n g-mode",
+    f"m=1, n=1\n c-mode",
 ]
 
 ELEV, AZIM = 24, -52
@@ -101,7 +101,7 @@ t = 0.0   # solo snapshot iniziale
 # ──────────────────────────────────────────────────────────────
 # FIGURA: 1 riga × 3 colonne + colorbar
 # ──────────────────────────────────────────────────────────────
-fig = plt.figure(figsize=(5, 2), facecolor='white')
+fig = plt.figure(figsize=(5, 2), facecolor='white', dpi=300)
 
 gs = gridspec.GridSpec(
     1, 4,
@@ -115,7 +115,7 @@ gs = gridspec.GridSpec(
 ax_p = fig.add_subplot(gs[0, 0], projection='3d')
 ax_g = fig.add_subplot(gs[0, 1], projection='3d')
 ax_c = fig.add_subplot(gs[0, 2], projection='3d')
-cbar_ax = fig.add_axes([0.905, 0.2, 0.018, 0.5])
+cbar_ax = fig.add_axes([0.905, 0.18, 0.018, 0.5])
 
 ls = LightSource(azdeg=225, altdeg=35)
 
@@ -210,7 +210,7 @@ style_ax(ax_c, zlim=1.6)
 #ax_c.set_title(MODE_TITLES[2], color=MODE_COLORS[2], pad=4)
 
 # invece di ax_p.set_title(...), ax_g.set_title(...), ax_c.set_title(...)
-title_y = 0.2   # abbassa questo valore finché non è dove vuoi
+title_y = 0.15   # abbassa questo valore finché non è dove vuoi
 fig.text(0.17, title_y, MODE_TITLES[0], color=MODE_COLORS[0], ha='center')
 fig.text(0.465, title_y, MODE_TITLES[1], color=MODE_COLORS[1], ha='center')
 fig.text(0.75, title_y, MODE_TITLES[2], color=MODE_COLORS[2], ha='center')
@@ -232,7 +232,7 @@ cbar.set_ticks([-1, -0.5, 0, 0.5, 1])
 plt.savefig(
     "presentazione/disk_modes_row.pdf",
     bbox_inches='tight',
-    facecolor='white'
+    facecolor='white', dpi=300
 )
 
 print("Salvato: disk_modes_row.pdf")
