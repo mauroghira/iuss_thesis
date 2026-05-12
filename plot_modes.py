@@ -106,36 +106,24 @@ fig = plt.figure(figsize=(5, 2), facecolor='white')
 gs = gridspec.GridSpec(
     1, 4,
     figure=fig,
-    left=0.02, right=0.91,
-    top=0.88, bottom=0.05,
-    wspace=0.02,
-    width_ratios=[1, 1, 1, 0.06]
+    left=0.0, right=0.88,
+    top=1.05, bottom=-0.05,   # sconfina intenzionalmente per tagliare il bianco
+    wspace=-0.2,              # pannelli più vicini
+    width_ratios=[1, 1, 1, 0.06]    
 )
 
 ax_p = fig.add_subplot(gs[0, 0], projection='3d')
 ax_g = fig.add_subplot(gs[0, 1], projection='3d')
 ax_c = fig.add_subplot(gs[0, 2], projection='3d')
-cbar_ax = fig.add_axes([0.925, 0.12, 0.015, 0.70])
+cbar_ax = fig.add_axes([0.905, 0.2, 0.018, 0.5])
 
 ls = LightSource(azdeg=225, altdeg=35)
 
 def style_ax(ax, zlim=1.6):
-    ax.set_facecolor(PANE_COL)
-    for pane in [ax.xaxis.pane, ax.yaxis.pane, ax.zaxis.pane]:
-        pane.fill = False
-        pane.set_edgecolor(GRID_COL)
-    ax.grid(True, color=GRID_COL, linewidth=0.35, alpha=0.7)
-    ax.tick_params(colors='#555555', labelsize=5, pad=-3,
-                   length=2, width=0.5)
     ax.set_xlim(-R_OUT, R_OUT)
     ax.set_ylim(-R_OUT, R_OUT)
     ax.set_zlim(-zlim, zlim)
-    ax.set_xticks([-8, 0, 8])
-    ax.set_yticks([-8, 0, 8])
-    ax.set_zticks([-1, 0, 1])
-    ax.set_xlabel(r'$x\,[r_g]$', color='#333333', labelpad=-7)
-    ax.set_ylabel(r'$y\,[r_g]$', color='#333333', labelpad=-7)
-    ax.set_zlabel(r'$z/H$', fontsize=7, color='#333333', labelpad=-9)
+    ax.set_axis_off()
     ax.view_init(elev=ELEV, azim=AZIM)
 
 def draw_midplane(ax):
@@ -162,8 +150,7 @@ for rr in np.linspace(R_TRAP_IN + 0.5, R_TRAP_OUT - 0.5, 4):
     ax_p.plot(circ_x, circ_y, np.zeros_like(phi),
               color='#1a6bbf', alpha=0.35, linewidth=0.6)
 style_ax(ax_p, zlim=1.4)
-ax_p.set_title(MODE_TITLES[0], color=MODE_COLORS[0],
-               fontweight='bold', fontstyle='italic', pad=4)
+#ax_p.set_title(MODE_TITLES[0], color=MODE_COLORS[0], pad=4)
 
 # ── G-MODE ──────────────────────────────────────────────────
 Xg, Yg, Zu, Zl, drho_g = g_mode(t)
@@ -193,8 +180,7 @@ for rr in [5.5, 7.2]:
                     color='#cc4400', alpha=0.65, linewidth=0.7,
                     arrow_length_ratio=0.35)
 style_ax(ax_g, zlim=1.6)
-ax_g.set_title(MODE_TITLES[1], color=MODE_COLORS[1],
-               fontweight='bold', fontstyle='italic', pad=4)
+#ax_g.set_title(MODE_TITLES[1], color=MODE_COLORS[1], pad=4)
 
 # ── C-MODE ──────────────────────────────────────────────────
 Xc, Yc, Zc, drho_c = c_mode(t)
@@ -221,15 +207,20 @@ ax_c.plot([0, -R_OUT * np.cos(theta_node)],
           [0, 0],
           color='#1a8a1a', alpha=0.6, linewidth=0.8, linestyle='--')
 style_ax(ax_c, zlim=1.6)
-ax_c.set_title(MODE_TITLES[2], color=MODE_COLORS[2],
-               fontweight='bold', fontstyle='italic', pad=4)
+#ax_c.set_title(MODE_TITLES[2], color=MODE_COLORS[2], pad=4)
+
+# invece di ax_p.set_title(...), ax_g.set_title(...), ax_c.set_title(...)
+title_y = 0.2   # abbassa questo valore finché non è dove vuoi
+fig.text(0.17, title_y, MODE_TITLES[0], color=MODE_COLORS[0], ha='center')
+fig.text(0.465, title_y, MODE_TITLES[1], color=MODE_COLORS[1], ha='center')
+fig.text(0.75, title_y, MODE_TITLES[2], color=MODE_COLORS[2], ha='center')
 
 # ── COLORBAR ────────────────────────────────────────────────
 sm = ScalarMappable(cmap=CMAP, norm=NORM)
 sm.set_array([])
 cbar = fig.colorbar(sm, cax=cbar_ax)
 cbar.set_label(r'$\delta\rho\,/\,\rho_0$',
-               color='#333333', labelpad=8)
+               color='#333333', labelpad=4, fontsize=9)
 cbar.ax.yaxis.set_tick_params(color='#333333', labelsize=6)
 plt.setp(cbar.ax.yaxis.get_ticklabels(), color='#333333')
 cbar.outline.set_edgecolor('#aaaaaa')
