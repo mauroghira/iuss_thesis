@@ -30,8 +30,8 @@ ALPHA = 0.1            # viscosita' turbolenta (Kato usa 0.1-0.3 in Fig. 12)
 NU_TARGET = NU0        # 3.3e-5 Hz, J1257
 
 r_in = r_isco(A_SPIN)
-r_scan_max = 5000.0  # AGN: raggi molto piu' estesi che per XRB
-kappa_max = nu_r(np.geomspace(r_in * 1.001, r_scan_max, 20000), A_SPIN, M_BH_TEST).max()
+r_scan_max = 200.0  
+kappa_max = nu_r(np.geomspace(r_in * 1.001, r_scan_max, 2000), A_SPIN, M_BH_TEST).max()
 
 print(f"kappa_max(a={A_SPIN}, M={M_BH_TEST:.1e} Msun) = {kappa_max:.3e} Hz")
 print(f"nu0 (target) = {NU_TARGET:.3e} Hz")
@@ -60,11 +60,11 @@ else:
     fig, ax = plt.subplots(figsize=(5.0, 3.8))
     fix_spines(ax)
 
-    ax.plot(r_grid, t_visc, color='#C0392B', lw=1.5,
+    ax.plot(r_grid, t_visc, color='#C0392B', lw=1.5, ls='--',
             label=r"$t_{\rm visc}^{\rm Kato}(r)$")
-    ax.axhline(t_wave, color='steelblue', ls='--', lw=1.5,
+    ax.axhline(t_wave, color='steelblue', ls=':', lw=1.5,
                label=r"$t_{\rm wave}$ (finestra intera)")
-    ax.axhline(P_osc, color='black', ls=':', lw=1.5,
+    ax.axhline(P_osc, color='black', ls='-', lw=1.5,
                label=r"$P_{\rm osc}=1/\nu_0$")
 
     ax.axvline(r_in, color='purple', ls='--', lw=0.8, alpha=0.6)
@@ -77,6 +77,7 @@ else:
     ax.legend(loc='best', frameon=True, fontsize=7.5)
 
     plt.tight_layout()
-    plt.savefig('/home/claude/tscales/modes_timescales_J1257.pdf', bbox_inches='tight')
+    plt.savefig('modes_timescales_J1257.pdf', bbox_inches='tight')
     print("Salvato: modes_timescales_J1257.pdf")
     plt.close()
+x
