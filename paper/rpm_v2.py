@@ -19,7 +19,7 @@ from projection_plots import ChannelGrid, plot_projection_aR, plot_projection_aM
 set_style()
 
 # ---- scegli qui le sorgenti da mostrare, nell'ordine desiderato -------
-SOURCE_INDICES = [10, 0, 9, 11]   # es: J1257, RE J1034+396, NGC 4945, 1ES 1927+654
+SOURCE_INDICES = [0, 9, 10, 11]   # es: J1257, RE J1034+396, NGC 4945, 1ES 1927+654
 # -------------------------------------------------------------------
 
 sources = select_sources(SOURCE_INDICES)
@@ -34,8 +34,8 @@ channels = [
     (r"$\nu_{\varphi}$", g_phi),
 ]
 
-cmap = plt.cm.tab10
-colors = [cmap(i % 10) for i in range(len(sources))]
+cmap = plt.cm.tab20
+colors = [cmap(i) for i in range(len(sources))]
 
 fig, axes = plt.subplots(3, 3, figsize=(9.5, 9.5))
 
