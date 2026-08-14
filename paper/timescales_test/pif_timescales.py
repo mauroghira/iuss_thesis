@@ -43,7 +43,7 @@ set_style()
 
 # --- parametri fissi (assunzioni dichiarate, come nello script originale) ---
 ALPHA = 0.01
-A_VALS = np.array([-0.9, -0.5, 0.0, 0.5, 0.9, 0.998])   # pannello 1
+A_VALS = np.array([-0.9, -0.5, -0.25, 0.0, 0.01, 0.25, 0.5, 0.9, 0.998])   # pannello 1
 A_FIXED = 0.5                                              # pannello 2
 N_M = 6                                                     # n. curve M nel pannello 2
 R_OUT_GRID = np.logspace(0, np.log10(200.0), 100)
