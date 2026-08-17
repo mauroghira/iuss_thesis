@@ -271,10 +271,50 @@ def r_horizon(a):
     return 1 + np.sqrt(1 - a**2)
 
 
-def _resonance_radii(a, m, nu_obs=NU0, M=M_BH, n_scan=8000):
+def _find_zero_crossing(r, f, sign_condition=None):
+    """
+    Trova il primo zero di f(r) (array valutato sulla griglia r) per
+    interpolazione lineare tra campioni consecutivi.
+
+    sign_condition: 'pos_to_neg', 'neg_to_pos', o None (qualsiasi cambio).
+
+    Estratta a livello di modulo (prima era una closure interna di
+    _resonance_radii) per poter essere riusata da QUALUNQUE routine di
+    root-finding su una risonanza del tipo omega_tilde ± (frequenza
+    secondaria) = 0, senza duplicare la logica: sia per r_CR/r_ILR/r_OLR
+    qui sotto, sia per r_vertical_resonance (risonanza verticale
+    generalizzata, usata dal c-mode di growth_rate.py).
+    """
+    signs = np.sign(f)
+    diffs = np.diff(signs)
+
+    if sign_condition == 'pos_to_neg':
+        idx = np.where(diffs < 0)[0]
+    elif sign_condition == 'neg_to_pos':
+        idx = np.where(diffs > 0)[0]
+    else:
+        idx = np.where(diffs != 0)[0]
+
+    if len(idx) == 0:
+        return np.nan
+
+    i = idx[0]
+    denom = f[i + 1] - f[i]
+    if denom == 0:
+        return float(r[i])
+    return float(r[i] - f[i] * (r[i + 1] - r[i]) / denom)
+
+
+def _resonance_radii(a, m, nu_obs=NU0, M=M_BH, n_scan=8000, r_scan_max=5000.0):
     """
     Calcola tutti e tre i raggi di risonanza in un'unica passata,
     evitando ricalcoli ridondanti di nu_phi e nu_r.
+
+    r_scan_max : raggio massimo dello scan radiale (default 5000.0,
+        IDENTICO al valore hardcoded nella versione precedente: nessun
+        cambiamento di comportamento per i chiamanti che non lo
+        specificano esplicitamente). Esposto come parametro per essere
+        riusato da r_vertical_resonance con lo stesso dominio di ricerca.
 
     Restituisce
     -----------
@@ -282,7 +322,7 @@ def _resonance_radii(a, m, nu_obs=NU0, M=M_BH, n_scan=8000):
     """
     a     = float(a)
     isco  = float(r_isco(a))
-    r     = np.geomspace(isco * 1.001, 5000.0, n_scan)
+    r     = np.geomspace(isco * 1.001, r_scan_max, n_scan)
 
     # calcolo unico delle frequenze
     om_phi   = 2 * np.pi * nu_phi(r, a, M)   # Ω_φ(r)
@@ -290,53 +330,71 @@ def _resonance_radii(a, m, nu_obs=NU0, M=M_BH, n_scan=8000):
     om_obs   = 2 * np.pi * nu_obs
     om_tilde = om_obs - m * om_phi             # ω̃(r)
 
-    def _find_zero(f, sign_condition=None):
-        """
-        Trova il primo zero di f(r) per interpolazione lineare.
-        sign_condition: 'pos_to_neg', 'neg_to_pos', o None (qualsiasi cambio)
-        """
-        signs = np.sign(f)
-        diffs = np.diff(signs)
-
-        if sign_condition == 'pos_to_neg':
-            idx = np.where(diffs < 0)[0]
-        elif sign_condition == 'neg_to_pos':
-            idx = np.where(diffs > 0)[0]
-        else:
-            idx = np.where(diffs != 0)[0]
-
-        if len(idx) == 0:
-            return np.nan
-
-        i = idx[0]
-        denom = f[i+1] - f[i]
-        if denom == 0:
-            return float(r[i])
-        return float(r[i] - f[i] * (r[i+1] - r[i]) / denom)
-
     # corotation: ω̃ = 0, da positivo a negativo verso l'interno
     # (siccome andiamo da r grande a r piccolo, lo scan è inverso:
     #  usiamo il primo cambio qualsiasi e lasciamo la fisica guidare)
-    r_cr  = _find_zero(om_tilde)
+    r_cr  = _find_zero_crossing(r, om_tilde)
 
     # ILR: ω̃ + κ = 0
-    r_ilr = _find_zero(om_tilde + kappa, sign_condition='neg_to_pos')
+    r_ilr = _find_zero_crossing(r, om_tilde + kappa, sign_condition='neg_to_pos')
 
     # OLR: ω̃ − κ = 0
-    r_olr = _find_zero(om_tilde - kappa)
+    r_olr = _find_zero_crossing(r, om_tilde - kappa)
 
     return r_cr, r_ilr, r_olr
 
 
 # wrapper
-def r_corotation(a, m,  nu_obs=NU0, M=M_BH, n_scan=8000):
-    return _resonance_radii(a, m, nu_obs, M, n_scan)[0]
+def r_corotation(a, m,  nu_obs=NU0, M=M_BH, n_scan=8000, r_scan_max=5000.0):
+    return _resonance_radii(a, m, nu_obs, M, n_scan, r_scan_max)[0]
 
-def r_ilr(a, m,  nu_obs=NU0, M=M_BH, n_scan=8000):
-    return _resonance_radii(a, m, nu_obs, M, n_scan)[1]
+def r_ilr(a, m,  nu_obs=NU0, M=M_BH, n_scan=8000, r_scan_max=5000.0):
+    return _resonance_radii(a, m, nu_obs, M, n_scan, r_scan_max)[1]
 
-def r_olr(a, m, nu_obs=NU0, M=M_BH, n_scan=8000):
-    return _resonance_radii(a, m, nu_obs, M, n_scan)[2]
+def r_olr(a, m, nu_obs=NU0, M=M_BH, n_scan=8000, r_scan_max=5000.0):
+    return _resonance_radii(a, m, nu_obs, M, n_scan, r_scan_max)[2]
+
+
+def r_vertical_resonance(a, m, n, nu_obs=NU0, M=M_BH, n_scan=8000, r_scan_max=5000.0):
+    """
+    Raggio di risonanza verticale generalizzata: primo r, scandendo da
+    r_isco(a) verso l'esterno, dove
+
+        |omega_tilde(r)| = sqrt(n) * Omega_perp(r)
+        <=>  omega_tilde(r) + sqrt(n)*Omega_perp(r) = 0
+
+    Giustificazione della condizione (stessa struttura di r_ilr sopra,
+    con Omega_perp=2*pi*nu_theta al posto di kappa=2*pi*nu_r):
+    per r in [r_isco, r_corotation), omega_tilde(r) = omega_obs -
+    m*Omega_phi(r) e' NEGATIVO, perche' vicino a r_isco l'orbita
+    kepleriana e' molto piu' rapida della frequenza osservata
+    (Omega_phi(r_isco) >> omega_obs/m), e Omega_phi(r) e' strettamente
+    decrescente (g_phi(r,a)=cost/(r^1.5+a)), quindi omega_tilde cresce
+    monotonicamente verso omega_obs (finito) per r->r_corotation^-.
+    Percio' |omega_tilde|=-omega_tilde su tutto il dominio, e la
+    condizione diventa omega_tilde+sqrt(n)*Omega_perp=0 con il primo
+    attraversamento da negativo a positivo (sign_condition='neg_to_pos')
+    che individua il primo raggio in cui sqrt(n)*Omega_perp supera
+    |omega_tilde| in modulo.
+
+    n=1: risonanza verticale ordinaria. n generico: usata dal c-mode di
+    Tsang & Lai 2008 (growth_rate.py, r_IVR: confine Regione I/Regione
+    II), dove la condizione di trapping coinvolge n*Omega_perp^2.
+
+    Riusa _find_zero_crossing (stessa routine di r_ilr/r_olr/r_corotation):
+    nessuna duplicazione della logica di root-finding.
+    """
+    a = float(a); M = float(M); nu_obs = float(nu_obs); n = float(n)
+    isco = float(r_isco(a))
+    r = np.geomspace(isco * 1.001, r_scan_max, n_scan)
+
+    om_phi     = 2 * np.pi * nu_phi(r, a, M)
+    Omega_perp = 2 * np.pi * nu_theta(r, a, M)
+    om_obs     = 2 * np.pi * nu_obs
+    om_tilde   = om_obs - m * om_phi
+
+    f = om_tilde + np.sqrt(n) * Omega_perp
+    return _find_zero_crossing(r, f, sign_condition='neg_to_pos')
 
 
 
