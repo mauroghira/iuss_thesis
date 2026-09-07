@@ -29,8 +29,8 @@ CATALOG = [
     dict(idx=6,  name="XMMU J134736 (a)",  nu0=1.17e-5, mass_range=(9.8e6, 9.8e6)),
     dict(idx=7,  name="XMMU J134736 (b)",  nu0=3.89e-6,  mass_range=(9.8e6, 9.8e6)),
     dict(idx=8,  name="2XMM J123103.2",    nu0=7.31e-5, mass_range=(3e4, 9e4)),
-    dict(idx=9,  name="NGC 4945",          nu0=2.76e-7, mass_range=(1.4e6, 1.4e6)),
-    dict(idx=10, name="J1257",             nu0=3.3e-5,  mass_range=(2e6, 2e6)),
+    dict(idx=9,  name="NGC 4945",          nu0=2.76e-7, mass_range=(9e5, 5e6)), #1.4e6
+    dict(idx=10, name="J1257",             nu0=3.3e-5,  mass_range=(1e6, 5e6)), #2e6
     dict(idx=11, name="1ES 1927+654",      nu0=2.5e-3,  mass_range=(6.5e5, 4.3e6)),
 ]
 

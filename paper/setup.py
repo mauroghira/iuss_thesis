@@ -35,7 +35,7 @@ NU_SCAN_MAX = 1e-3
 # Range di massa fisico per AGN limite
 # di spin di Thorn  e (1974), oltre il quale l'accrescimento auto-limita
 # lo spin del BH.
-M_AGN_MIN = 1e5
+M_AGN_MIN = 1e4
 M_AGN_MAX = 1e10
 A_THORNE = 0.998
 R_MAX = 500
