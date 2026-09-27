@@ -130,7 +130,7 @@ def plot_catalog_parameter_grids(analyses, outdir='.'):
     fig, axes = plt.subplots(
         n_rows, n_columns,
         figsize=(4.0 * n_columns, 3.8 * n_rows),
-        squeeze=False,
+        squeeze=False, sharex=True
     )
     axes = axes.ravel()
     cmap = ListedColormap(['tab:red', 'tab:green'])
