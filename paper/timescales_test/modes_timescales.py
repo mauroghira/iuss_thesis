@@ -50,7 +50,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from setup import set_style, fix_spines
 from disk_profiles import t_wave_closed
 from catalog import CATALOG, select_sources
-from pif_timescales import resolve_mass_reference, A_VALS, A_FIXED, safe_filename
+from paper.pif_timescales import resolve_mass_reference, A_VALS, A_FIXED, safe_filename
 from modes_registry import ModeRequest
 
 set_style()

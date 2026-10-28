@@ -217,9 +217,7 @@ legend_labels.extend([
     r"valid parameter space (A ∩ B)",
 ])
 
-# Legenda unica, fuori dai pannelli, in alto; ncol = numero di sorgenti
-# (le righe di sorgente occupano cosi' una singola riga di legenda, gli
-# elementi di stile A/B/intersezione vanno a capo automaticamente).
+# Legenda unica, fuori dai pannelli
 fig.legend(legend_handles, legend_labels, loc="lower center",
            bbox_to_anchor=(0.5, 1.0), ncol=len(sources),
            fontsize=7, framealpha=0.85)

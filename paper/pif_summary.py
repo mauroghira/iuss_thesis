@@ -2,30 +2,16 @@
 
 import os
 import sys
-sys.path.insert(0, os.path.dirname(__file__))
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-
 
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.colors import BoundaryNorm, ListedColormap
-from matplotlib.patches import Patch
 
-from pif_timescales import A_FIXED, DATA_FILE
+from pif_timescales import A_FIXED, DATA_FILE, match_is_ok
 from pif_time_plot import load_analysis_data
 from setup import fix_spines, set_style
 
 set_style()
-
-
-def _match_is_ok(match):
-    r_precession = match['r_precession']
-    timescale_matches = [
-        radii[0] for radii in (match['r_wave'], match['r_align']) if radii
-    ]
-    if not timescale_matches:
-        return True
-    return bool(r_precession) and r_precession[0] < min(timescale_matches)
 
 
 def _format_radii(radii):
@@ -39,7 +25,7 @@ def _format_ok_ranges(matches):
         return '--'
 
     values = np.array([match['parameter'] for match in matches])
-    ok = np.array([_match_is_ok(match) for match in matches])
+    ok = np.array([match_is_ok(match) for match in matches])
     if not np.any(ok):
         return '--'
 
@@ -70,7 +56,7 @@ def plot_catalog_summary(analyses, outdir='.'):
         matches2 = analysis['summary_mass_matches']
         matches = matches1 + matches2
         M_ref = analysis['M_ref']
-        ok_matches = [match for match in matches if _match_is_ok(match)]
+        ok_matches = [match for match in matches if match_is_ok(match)]
         spin_ranges = _format_ok_ranges(matches1)
         mass_ranges = _format_ok_ranges(matches2)
         spin_ranges = f'{spin_ranges} (M_fixed={M_ref:.2e} Msun)'
@@ -155,7 +141,8 @@ def plot_catalog_parameter_grids(analyses, outdir='.'):
         axis.set_visible(False)
 
     fig.suptitle(
-        'Condition for solid-body precession across the spin-mass grid (green = OK)',
+        'Condition for solid-body precession across the spin-mass grid '
+        r'(green = OK: $t_{\rm wave} < 1/\nu_0 < t_{\rm align}$ at $\bar{r}$)',
         fontsize=12,
     )
     fig.tight_layout(rect=[0, 0.05, 1, 0.96])
@@ -170,5 +157,5 @@ if __name__ == '__main__':
     analyses, _, _ = load_analysis_data(DATA_FILE)
     summary = plot_catalog_summary(analyses, 'output_catalog')
     grids = plot_catalog_parameter_grids(analyses, 'output_catalog')
-    print(f'Salvato: {summary}')
-    print(f'Salvato: {grids}')
+    print(f'Saved: {summary}')
+    print(f'Saved: {grids}')

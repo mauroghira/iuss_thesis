@@ -2,8 +2,6 @@
 
 import os
 import sys
-sys.path.insert(0, os.path.dirname(__file__))
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 import re
 
@@ -30,19 +28,14 @@ def load_analysis_data(data_file=DATA_FILE):
 
 
 def _plot_precession_markers(ax, match, nu_target, color):
-    r_precession = match['r_precession']
-    timescale_matches = [
-        radii[0] for radii in (match['r_wave'], match['r_align']) if radii
-    ]
-    is_ok = (
-        not timescale_matches or
-        (bool(r_precession) and r_precession[0] < min(timescale_matches))
-    )
-    marker_face = color if is_ok else 'none'
-    for radius in r_precession:
+    """One marker per precession radius r_bar: filled if
+    t_wave(r_bar) < 1/nu_0 < t_align(r_bar) (flags computed in
+    pif_timescales), open otherwise."""
+    for radius, is_ok in zip(match['r_precession'], match['precession_ok']):
         ax.plot(
             radius, 1.0 / nu_target, marker='o', ms=4,
-            markerfacecolor=marker_face, markeredgecolor=color,
+            markerfacecolor=color if is_ok else 'none',
+            markeredgecolor=color,
             markeredgewidth=0.7, linestyle='None', zorder=5,
         )
 
@@ -63,7 +56,7 @@ def _draw_timescale_panel(ax, matches, nu_target, colors, r_out_grid,
     ax.set_xlim(1, r_out_grid[-1])
     ax.set_xlabel(r"$R_{\rm out}$ [$R_g$]")
     if parameter_kind == 'a':
-        ax.set_ylabel('Tempo [s]')
+        ax.set_ylabel('Time [s]')
     ax.legend(loc='upper right', frameon=True, fontsize=6.5, ncol=2)
 
 
@@ -78,10 +71,10 @@ def plot_source_timescales(analysis, outdir='.'):
     r_out_grid = analysis['panel1_matches'][0]['r_out']
 
     kind_label = {
-        'generic': 'M generica AGN (nessuna stima indipendente)',
-        'point': 'M stima puntuale',
-        'band': 'M da banda riportata in tesi',
-        'exploratory': r'M stima puntuale $\pm1$ dex (esplorativo)',
+        'generic': 'generic AGN mass (no independent estimate)',
+        'point': 'point-like mass estimate',
+        'band': 'mass range reported in the thesis',
+        'exploratory': r'point-like mass estimate $\pm1$ dex (exploratory)',
     }[kind]
 
     fig = plt.figure(figsize=(10.5, 8.5))
@@ -113,10 +106,12 @@ def plot_source_timescales(analysis, outdir='.'):
         Line2D([], [], color='black', lw=0.5, linestyle=(0, (20, 10)), label=r'$P_{\rm osc}=1/\nu_0$'),
         Line2D([], [], color='black', marker='o', ms=4,
                markerfacecolor='black', markeredgecolor='black',
-               linestyle='None', label=r'$\nu_{\rm solid}(\bar{r}) = \nu_0$, $\bar{r} < r_{\rm wave}, r_{\rm align}$'),
+               linestyle='None',
+               label=r'$\nu_{\rm solid}(\bar{r}) = \nu_0$, $t_{\rm wave}(\bar{r}) < 1/\nu_0 < t_{\rm align}(\bar{r})$'),
         Line2D([], [], color='black', marker='o', ms=4,
                markerfacecolor='none', markeredgecolor='black',
-               linestyle='None', label=r'$\nu_{\rm solid}(\bar{r}) = \nu_0$, $\bar{r} > r_{\rm wave}, r_{\rm align}$'),
+               linestyle='None',
+               label=r'$\nu_{\rm solid}(\bar{r}) = \nu_0$, condition not satisfied'),
     ]
     fig.suptitle(fr"{name}  —  $\nu_0 = {nu0:.2e}$ Hz", fontsize=10)
     fig.legend(handles=style_handles, loc='lower center', ncol=2,
@@ -134,7 +129,7 @@ def plot_catalog(data_file=DATA_FILE, outdir='.'):
     saved = []
     for analysis in analyses:
         output = plot_source_timescales(analysis, outdir)
-        print(f'Salvato: {output}')
+        print(f'Saved: {output}')
         saved.append(output)
     return saved
 

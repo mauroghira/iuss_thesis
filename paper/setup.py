@@ -278,8 +278,7 @@ def _find_zero_crossing(r, f, sign_condition=None):
 
     sign_condition: 'pos_to_neg', 'neg_to_pos', o None (qualsiasi cambio).
 
-    Estratta a livello di modulo (prima era una closure interna di
-    _resonance_radii) per poter essere riusata da QUALUNQUE routine di
+    Estratta a livello di modulo per poter essere riusata da QUALUNQUE routine di
     root-finding su una risonanza del tipo omega_tilde ± (frequenza
     secondaria) = 0, senza duplicare la logica: sia per r_CR/r_ILR/r_OLR
     qui sotto, sia per r_vertical_resonance (risonanza verticale
@@ -310,10 +309,7 @@ def _resonance_radii(a, m, nu_obs=NU0, M=M_BH, n_scan=8000, r_scan_max=5000.0):
     Calcola tutti e tre i raggi di risonanza in un'unica passata,
     evitando ricalcoli ridondanti di nu_phi e nu_r.
 
-    r_scan_max : raggio massimo dello scan radiale (default 5000.0,
-        IDENTICO al valore hardcoded nella versione precedente: nessun
-        cambiamento di comportamento per i chiamanti che non lo
-        specificano esplicitamente). Esposto come parametro per essere
+    r_scan_max : raggio massimo dello scan radiale. Esposto come parametro per essere
         riusato da r_vertical_resonance con lo stesso dominio di ricerca.
 
     Restituisce
@@ -376,13 +372,6 @@ def r_vertical_resonance(a, m, n, nu_obs=NU0, M=M_BH, n_scan=8000, r_scan_max=50
     attraversamento da negativo a positivo (sign_condition='neg_to_pos')
     che individua il primo raggio in cui sqrt(n)*Omega_perp supera
     |omega_tilde| in modulo.
-
-    n=1: risonanza verticale ordinaria. n generico: usata dal c-mode di
-    Tsang & Lai 2008 (growth_rate.py, r_IVR: confine Regione I/Regione
-    II), dove la condizione di trapping coinvolge n*Omega_perp^2.
-
-    Riusa _find_zero_crossing (stessa routine di r_ilr/r_olr/r_corotation):
-    nessuna duplicazione della logica di root-finding.
     """
     a = float(a); M = float(M); nu_obs = float(nu_obs); n = float(n)
     isco = float(r_isco(a))
