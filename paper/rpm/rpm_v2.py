@@ -13,6 +13,10 @@ modificare SOURCE_INDICES qui sotto: gli indici si riferiscono
 all'ordine numerato in catalog.CATALOG.
 """
 
+import sys, os
+sys.path.insert(0, os.path.dirname(__file__))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
@@ -20,7 +24,7 @@ from matplotlib.patches import Patch
 from setup import (g_LT, g_per, g_phi, fix_spines, set_style,
                    A_THORNE, R_MAX, M_AGN_MIN, M_AGN_MAX)
 from catalog import select_sources
-from projection_plots import ChannelGrid, plot_projection_aR, plot_projection_aM, plot_projection_RM
+from paper.rpm.projection_plots import ChannelGrid, plot_projection_aR, plot_projection_aM, plot_projection_RM
 
 
 def area_aR(chgrid, nu0, mass_range):

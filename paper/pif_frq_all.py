@@ -23,16 +23,43 @@ from types import SimpleNamespace
 
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 
-from setup import fix_spines, set_style, A_THORNE, R_MAX, M_AGN_MIN, M_AGN_MAX
+from setup import (
+    fix_spines, set_style, A_THORNE, R_MAX, M_AGN_MIN, M_AGN_MAX, r_isco,
+)
 from catalog import CATALOG, select_sources
 from pif_core import P_TORQUE, g_solid
-from projection_plots import _area_from_mask_2d
 
 set_style()
 
 MAX_PER_PANEL = 4
 DEFAULT_OUTDIR = os.path.join(os.path.dirname(__file__), 'output_catalog')
+
+
+def _area_from_mask_2d(A, R, mask, log_x=False, log_y=False):
+    """
+    Approximate the area of a 2-D Boolean region in plotted coordinates.
+    Used for (a,R), where contourf operates directly on the mask.
+    """
+    mask = np.asarray(mask, dtype=bool)
+    if mask.shape[0] < 2 or mask.shape[1] < 2:
+        return 0.0
+
+    xp = np.log(A[:, 0]) if log_x else A[:, 0]
+    yp = np.log(R[0, :]) if log_y else R[0, :]
+
+    dx = np.abs(np.diff(xp))
+    dy = np.abs(np.diff(yp))
+
+    cells = (
+        mask[:-1, :-1]
+        & mask[1:, :-1]
+        & mask[:-1, 1:]
+        & mask[1:, 1:]
+    )
+
+    return float(np.sum(cells * dx[:, None] * dy[None, :]))
 
 
 def build_solid_channel_grid(a_vals, r_out_vals, p=P_TORQUE, n_rad=300):
@@ -85,7 +112,6 @@ def _plot_mass_range_boundary(ax, chgrid, source, color, alpha=0.35):
                 A, R, mask_fill.astype(float), levels=[0.5, 1.5],
                 colors=[color], alpha=alpha,
             )
-    ax.plot([], [], color=color, lw=4, label=source['name'])
 
 
 def _order_sources_by_area(sources, colors, chgrid, alpha_min=0.2, alpha_max=0.5):
@@ -101,7 +127,7 @@ def _order_sources_by_area(sources, colors, chgrid, alpha_min=0.2, alpha_max=0.5
 
 def plot_solid_aR(sources=None, indices=None, outdir=DEFAULT_OUTDIR,
                   max_per_panel=MAX_PER_PANEL,
-                  n_a=80, n_rout=150, n_rad=300):
+                  n_a=201, n_rout=200, n_rad=300):
     if sources is not None and indices is not None:
         raise ValueError('Pass either sources or indices, not both')
     if sources is None:
@@ -114,16 +140,18 @@ def plot_solid_aR(sources=None, indices=None, outdir=DEFAULT_OUTDIR,
     chgrid = build_solid_channel_grid(a_vals, r_out_vals, p=P_TORQUE, n_rad=n_rad)
 
     n_panels = max(1, int(np.ceil(len(sources) / max_per_panel)))
-    cmap = plt.cm.tab20
+    cmap = plt.get_cmap('rainbow', max(1, len(sources)))
+    source_colors = [cmap(i) for i in range(len(sources))]
     fig, axes = plt.subplots(
         1, n_panels, squeeze=False,
         figsize=(4.5 * n_panels, 4.2),
     )
     axes = axes.ravel()
-
     for panel_idx in range(n_panels):
-        chunk = sources[panel_idx * max_per_panel:(panel_idx + 1) * max_per_panel]
-        colors = [cmap(i) for i in range(len(chunk))]
+        start = panel_idx * max_per_panel
+        end = min(start + max_per_panel, len(sources))
+        chunk = sources[start:end]
+        colors = source_colors[start:end]
         ax = axes[panel_idx]
         fix_spines(ax)
 
@@ -132,17 +160,32 @@ def plot_solid_aR(sources=None, indices=None, outdir=DEFAULT_OUTDIR,
         for src, color, alpha, area in ordered:
             _plot_mass_range_boundary(ax, chgrid, src, color, alpha)
 
-        ax.set_xlabel(r"Spin $a$")
-        ax.set_ylabel(r"$\nu_{\rm solid}$: $R_{\rm out}$ [$R_g$]")
-        ax.set_yscale('log')
-        ax.legend(loc="best", fontsize=7, framealpha=0.85)
-        ax.set_title(
-            f'Sources {panel_idx * max_per_panel + 1}-'
-            f'{min((panel_idx + 1) * max_per_panel, len(sources))}',
-            fontsize=9,
+        ax.plot(
+            a_vals, r_isco(a_vals), color='purple', linestyle='--',
+            linewidth=1.5,
         )
+        ax.annotate(
+            'ISCO', xy=(0, r_isco(0)), xytext=(0, -8),
+            textcoords='offset points', ha='center', va='top',
+            color='purple', fontsize=8,
+        )
+        ax.set_xlabel(r"Spin $a$")
+        ax.set_ylabel(r"$R_{\rm out}$ [$R_g$]")
+        ax.set_yscale('log')
 
-    fig.tight_layout()
+    if len(sources) > 0:
+        legend_handles = [
+            Line2D([0], [0], color=color, lw=4)
+            for color in source_colors
+        ]
+        fig.legend(
+            legend_handles, [source['name'] for source in sources],
+            loc='upper center', bbox_to_anchor=(0.5, 1.05),
+            ncol=min(6, len(sources)), fontsize=7, framealpha=0.85,
+        )
+        fig.tight_layout()
+    else:
+        fig.tight_layout()
     output = os.path.join(outdir, 'pif_solid_aR.pdf')
     plt.savefig(output, bbox_inches='tight')
     plt.close(fig)

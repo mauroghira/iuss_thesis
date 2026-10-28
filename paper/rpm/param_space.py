@@ -15,6 +15,10 @@
 # scala come le frequenze geodetiche) e' fornito un fallback numerico
 # generico basato su bisezione vettorizzata.
 
+import sys, os
+sys.path.insert(0, os.path.dirname(__file__))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
 import warnings
 import numpy as np
 from setup import r_isco, A_THORNE

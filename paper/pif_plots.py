@@ -8,6 +8,7 @@ import re
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.lines import Line2D
+from matplotlib.colors import BoundaryNorm, ListedColormap
 
 from setup import fix_spines, set_style
 from pif_timescales import A_FIXED, DATA_FILE
@@ -123,16 +124,89 @@ def plot_source_timescales(analysis, outdir='.'):
     return output
 
 
-def plot_catalog(data_file=DATA_FILE, outdir='.'):
-    analyses, _, _ = load_analysis_data(data_file)
+############################################################
+
+def _cell_edges(values, logarithmic=False):
+    edges = np.empty(values.size + 1)
+    if logarithmic:
+        edges[1:-1] = np.sqrt(values[:-1] * values[1:])
+        edges[0] = values[0]**2 / edges[1]
+        edges[-1] = values[-1]**2 / edges[-2]
+    else:
+        edges[1:-1] = 0.5 * (values[:-1] + values[1:])
+        edges[0] = values[0] - 0.5 * (values[1] - values[0])
+        edges[-1] = values[-1] + 0.5 * (values[-1] - values[-2])
+    return edges
+
+def plot_catalog_parameter_grids(analyses, outdir='.'):
+    if not analyses:
+        return None
+
+    n_columns = 4
+    n_rows = int(np.ceil(len(analyses) / n_columns))
+    fig, axes = plt.subplots(
+        n_rows, n_columns,
+        figsize=(4.0 * n_columns, 3.8 * n_rows),
+        squeeze=False, sharex=True
+    )
+    axes = axes.ravel()
+    cmap = ListedColormap(['green'])
+    cmap.set_bad(alpha=0)
+
+    for index, (axis, analysis) in enumerate(zip(axes, analyses)):
+        row, column = divmod(index, n_columns)
+        spins = analysis['grid_spins']
+        masses = analysis['grid_masses']
+        data = analysis['grid_ok'].astype(float)
+        data[data == 0] = float('nan')
+        axis.pcolormesh(
+            _cell_edges(spins), _cell_edges(masses, logarithmic=True),
+            data, cmap=cmap,
+            shading='flat', rasterized=True,
+        )
+        axis.set_xlim(-1.02, 1.02)
+        axis.set_yscale('log')
+        if row == n_rows - 1:
+            axis.set_xlabel(r'Spin $a$')
+        if column == 0:
+            axis.set_ylabel(r'Mass [$M_\odot$]')
+        """
+        if column in :
+            axis.tick_params(axis='y', direction='in', pad=-28)
+        elif column == n_columns - 1:
+            axis.yaxis.tick_right()
+            axis.tick_params(axis='y', labelleft=False, labelright=True)
+        """
+        axis.text(
+            0.03, 0.97, analysis['source']['name'],
+            transform=axis.transAxes, ha='left', va='top', fontsize=9,
+            bbox={
+                'facecolor': 'white', 'edgecolor': 'none',
+                'alpha': 0.75, 'pad': 1.5,
+            },
+        )
+        fix_spines(axis)
+
+    for axis in axes[len(analyses):]:
+        axis.set_visible(False)
+
+    fig.tight_layout(rect=[0, 0.05, 1, 0.96])
+    output = os.path.join(outdir, 'pif_timescales_parameter_grids.pdf')
+    plt.savefig(output, bbox_inches='tight')
+    plt.close(fig)
+    return output
+
+###################################################à
+
+
+if __name__ == '__main__':
+    analyses, _, _ = load_analysis_data(DATA_FILE)
+    outdir = "output_catalog"
     os.makedirs(outdir, exist_ok=True)
     saved = []
     for analysis in analyses:
         output = plot_source_timescales(analysis, outdir)
         print(f'Saved: {output}')
         saved.append(output)
-    return saved
-
-
-if __name__ == '__main__':
-    plot_catalog(outdir='output_catalog')
+    grids = plot_catalog_parameter_grids(analyses, 'output_catalog')
+    print(f'Saved: {grids}')

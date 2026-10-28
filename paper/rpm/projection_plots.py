@@ -61,6 +61,10 @@
 # caso (non atteso, ma non verificato a priori) in cui una stima di
 # letteratura ecceda il range AGN generico.
 
+import sys, os
+sys.path.insert(0, os.path.dirname(__file__))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
 import warnings
 import numpy as np
 from setup import r_isco, A_THORNE, R_MAX, M_AGN_MIN, M_AGN_MAX

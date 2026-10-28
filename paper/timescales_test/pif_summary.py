@@ -8,7 +8,7 @@ import numpy as np
 from matplotlib.colors import BoundaryNorm, ListedColormap
 
 from pif_timescales import A_FIXED, DATA_FILE, match_is_ok
-from pif_time_plot import load_analysis_data
+from paper.pif_plots import load_analysis_data
 from setup import fix_spines, set_style
 
 set_style()
@@ -119,32 +119,53 @@ def plot_catalog_parameter_grids(analyses, outdir='.'):
         squeeze=False, sharex=True
     )
     axes = axes.ravel()
-    cmap = ListedColormap(['tab:red', 'tab:green'])
-    norm = BoundaryNorm([-0.5, 0.5, 1.5], cmap.N)
+    cmap = ListedColormap(['green'])
+    cmap.set_bad(alpha=0)
 
-    for axis, analysis in zip(axes, analyses):
+    for index, (axis, analysis) in enumerate(zip(axes, analyses)):
+        row, column = divmod(index, n_columns)
         spins = analysis['grid_spins']
         masses = analysis['grid_masses']
+        data = analysis['grid_ok'].astype(float)
+        data[data == 0] = float('nan')
         axis.pcolormesh(
             _cell_edges(spins), _cell_edges(masses, logarithmic=True),
-            analysis['grid_ok'].astype(int), cmap=cmap, norm=norm,
+            data, cmap=cmap,
             shading='flat', rasterized=True,
         )
         axis.set_xlim(-1.02, 1.02)
         axis.set_yscale('log')
-        axis.set_xlabel(r'Spin $a$')
-        axis.set_ylabel(r'Mass [$M_\odot$]')
-        axis.set_title(analysis['source']['name'], fontsize=9)
+        if row == n_rows - 1:
+            axis.set_xlabel(r'Spin $a$')
+        if column == 0:
+            axis.set_ylabel(r'Mass [$M_\odot$]')
+        """
+        if column in :
+            axis.tick_params(axis='y', direction='in', pad=-28)
+        elif column == n_columns - 1:
+            axis.yaxis.tick_right()
+            axis.tick_params(axis='y', labelleft=False, labelright=True)
+        """
+        axis.text(
+            0.03, 0.97, analysis['source']['name'],
+            transform=axis.transAxes, ha='left', va='top', fontsize=9,
+            bbox={
+                'facecolor': 'white', 'edgecolor': 'none',
+                'alpha': 0.75, 'pad': 1.5,
+            },
+        )
         fix_spines(axis)
 
     for axis in axes[len(analyses):]:
         axis.set_visible(False)
 
+    """
     fig.suptitle(
         'Condition for solid-body precession across the spin-mass grid '
-        r'(green = OK: $t_{\rm wave} < 1/\nu_0 < t_{\rm align}$ at $\bar{r}$)',
+        r'(green = OK: $t_{\rm wave} < 1/\nu_0 < t_{\rm align}$ at $\bar{r}_{\rm out}$)',
         fontsize=12,
     )
+    """
     fig.tight_layout(rect=[0, 0.05, 1, 0.96])
     output = os.path.join(outdir, 'pif_timescales_parameter_grids.pdf')
     plt.savefig(output, bbox_inches='tight')
@@ -155,7 +176,7 @@ def plot_catalog_parameter_grids(analyses, outdir='.'):
 if __name__ == '__main__':
     os.makedirs('output_catalog', exist_ok=True)
     analyses, _, _ = load_analysis_data(DATA_FILE)
-    summary = plot_catalog_summary(analyses, 'output_catalog')
+    #summary = plot_catalog_summary(analyses, 'output_catalog')
     grids = plot_catalog_parameter_grids(analyses, 'output_catalog')
-    print(f'Saved: {summary}')
+    #print(f'Saved: {summary}')
     print(f'Saved: {grids}')
