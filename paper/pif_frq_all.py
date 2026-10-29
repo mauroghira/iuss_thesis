@@ -33,7 +33,7 @@ from pif_core import P_TORQUE, g_solid
 
 set_style()
 
-MAX_PER_PANEL = 4
+MAX_PER_PANEL = 6
 DEFAULT_OUTDIR = os.path.join(os.path.dirname(__file__), 'output_catalog')
 
 
@@ -140,11 +140,12 @@ def plot_solid_aR(sources=None, indices=None, outdir=DEFAULT_OUTDIR,
     chgrid = build_solid_channel_grid(a_vals, r_out_vals, p=P_TORQUE, n_rad=n_rad)
 
     n_panels = max(1, int(np.ceil(len(sources) / max_per_panel)))
+    width = 4 if n_panels == 1 else 7
     cmap = plt.get_cmap('rainbow', max(1, len(sources)))
     source_colors = [cmap(i) for i in range(len(sources))]
     fig, axes = plt.subplots(
-        1, n_panels, squeeze=False,
-        figsize=(4.5 * n_panels, 4.2),
+        1, n_panels, squeeze=False, sharey=True,
+        figsize=(width, 4),
     )
     axes = axes.ravel()
     for panel_idx in range(n_panels):
@@ -170,7 +171,10 @@ def plot_solid_aR(sources=None, indices=None, outdir=DEFAULT_OUTDIR,
             color='purple', fontsize=8,
         )
         ax.set_xlabel(r"Spin $a$")
-        ax.set_ylabel(r"$R_{\rm out}$ [$R_g$]")
+        if panel_idx == 0:
+            ax.set_ylabel(r"$R_{\rm out}$ [$R_g$]")
+        else:
+            ax.tick_params(axis='y', labelleft=False)
         ax.set_yscale('log')
 
     if len(sources) > 0:
@@ -180,8 +184,8 @@ def plot_solid_aR(sources=None, indices=None, outdir=DEFAULT_OUTDIR,
         ]
         fig.legend(
             legend_handles, [source['name'] for source in sources],
-            loc='upper center', bbox_to_anchor=(0.5, 1.05),
-            ncol=min(6, len(sources)), fontsize=7, framealpha=0.85,
+            loc='upper center', bbox_to_anchor=(0.5, 1.1),
+            ncol=min(4, len(sources)), fontsize=7, framealpha=0.85,
         )
         fig.tight_layout()
     else:

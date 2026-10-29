@@ -15,6 +15,8 @@ from pif_timescales import A_FIXED, DATA_FILE
 
 set_style()
 
+SECONDS_PER_YEAR = 365.25 * 24 * 60 * 60
+
 
 def safe_filename(name):
     return re.sub(r'[^A-Za-z0-9]+', '_', name).strip('_')
@@ -78,28 +80,52 @@ def plot_source_timescales(analysis, outdir='.'):
         'exploratory': r'point-like mass estimate $\pm1$ dex (exploratory)',
     }[kind]
 
-    fig = plt.figure(figsize=(10.5, 8.5))
-    ax1 = fig.add_axes([0.08, 0.39, 0.40, 0.54])
-    ax2 = fig.add_axes([0.56, 0.39, 0.40, 0.54], sharey=ax1)
+    fig, axs = plt.subplots(1,2, figsize=(7, 3.4), sharey=True, constrained_layout=True)
+    ax1 = axs[0]
+    ax2 = axs[1]
     fix_spines(ax1)
     fix_spines(ax2)
 
     matches1 = analysis['panel1_matches']
     colors_a = plt.cm.viridis(np.linspace(0, 1, len(matches1)))
     _draw_timescale_panel(ax1, matches1, nu0, colors_a, r_out_grid, 'a')
-    ax1.set_title(
-        fr"$M_{{\rm ref}} = {M_ref:.2e}\,M_\odot$ ",
-        fontsize=8,
+    ax1.text(
+        0.98, 0.02, fr"$M_{{\rm ref}} = {M_ref:.2e}\,M_\odot$",
+        transform=ax1.transAxes, ha='right', va='bottom', fontsize=8,
     )
 
     matches2 = analysis['panel2_matches']
     colors_m = plt.cm.plasma(np.linspace(0, 1, len(matches2)))
     _draw_timescale_panel(ax2, matches2, nu0, colors_m, r_out_grid, 'M')
-    ax2.set_title(
-        fr"$a={A_FIXED:.2f}$, "
-        fr"$M \in [{M_lo:.1e}, {M_hi:.1e}]\,M_\odot$",
-        fontsize=8,
+    ax2.text(
+        0.98, 0.02, fr"$a={A_FIXED:.2f}$",
+        transform=ax2.transAxes, ha='right', va='bottom', fontsize=8,
     )
+
+    ax1.tick_params(
+        axis='y', which='both', left=True, labelleft=True,
+        right=True, labelright=False,
+    )
+    ax2.tick_params(
+        axis='y', which='both', left=True, labelleft=False,
+        right=True, labelright=False,
+    )
+    seconds_limits = ax1.get_ylim()
+    year_axes = (ax1.twinx(), ax2.twinx())
+    for year_axis, show_labels in zip(year_axes, (False, True)):
+        year_axis.set_yscale('log')
+        year_axis.set_ylim(
+            seconds_limits[0] / SECONDS_PER_YEAR,
+            seconds_limits[1] / SECONDS_PER_YEAR,
+        )
+        year_axis.tick_params(
+            axis='y', which='both', right=True, labelright=show_labels,
+            left=False, labelleft=False,
+        )
+        year_axis.spines['left'].set_visible(False)
+        year_axis.spines['top'].set_visible(False)
+        year_axis.spines['bottom'].set_visible(False)
+    year_axes[1].set_ylabel('Time [yr]')
 
     style_handles = [
         Line2D([], [], color='gray', lw=1, ls=':', label=r'$t_{\rm wave}$'),
@@ -114,9 +140,9 @@ def plot_source_timescales(analysis, outdir='.'):
                linestyle='None',
                label=r'$\nu_{\rm solid}(\bar{r}) = \nu_0$, condition not satisfied'),
     ]
-    fig.suptitle(fr"{name}  —  $\nu_0 = {nu0:.2e}$ Hz", fontsize=10)
-    fig.legend(handles=style_handles, loc='lower center', ncol=2,
-               frameon=True, fontsize=7, bbox_to_anchor=(0.5, 0.3))
+    #fig.suptitle(fr"{name}  —  $\nu_0 = {nu0:.2e}$ Hz", fontsize=10)
+    fig.legend(handles=style_handles, loc='lower center', ncol=5,
+               frameon=True, fontsize=7, bbox_to_anchor=(0.5, -0.1))
 
     output = os.path.join(outdir, f'pif_timescales_{safe_filename(name)}.pdf')
     plt.savefig(output, bbox_inches='tight')
@@ -146,8 +172,8 @@ def plot_catalog_parameter_grids(analyses, outdir='.'):
     n_rows = int(np.ceil(len(analyses) / n_columns))
     fig, axes = plt.subplots(
         n_rows, n_columns,
-        figsize=(4.0 * n_columns, 3.8 * n_rows),
-        squeeze=False, sharex=True
+        figsize=(7, 1.7 * n_rows),
+        squeeze=False, sharex=True, sharey=True
     )
     axes = axes.ravel()
     cmap = ListedColormap(['green'])
@@ -170,13 +196,8 @@ def plot_catalog_parameter_grids(analyses, outdir='.'):
             axis.set_xlabel(r'Spin $a$')
         if column == 0:
             axis.set_ylabel(r'Mass [$M_\odot$]')
-        """
-        if column in :
-            axis.tick_params(axis='y', direction='in', pad=-28)
-        elif column == n_columns - 1:
-            axis.yaxis.tick_right()
-            axis.tick_params(axis='y', labelleft=False, labelright=True)
-        """
+        if column > 0:
+            axis.tick_params(axis='y', labelleft=False)
         axis.text(
             0.03, 0.97, analysis['source']['name'],
             transform=axis.transAxes, ha='left', va='top', fontsize=9,
@@ -190,7 +211,10 @@ def plot_catalog_parameter_grids(analyses, outdir='.'):
     for axis in axes[len(analyses):]:
         axis.set_visible(False)
 
-    fig.tight_layout(rect=[0, 0.05, 1, 0.96])
+    fig.subplots_adjust(
+        left=0.08, right=0.99, bottom=0.07, top=0.96,
+        wspace=0.02, hspace=0.02,
+    )
     output = os.path.join(outdir, 'pif_timescales_parameter_grids.pdf')
     plt.savefig(output, bbox_inches='tight')
     plt.close(fig)
@@ -203,10 +227,12 @@ if __name__ == '__main__':
     analyses, _, _ = load_analysis_data(DATA_FILE)
     outdir = "output_catalog"
     os.makedirs(outdir, exist_ok=True)
+    #"""
     saved = []
     for analysis in analyses:
         output = plot_source_timescales(analysis, outdir)
         print(f'Saved: {output}')
         saved.append(output)
-    grids = plot_catalog_parameter_grids(analyses, 'output_catalog')
-    print(f'Saved: {grids}')
+    #"""
+    #grids = plot_catalog_parameter_grids(analyses, 'output_catalog')
+    #print(f'Saved: {grids}')
