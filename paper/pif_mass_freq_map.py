@@ -58,9 +58,28 @@ from pif_core import ALPHA, HR_ISCO_DEFAULT, pif_geometric, PIFGeometric
 from catalog import CATALOG
 
 M_MIN, M_MAX = 1e0, 1e10
-NU_MIN, NU_MAX = 1e-7, 1e3
-N_M, N_NU = 500, 500          # resolution of the plotted grid
-N_P = 6000                    # nodes of the 1D grid in P = M * nu_0
+NU_MIN, NU_MAX = 1e-7, 1e4
+
+# Resolution: a SINGLE parameter. M and nu_0 use the same log-step
+# h = 1/N_PER_DECADE dex, so that log P = log M + log nu_0 takes exactly
+# N_M + N_NU - 1 distinct values, all on a regular lattice of step h. The 1D
+# grid in P has one node on each of them: every pixel (i, j) is assigned
+# EXACTLY the node i + j (no nearest-node quantisation).
+# Requires the M and nu_0 ranges to span a multiple of 1/N_PER_DECADE dex.
+N_PER_DECADE = 50
+
+
+def _n_nodes(lo, hi, per_decade=N_PER_DECADE):
+    n_steps = np.log10(hi / lo) * per_decade
+    if not np.isclose(n_steps, round(n_steps), rtol=0.0, atol=1e-9):
+        raise ValueError(
+            f'range [{lo:g}, {hi:g}] is not a multiple of 1/{per_decade} dex')
+    return int(round(n_steps)) + 1
+
+
+N_M = _n_nodes(M_MIN, M_MAX)          # pixels along M
+N_NU = _n_nodes(NU_MIN, NU_MAX)       # pixels along nu_0
+N_P = N_M + N_NU - 1                  # nodes of the 1D grid in P = M * nu_0
 
 # Spin grid: |a| log-spaced in [A_FINE_MIN, A_STEP) (fine scan close to 0),
 # then uniform with step A_STEP up to EXACTLY A_MAX = 1; mirrored for a < 0,
@@ -254,12 +273,10 @@ def compute_map(alpha=None, hr_isco=None):
     cat_pos_P = panel_category(codes[spins > 0])
     cat_neg_P = panel_category(codes[spins < 0])
 
-    # map on the (nu, M) grid: nearest node in log P
+    # map on the (nu, M) grid: pixel (j, i) -> P-node i + j (exact lattice)
     M = np.logspace(np.log10(M_MIN), np.log10(M_MAX), N_M)
     nu = np.logspace(np.log10(NU_MIN), np.log10(NU_MAX), N_NU)
-    logP = np.log10(M)[None, :] + np.log10(nu)[:, None]
-    dlogP = (logP_hi - logP_lo) / (N_P - 1)
-    idx = np.clip(np.rint((logP - logP_lo) / dlogP).astype(int), 0, N_P - 1)
+    idx = np.add.outer(np.arange(N_NU), np.arange(N_M))   # exact node i + j
 
     np.savez_compressed(
         DATA_FILE, spins=spins, P_grid=P_grid, codes_P=codes, valid_P=valid,
@@ -420,7 +437,7 @@ def plot_saved_map(data_file=DATA_FILE, overlay_sources=False, fig_file=FIG_FILE
 
 if __name__ == '__main__':
     os.makedirs(OUT_DIR, exist_ok=True)
-    """
+    #"""
     M, nu, a_min_pos, a_max_neg, a_max_pos, a_min_neg, cat_pos, cat_neg = (
         compute_map()
     )
@@ -428,5 +445,5 @@ if __name__ == '__main__':
         M, nu, a_min_pos, a_max_neg, cat_pos, cat_neg, overlay_sources=True,
         a_max_pos=a_max_pos, a_min_neg=a_min_neg,
     )
-    """
-    plot_saved_map(overlay_sources=True)
+    #"""
+    #plot_saved_map(overlay_sources=True)
