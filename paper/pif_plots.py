@@ -234,5 +234,5 @@ if __name__ == '__main__':
         print(f'Saved: {output}')
         saved.append(output)
     #"""
-    #grids = plot_catalog_parameter_grids(analyses, 'output_catalog')
-    #print(f'Saved: {grids}')
+    grids = plot_catalog_parameter_grids(analyses, 'output_catalog')
+    print(f'Saved: {grids}')

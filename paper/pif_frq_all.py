@@ -33,7 +33,7 @@ from pif_core import P_TORQUE, g_solid
 
 set_style()
 
-MAX_PER_PANEL = 6
+MAX_PER_PANEL = 12
 DEFAULT_OUTDIR = os.path.join(os.path.dirname(__file__), 'output_catalog')
 
 
@@ -184,8 +184,8 @@ def plot_solid_aR(sources=None, indices=None, outdir=DEFAULT_OUTDIR,
         ]
         fig.legend(
             legend_handles, [source['name'] for source in sources],
-            loc='upper center', bbox_to_anchor=(0.5, 1.1),
-            ncol=min(4, len(sources)), fontsize=7, framealpha=0.85,
+            loc='upper center', bbox_to_anchor=(0.5, 1.15),
+            ncol=min(3, len(sources)), fontsize=7, framealpha=0.85,
         )
         fig.tight_layout()
     else:
