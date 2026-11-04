@@ -54,7 +54,8 @@ from matplotlib.patches import Patch
 from typing import NamedTuple
 
 from setup import r_isco, set_style, fix_spines
-from pif_core import ALPHA, HR_ISCO_DEFAULT, pif_geometric, PIFGeometric
+from pif_core import (ALPHA, HR_ISCO_DEFAULT, CLOSURE_DEFAULT, METHOD_DEFAULT,
+                      RATE_DEFAULT, N_EIG, pif_geometric, PIFGeometric)
 from catalog import CATALOG
 
 M_MIN, M_MAX = 1e0, 1e10
@@ -114,7 +115,7 @@ FAIL_LABELS = {
     BOTH: 'both fail',
 }
 
-OUT_DIR = os.path.join(os.path.dirname(__file__), 'output_catalog')
+OUT_DIR = os.path.join(os.path.dirname(__file__), 'output_test')
 DATA_FILE = os.path.join(OUT_DIR, 'pif_mass_frequency_map.npz')
 FIG_FILE = os.path.join(OUT_DIR, 'pif_mass_frequency_map.pdf')
 
@@ -136,15 +137,23 @@ def make_spins():
     return np.concatenate([-pos[::-1], [0.0], pos])
 
 
-def build_spin_curves(spins, hr_isco=HR_ISCO_DEFAULT):
+def build_spin_curves(spins, hr_isco=HR_ISCO_DEFAULT, closure=CLOSURE_DEFAULT,
+                      method=METHOD_DEFAULT, rate=RATE_DEFAULT, alpha=ALPHA,
+                      n_eig=N_EIG, workers=1, diagnostics=False):
     """
     Compute the geometric curves once for every unique spin in `spins`.
     Returns {float(spin): SpinCurves}; spins with no valid r_out are omitted.
+    method='motta' (default, closed-form first order, uses `closure`) or
+    'eig' (full eigenmode, uses `rate`; ~50 ms per (spin, r_out) point, use
+    `workers` for processes). With method='eig' the curves are valid ONLY for
+    the given (hr_isco, alpha): they cannot be rescaled afterwards.
     """
     spins = np.unique(np.asarray(spins, dtype=float))
     r_in = r_isco(spins)
     geo = pif_geometric(spins[:, None], R_OUT_GRID[None, :],
-                        r_in=r_in[:, None], HR_ref=hr_isco)
+                        r_in=r_in[:, None], HR_ref=hr_isco, alpha=alpha,
+                        closure=closure, method=method, rate=rate, n_eig=n_eig,
+                        workers=workers, diagnostics=diagnostics)
     curves = {}
     for i, spin in enumerate(spins):
         keep = R_OUT_GRID > R_IN_MARGIN * r_in[i]
@@ -153,7 +162,9 @@ def build_spin_curves(spins, hr_isco=HR_ISCO_DEFAULT):
         curves[float(spin)] = SpinCurves(
             R_OUT_GRID[keep],
             PIFGeometric(geo.g[i, keep], geo.tau_w[i, keep],
-                         geo.tau_a[i, keep], geo.HR_ref, geo.alpha_ref),
+                         geo.tau_a[i, keep], geo.HR_ref, geo.alpha_ref,
+                         geo.method,
+                         {k: v[i, keep] for k, v in geo.extra.items()}),
         )
     return curves
 
@@ -249,14 +260,23 @@ def panel_category(codes):
     return cat.astype(np.int8)
 
 
-def compute_map(alpha=None, hr_isco=None):
+def compute_map(alpha=None, hr_isco=None, closure=CLOSURE_DEFAULT,
+                method=METHOD_DEFAULT, rate=RATE_DEFAULT, n_eig=N_EIG, workers=1):
     hr = HR_ISCO_DEFAULT if hr_isco is None else hr_isco
     al = ALPHA if alpha is None else alpha
-    k_w = HR_ISCO_DEFAULT / hr
-    k_a = (hr / HR_ISCO_DEFAULT) ** 2 * (ALPHA / al)
+    if method == 'eig':
+        # the eigenmode is NOT rescalable in (alpha, HR_isco): recompute instead
+        k_w = k_a = 1.0
+    else:
+        k_w = HR_ISCO_DEFAULT / hr
+        k_a = (hr / HR_ISCO_DEFAULT) ** 2 * (ALPHA / al)
 
     spins = make_spins()
-    curves = build_spin_curves(spins)
+    if method == 'eig':
+        curves = build_spin_curves(spins, hr_isco=hr, closure=closure, method=method,
+                                   rate=rate, alpha=al, n_eig=n_eig, workers=workers)
+    else:
+        curves = build_spin_curves(spins, closure=closure)
     print(f'{spins.size} spins, geometric curves computed for {len(curves)}')
 
     logP_lo, logP_hi = np.log10(M_MIN * NU_MIN), np.log10(M_MAX * NU_MAX)
@@ -287,7 +307,8 @@ def compute_map(alpha=None, hr_isco=None):
         a_min_pos=a_min_pos_P[idx], a_max_neg=a_max_neg_P[idx],
         a_max_pos=a_max_pos_P[idx], a_min_neg=a_min_neg_P[idx],
         cat_pos=cat_pos_P[idx], cat_neg=cat_neg_P[idx],
-        r_out_max=R_OUT_GRID[-1], alpha=al, hr_isco=hr)
+        r_out_max=R_OUT_GRID[-1], alpha=al, hr_isco=hr, closure=closure,
+        method=method, rate=rate, n_eig=n_eig)
     print(f'Saved: {DATA_FILE}')
     return (
         M, nu, a_min_pos_P[idx], a_max_neg_P[idx],
@@ -439,7 +460,7 @@ if __name__ == '__main__':
     os.makedirs(OUT_DIR, exist_ok=True)
     #"""
     M, nu, a_min_pos, a_max_neg, a_max_pos, a_min_neg, cat_pos, cat_neg = (
-        compute_map()
+        compute_map(method='eig')
     )
     plot_map(
         M, nu, a_min_pos, a_max_neg, cat_pos, cat_neg, overlay_sources=True,

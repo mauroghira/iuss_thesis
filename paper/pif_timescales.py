@@ -22,7 +22,8 @@ import os
 import numpy as np
 
 from setup import M_AGN_MAX, M_AGN_MIN
-from pif_core import ALPHA, HR_ISCO_DEFAULT
+from pif_core import (ALPHA, HR_ISCO_DEFAULT, CLOSURE_DEFAULT, METHOD_DEFAULT,
+                      RATE_DEFAULT, N_EIG)
 from catalog import CATALOG, select_sources
 from pif_mass_freq_map import build_spin_curves, R_OUT_GRID
 
@@ -34,7 +35,7 @@ N_M_GRID = 300
 GRID_SPINS = np.linspace(-1.0, 1.0, N_A_GRID)
 EXPLORATORY_DEX = 1.0
 DATA_FILE = os.path.join(
-    os.path.dirname(__file__), 'output_catalog', 'pif_timescales_analysis.npz'
+    os.path.dirname(__file__), 'output_test', 'pif_timescales_analysis.npz'
 )
 
 
@@ -210,7 +211,9 @@ def _compute_source_analysis(source, curves):
     }
 
 
-def compute_and_save(sources=None, indices=None, output_file=DATA_FILE):
+def compute_and_save(sources=None, indices=None, output_file=DATA_FILE,
+                     closure=CLOSURE_DEFAULT, method=METHOD_DEFAULT,
+                     rate=RATE_DEFAULT, n_eig=N_EIG, workers=1):
     if sources is not None and indices is not None:
         raise ValueError('Pass either sources or indices, not both')
     if sources is None:
@@ -220,7 +223,8 @@ def compute_and_save(sources=None, indices=None, output_file=DATA_FILE):
 
     # Geometric curves: once per spin, shared by all sources and masses.
     all_spins = np.concatenate([A_VALS, [A_FIXED], GRID_SPINS])
-    curves = build_spin_curves(all_spins)
+    curves = build_spin_curves(all_spins, closure=closure, method=method,
+                               rate=rate, n_eig=n_eig, workers=workers)
     print(f'Geometric curves computed for {len(curves)} spins')
 
     analyses = []
@@ -235,6 +239,7 @@ def compute_and_save(sources=None, indices=None, output_file=DATA_FILE):
         a_fixed=A_FIXED,
         alpha=ALPHA,
         hr_isco=HR_ISCO_DEFAULT,
+        closure=closure, method=method, rate=rate, n_eig=n_eig,
         criterion='t_wave(r_bar) < 1/nu_0 < t_align(r_bar)',
     )
     print(f'Saved: {output_file}')
