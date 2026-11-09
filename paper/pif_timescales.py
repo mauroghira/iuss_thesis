@@ -19,6 +19,8 @@ validity grid of a source is obtained with ONE vectorised call per spin
 """
 
 import os
+for v in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS"):
+    os.environ[v] = "1"          # forced, not setdefault
 import numpy as np
 
 from setup import M_AGN_MAX, M_AGN_MIN
@@ -30,8 +32,8 @@ from pif_mass_freq_map import build_spin_curves, R_OUT_GRID
 A_VALS = np.array([-0.9, -0.5, -0.25, 0.0, 0.01, 0.25, 0.5, 0.9, 0.998])
 A_FIXED = 0.5
 N_M = 6
-N_A_GRID = 401
-N_M_GRID = 300
+N_A_GRID = 41
+N_M_GRID = 30
 GRID_SPINS = np.linspace(-1.0, 1.0, N_A_GRID)
 EXPLORATORY_DEX = 1.0
 DATA_FILE = os.path.join(
@@ -247,4 +249,4 @@ def compute_and_save(sources=None, indices=None, output_file=DATA_FILE,
 
 
 if __name__ == '__main__':
-    compute_and_save()#indices=[0, 9, 10, 11])
+    compute_and_save(method='eig', n_eig=120, workers=8)

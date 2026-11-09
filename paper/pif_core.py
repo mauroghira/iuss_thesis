@@ -81,6 +81,7 @@ from __future__ import annotations
 
 import os
 import sys
+import tqdm
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -364,18 +365,26 @@ def _eig_point(args):
     return om, flat
 
 
-def _kernel_eig(a, r_in, r_out, p, q, HR_ref, alpha, n_eig, rate, workers=1):
+def _kernel_eig(a, r_in, r_out, p, q, HR_ref, alpha, n_eig, rate, workers=1,
+                bar=None):
     """(g, tau_w, tau_a, flatness) from the full eigenmode, per point."""
     todo = [k for k in range(a.size) if a[k] != 0.0]    # a = 0: no precession
     args = [(float(a[k]), float(r_in[k]), float(r_out[k]), p, q, HR_ref, alpha,
              n_eig, rate) for k in todo]
+    res = []
     if workers and workers > 1 and len(args) > 1:
         from concurrent.futures import ProcessPoolExecutor
         with ProcessPoolExecutor(max_workers=workers) as ex:
-            res = list(ex.map(_eig_point, args,
-                              chunksize=max(1, len(args) // (4 * workers))))
+            for out in ex.map(_eig_point, args,
+                              chunksize=max(1, len(args) // (20 * workers))):
+                res.append(out)
+                if bar is not None:
+                    bar.update(1)
     else:
-        res = [_eig_point(t) for t in args]
+        for t in args:
+            res.append(_eig_point(t))
+            if bar is not None:
+                bar.update(1)
     om = np.zeros(a.size, dtype=complex)                # a = 0: omega = 0, g = 0
     flat = np.full(a.size, np.nan)
     for k, (o, f) in zip(todo, res):
@@ -424,7 +433,7 @@ def pif_geometric(a, r_out, r_in=None, p=P_TORQUE, q=Q_SOUND,
                   HR_ref=HR_ISCO_DEFAULT, alpha=ALPHA, n_rad=N_RAD,
                   closure=CLOSURE_DEFAULT, method=METHOD_DEFAULT,
                   rate=RATE_DEFAULT, n_eig=N_EIG, workers=1,
-                  diagnostics=False):
+                  diagnostics=False, progress=False):
     """
     (g, tau_w, tau_a) at M = 1, alpha = ALPHA, HR_isco = HR_ref.
 
@@ -455,10 +464,28 @@ def pif_geometric(a, r_out, r_in=None, p=P_TORQUE, q=Q_SOUND,
                          gamma_over_alpha_omega=outs[5])
         return PIFGeometric(outs[0], outs[1], outs[2], HR_ref, alpha,
                             'motta', extra)
-    outs = _evaluate(
-        lambda a_, ri_, ro_: _kernel_eig(a_, ri_, ro_, p, q, HR_ref, alpha,
-                                         n_eig, rate, workers),
-        4, a, r_out, r_in, 2000)
+
+    bar = None
+    if progress:
+        try:
+            from tqdm.auto import tqdm
+        except ImportError:
+            tqdm = None
+        if tqdm is not None:
+            a_b, ri_b, ro_b = np.broadcast_arrays(
+                np.asarray(a, dtype=float),
+                r_isco(a) if r_in is None else np.asarray(r_in, dtype=float),
+                np.asarray(r_out, dtype=float))
+            total = int(np.count_nonzero((ro_b > ri_b) & (a_b != 0.0)))
+            bar = tqdm(total=total, desc="eigenmodes", unit="pt")
+    try:
+        outs = _evaluate(
+            lambda a_, ri_, ro_: _kernel_eig(a_, ri_, ro_, p, q, HR_ref, alpha,
+                                             n_eig, rate, workers, bar),
+            4, a, r_out, r_in, 2000)
+    finally:
+        if bar is not None:
+            bar.close()
     return PIFGeometric(outs[0], outs[1], outs[2], HR_ref, alpha, 'eig',
                         dict(flatness=outs[3]))
 

@@ -43,8 +43,9 @@ Category of a point (M, nu_0) for ONE sign of the spin (panel_category):
     - otherwise (no spin of that sign has an r_bar) the most frequent of
       the codes 1, 2: no r_out reproduces nu_0 for any spin.
 """
-
 import os
+for v in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS"):
+    os.environ[v] = "1"          # forced, not setdefault
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -67,7 +68,7 @@ NU_MIN, NU_MAX = 1e-7, 1e4
 # grid in P has one node on each of them: every pixel (i, j) is assigned
 # EXACTLY the node i + j (no nearest-node quantisation).
 # Requires the M and nu_0 ranges to span a multiple of 1/N_PER_DECADE dex.
-N_PER_DECADE = 50
+N_PER_DECADE = 10
 
 
 def _n_nodes(lo, hi, per_decade=N_PER_DECADE):
@@ -139,7 +140,7 @@ def make_spins():
 
 def build_spin_curves(spins, hr_isco=HR_ISCO_DEFAULT, closure=CLOSURE_DEFAULT,
                       method=METHOD_DEFAULT, rate=RATE_DEFAULT, alpha=ALPHA,
-                      n_eig=N_EIG, workers=1, diagnostics=False):
+                      n_eig=N_EIG, workers=1, diagnostics=False, progress=True):
     """
     Compute the geometric curves once for every unique spin in `spins`.
     Returns {float(spin): SpinCurves}; spins with no valid r_out are omitted.
@@ -153,7 +154,7 @@ def build_spin_curves(spins, hr_isco=HR_ISCO_DEFAULT, closure=CLOSURE_DEFAULT,
     geo = pif_geometric(spins[:, None], R_OUT_GRID[None, :],
                         r_in=r_in[:, None], HR_ref=hr_isco, alpha=alpha,
                         closure=closure, method=method, rate=rate, n_eig=n_eig,
-                        workers=workers, diagnostics=diagnostics)
+                        workers=workers, diagnostics=diagnostics, progress=True)
     curves = {}
     for i, spin in enumerate(spins):
         keep = R_OUT_GRID > R_IN_MARGIN * r_in[i]
@@ -460,7 +461,7 @@ if __name__ == '__main__':
     os.makedirs(OUT_DIR, exist_ok=True)
     #"""
     M, nu, a_min_pos, a_max_neg, a_max_pos, a_min_neg, cat_pos, cat_neg = (
-        compute_map(method='eig')
+        compute_map(method='eig', n_eig=120, workers=8)
     )
     plot_map(
         M, nu, a_min_pos, a_max_neg, cat_pos, cat_neg, overlay_sources=True,

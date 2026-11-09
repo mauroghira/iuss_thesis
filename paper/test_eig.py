@@ -7,6 +7,9 @@ Regression / validation tests of the eigenmode method (run: python test_pif_eig.
    eigenmode must reproduce the consistent first-order solution.
 3. API guards: eigen curves are not rescalable in alpha / HR_isco.
 """
+import os
+for v in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS"):
+    os.environ[v] = "1"          # forced, not setdefault
 import numpy as np
 
 import pif_core as pc
@@ -80,8 +83,21 @@ def test_api_guards():
         raise AssertionError(bad)
 
 
+import faulthandler, time
+#faulthandler.dump_traceback_later(40, exit=True)   # prints where it is stuck after 40 s
+
+from pif_core import pif_geometric
+
 if __name__ == '__main__':
+    """
     for f in (test_fl14_circumbinary, test_first_order_limits, test_api_guards):
         f()
         print('ok  ', f.__name__)
     print('all tests passed')
+    """
+
+    r = np.geomspace(3.0, 100.0, 400)          # 400 points
+    for w in (1, 2, 4, 8):
+        t = time.perf_counter()
+        pif_geometric(0.5, r, method='eig', n_eig=60, workers=w, progress=True)
+        print('workers', w, round(time.perf_counter() - t, 1), 's', flush=True)
