@@ -33,7 +33,7 @@ from pif_core import P_TORQUE, g_solid
 
 set_style()
 
-MAX_PER_PANEL = 12
+MAX_PER_PANEL = 10
 DEFAULT_OUTDIR = os.path.join(os.path.dirname(__file__), 'output_catalog')
 
 
@@ -140,12 +140,12 @@ def plot_solid_aR(sources=None, indices=None, outdir=DEFAULT_OUTDIR,
     chgrid = build_solid_channel_grid(a_vals, r_out_vals, p=P_TORQUE, n_rad=n_rad)
 
     n_panels = max(1, int(np.ceil(len(sources) / max_per_panel)))
-    width = 4 if n_panels == 1 else 7
+    width = 3.5 if n_panels == 1 else 7
     cmap = plt.get_cmap('rainbow', max(1, len(sources)))
     source_colors = [cmap(i) for i in range(len(sources))]
     fig, axes = plt.subplots(
         1, n_panels, squeeze=False, sharey=True,
-        figsize=(width, 4),
+        figsize=(width, 3.4),
     )
     axes = axes.ravel()
     for panel_idx in range(n_panels):
@@ -185,7 +185,7 @@ def plot_solid_aR(sources=None, indices=None, outdir=DEFAULT_OUTDIR,
         fig.legend(
             legend_handles, [source['name'] for source in sources],
             loc='upper center', bbox_to_anchor=(0.5, 1.15),
-            ncol=min(3, len(sources)), fontsize=7, framealpha=0.85,
+            ncol=min(4, len(sources)), fontsize=7, framealpha=0.85,
         )
         fig.tight_layout()
     else:

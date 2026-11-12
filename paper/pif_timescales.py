@@ -116,14 +116,15 @@ def match_is_ok(match):
     return any(match['precession_ok'])
 
 
-def _match_from_curves(spin_curves, nu_target, mass, alpha=None):
+def _match_from_curves(spin_curves, nu_target, mass, alpha=None,
+                       hr_isco=None):
     """
-    Rescale the M-independent curves to `mass` (and `alpha`, default: the
-    value fixed in pif_core) and find the crossings with the observed
-    frequency nu_target: only cheap operations.
+    Rescale the M-independent curves to `mass` (and `alpha`, `hr_isco`,
+    default: the values fixed in pif_core) and find the crossings with the
+    observed frequency nu_target: only cheap operations.
     """
     r_out = spin_curves.r_out
-    nu_solid, t_wave, t_align = spin_curves.geo.physical(mass, alpha)
+    nu_solid, t_wave, t_align = spin_curves.geo.physical(mass, alpha, hr_isco)
     r_precession = _crossing_radii(r_out, nu_solid, nu_target)
     return {
         'r_out': r_out,

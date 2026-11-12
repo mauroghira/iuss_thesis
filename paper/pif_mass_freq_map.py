@@ -48,7 +48,7 @@ import os
 
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.colors import BoundaryNorm, ListedColormap
+from matplotlib.colors import BoundaryNorm, ListedColormap, FuncNorm
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 from typing import NamedTuple
@@ -295,6 +295,19 @@ def compute_map(alpha=None, hr_isco=None):
     )
 
 
+def extremes_norm(vmin, vmax, gamma=2):
+    def forward(x):
+        t = (np.asarray(x) - vmin) / (vmax - vmin)
+        centered = 2 * t - 1
+        return 0.5 + 0.5 * np.sign(centered) * np.abs(centered) ** gamma
+
+    def inverse(y):
+        centered = 2 * np.asarray(y) - 1
+        t = 0.5 + 0.5 * np.sign(centered) * np.abs(centered) ** (1 / gamma)
+        return vmin + t * (vmax - vmin)
+
+    return FuncNorm((forward, inverse), vmin=vmin, vmax=vmax, clip=True)
+
 def plot_map(M, nu, a_min_pos, a_max_neg, cat_pos=None, cat_neg=None,
              overlay_sources=False, fig_file=FIG_FILE,
              a_max_pos=None, a_min_neg=None):
@@ -344,7 +357,7 @@ def plot_map(M, nu, a_min_pos, a_max_neg, cat_pos=None, cat_neg=None,
     panel_mappables = []
     for panel_index, (ax, Z, cat, (vmin, vmax), title) in enumerate(panels):
         row = panel_index // 2
-        cmap_name = 'viridis_r' if row == 0 else 'viridis'
+        cmap_name = 'summer_r' if row == 0 else 'summer'
         cmap = plt.get_cmap(cmap_name).copy()
         if cat is None:
             cmap.set_bad('0.85')                   # no valid spin
@@ -354,8 +367,9 @@ def plot_map(M, nu, a_min_pos, a_max_neg, cat_pos=None, cat_neg=None,
                           rasterized=True)
             present.update(int(k) for k in np.unique(cat) if k > 0)
         im = ax.pcolormesh(M, nu, np.ma.masked_invalid(Z), cmap=cmap,
-                           vmin=vmin, vmax=vmax, shading='nearest',
-                           rasterized=True)
+                           #norm=extremes_norm(vmin, vmax, gamma=5), 
+                           vmin=vmin, vmax=vmax,
+                           shading='nearest', rasterized=True)
         panel_mappables.append(im)
         if row_mappables[row] is None:
             row_mappables[row] = im
@@ -437,7 +451,7 @@ def plot_saved_map(data_file=DATA_FILE, overlay_sources=False, fig_file=FIG_FILE
 
 if __name__ == '__main__':
     os.makedirs(OUT_DIR, exist_ok=True)
-    #"""
+    """
     M, nu, a_min_pos, a_max_neg, a_max_pos, a_min_neg, cat_pos, cat_neg = (
         compute_map()
     )
@@ -446,4 +460,4 @@ if __name__ == '__main__':
         a_max_pos=a_max_pos, a_min_neg=a_min_neg,
     )
     #"""
-    #plot_saved_map(overlay_sources=True)
+    plot_saved_map(overlay_sources=True)
