@@ -87,7 +87,7 @@ def plot_source_timescales(analysis, outdir='.'):
     fix_spines(ax2)
 
     matches1 = analysis['panel1_matches']
-    colors_a = plt.cm.viridis(np.linspace(0, 1, len(matches1)))
+    colors_a = plt.cm.rainbow(np.linspace(0, 1, len(matches1)))
     _draw_timescale_panel(ax1, matches1, nu0, colors_a, r_out_grid, 'a')
     ax1.text(
         0.98, 0.02, fr"$M_{{\rm ref}} = {M_ref:.2e}\,M_\odot$",
@@ -176,18 +176,39 @@ def plot_catalog_parameter_grids(analyses, outdir='.'):
         squeeze=False, sharex=True, sharey=True
     )
     axes = axes.ravel()
-    cmap = ListedColormap(['green'])
+    cmap = ListedColormap(['lightgray', 'green'])
     cmap.set_bad(alpha=0)
+    norm = BoundaryNorm([-0.5, 0.5, 1.5], cmap.N)
+    mass_edges = [
+        _cell_edges(analysis['grid_masses'], logarithmic=True)
+        for analysis in analyses
+    ]
+    mass_limits = (
+        min(edges[0] for edges in mass_edges),
+        max(edges[-1] for edges in mass_edges),
+    )
 
     for index, (axis, analysis) in enumerate(zip(axes, analyses)):
         row, column = divmod(index, n_columns)
         spins = analysis['grid_spins']
         masses = analysis['grid_masses']
-        data = analysis['grid_ok'].astype(float)
-        data[data == 0] = float('nan')
+        grid_ok = analysis['grid_ok']
+        data = np.full(grid_ok.shape, np.nan)
+        data[grid_ok] = 0
+        mass_range = analysis['source'].get('mass_range')
+        if mass_range is None:
+            mass_lo = analysis['M_ref'] / 10
+            mass_hi = analysis['M_ref'] * 10
+        else:
+            mass_lo, mass_hi = mass_range
+        if mass_lo == mass_hi:
+            mass_lo /= 10
+            mass_hi *= 10
+        in_mass_range = (masses >= mass_lo) & (masses <= mass_hi)
+        data[grid_ok & in_mass_range[:, np.newaxis]] = 1
         axis.pcolormesh(
             _cell_edges(spins), _cell_edges(masses, logarithmic=True),
-            data, cmap=cmap,
+            data, cmap=cmap, norm=norm,
             shading='flat', rasterized=True,
         )
         axis.set_xlim(-1.02, 1.02)
@@ -208,6 +229,9 @@ def plot_catalog_parameter_grids(analyses, outdir='.'):
         )
         fix_spines(axis)
 
+    for axis in axes[:len(analyses)]:
+        axis.set_ylim(mass_limits)
+
     for axis in axes[len(analyses):]:
         axis.set_visible(False)
 
@@ -225,7 +249,7 @@ def plot_catalog_parameter_grids(analyses, outdir='.'):
 
 if __name__ == '__main__':
     analyses, _, _ = load_analysis_data(DATA_FILE)
-    outdir = "output_catalog"
+    outdir = "output_test"
     os.makedirs(outdir, exist_ok=True)
     #"""
     saved = []
@@ -234,5 +258,5 @@ if __name__ == '__main__':
         print(f'Saved: {output}')
         saved.append(output)
     #"""
-    grids = plot_catalog_parameter_grids(analyses, 'output_catalog')
+    grids = plot_catalog_parameter_grids(analyses, 'output_test')
     print(f'Saved: {grids}')
