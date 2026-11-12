@@ -249,7 +249,7 @@ def plot_catalog_parameter_grids(analyses, outdir='.'):
 
 if __name__ == '__main__':
     analyses, _, _ = load_analysis_data(DATA_FILE)
-    outdir = "output_test"
+    outdir = "output_catalog"
     os.makedirs(outdir, exist_ok=True)
     #"""
     saved = []
@@ -258,5 +258,5 @@ if __name__ == '__main__':
         print(f'Saved: {output}')
         saved.append(output)
     #"""
-    grids = plot_catalog_parameter_grids(analyses, 'output_test')
+    grids = plot_catalog_parameter_grids(analyses, 'output_catalog')
     print(f'Saved: {grids}')

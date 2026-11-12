@@ -26,7 +26,7 @@ from pif_core import ALPHA, HR_ISCO_DEFAULT
 from catalog import CATALOG, select_sources
 from pif_mass_freq_map import build_spin_curves, R_OUT_GRID
 
-A_VALS = np.array([-0.9, -0.5, -0.25, 0.0, 0.01, 0.25, 0.5, 0.9, 0.998])
+A_VALS = np.array([-1, -0.9, -0.5, -0.25, 0.0, 0.01, 0.25, 0.5, 0.9, 1.0])
 A_FIXED = 0.5
 N_M = 6
 N_A_GRID = 401
@@ -193,7 +193,7 @@ def _compute_source_analysis(source, curves):
     panel2 = _mass_scan(
         curves, nu0, A_FIXED, np.logspace(np.log10(M_lo), np.log10(M_hi), N_M))
 
-    grid_masses = np.logspace(np.log10(M_lo), np.log10(M_hi), N_M_GRID)
+    grid_masses = np.logspace(np.log10(1e4), np.log10(1e9), N_M_GRID)
     grid_ok = _grid_validity(curves, nu0, grid_masses)
 
     return {

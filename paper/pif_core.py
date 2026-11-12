@@ -139,13 +139,9 @@ def _kernel_full(a, r_in, r_out, p, q, HR_ref, alpha, n_rad):
     R, a2, gphi, Sigma, w = _radial_setup(a, r_in, r_out, p, n_rad)
 
     # --- nu_solid * M ---------------------------------------------------
-    # Omega_LT = Omega_phi - Omega_z is SIGNED: negative for a < 0 (g_theta >
-    # g_phi, retrograde precession). The torque integral below needs the signed
-    # Omega_solid, so that Omega_solid - Z Omega_K cancels also for a < 0.
-    # The observable is nu_solid = |Omega_solid| / 2 pi, i.e. gs = |gs_signed|
-    # (g_phi - g_theta has the sign of a at every R >= r_isco >= 1).
     gth = g_theta(R, a2)
-    gs_signed = _trapz((gphi - gth) * w, R, axis=-1) / _trapz(w, R, axis=-1)
+    w_tot = _trapz(w, R, axis=-1)
+    gs_signed = _trapz((gphi - gth) * w, R, axis=-1) / w_tot
     gs = np.abs(gs_signed)
 
     # --- t_wave / M (Eq. 6 of Motta+17, closed form) --------------------
@@ -157,8 +153,10 @@ def _kernel_full(a, r_in, r_out, p, q, HR_ref, alpha, n_rad):
     # Z = (Omega_K^2 - Omega_z^2) / (2 Omega_K^2) = (1 - (g_theta/g_phi)^2) / 2
     Z = 0.5 * (1.0 - (gth / gphi)**2)
     two_pi = 2.0 * np.pi
-    # Sigma R^3 Omega_K (Omega_p - Z Omega_K) = (2 pi)^2 w (g_solid - Z gphi)
-    integrand_G = two_pi**2 * w * (gs_signed[:, None] - Z * gphi)
+    g_p = gs_signed                                   # <Omega_LT>_w
+    loc = gphi - gth 
+    # Sigma R^3 Omega_K (Omega_p - loc) = (2 pi)^2 w (g_p - loc)
+    integrand_G = two_pi**2 * w * (g_p[:, None] - loc)
     G = cumulative_trapezoid(integrand_G, R, axis=-1, initial=0.0)
 
     HR0 = HR_ref * r_isco_a**(q - 0.5)
