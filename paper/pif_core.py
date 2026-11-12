@@ -99,7 +99,7 @@ Q_SOUND = 3.0 / 2.0       # c_s ~ R^-q, radiation-pressure dominated disc
 HR_ISCO_DEFAULT = 0.1     # (H/R) at the ISCO, fixed by hand (not derived)
 ALPHA = 0.01              # Shakura-Sunyaev viscosity parameter (fixed here)
 CLOSURES = ('lt', 'z', 'lt_exact', 'fl')   # first-order closures (method='motta')
-CLOSURE_DEFAULT = 'lt'    # 'lt' = literal Motta+17 (Omega_p from exact Omega_LT)
+CLOSURE_DEFAULT = 'lt_exact'    # 'lt_exact' = literal Motta+17 (Omega_p from exact Omega_LT)
 METHODS = ('motta', 'eig')
 METHOD_DEFAULT = 'motta'
 RATES = ('lt', 'z')       # local precession / periastron rates (method='eig')

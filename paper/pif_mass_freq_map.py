@@ -68,7 +68,7 @@ NU_MIN, NU_MAX = 1e-7, 1e4
 # grid in P has one node on each of them: every pixel (i, j) is assigned
 # EXACTLY the node i + j (no nearest-node quantisation).
 # Requires the M and nu_0 ranges to span a multiple of 1/N_PER_DECADE dex.
-N_PER_DECADE = 10
+N_PER_DECADE = 50
 
 
 def _n_nodes(lo, hi, per_decade=N_PER_DECADE):
@@ -462,6 +462,7 @@ if __name__ == '__main__':
     #"""
     M, nu, a_min_pos, a_max_neg, a_max_pos, a_min_neg, cat_pos, cat_neg = (
         compute_map(method='eig', n_eig=120, workers=8)
+        #compute_map()  # motta lt exact
     )
     plot_map(
         M, nu, a_min_pos, a_max_neg, cat_pos, cat_neg, overlay_sources=True,

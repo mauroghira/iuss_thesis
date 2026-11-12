@@ -32,8 +32,8 @@ from pif_mass_freq_map import build_spin_curves, R_OUT_GRID
 A_VALS = np.array([-0.9, -0.5, -0.25, 0.0, 0.01, 0.25, 0.5, 0.9, 0.998])
 A_FIXED = 0.5
 N_M = 6
-N_A_GRID = 41
-N_M_GRID = 30
+N_A_GRID = 201
+N_M_GRID = 200
 GRID_SPINS = np.linspace(-1.0, 1.0, N_A_GRID)
 EXPLORATORY_DEX = 1.0
 DATA_FILE = os.path.join(
@@ -196,7 +196,7 @@ def _compute_source_analysis(source, curves):
     panel2 = _mass_scan(
         curves, nu0, A_FIXED, np.logspace(np.log10(M_lo), np.log10(M_hi), N_M))
 
-    grid_masses = np.logspace(np.log10(M_lo), np.log10(M_hi), N_M_GRID)
+    grid_masses = np.logspace(np.log10(1e4), np.log10(1e9), N_M_GRID)
     grid_ok = _grid_validity(curves, nu0, grid_masses)
 
     return {
@@ -249,4 +249,5 @@ def compute_and_save(sources=None, indices=None, output_file=DATA_FILE,
 
 
 if __name__ == '__main__':
-    compute_and_save(method='eig', n_eig=120, workers=8)
+    #compute_and_save(method='eig', n_eig=120, workers=8)
+    compute_and_save()

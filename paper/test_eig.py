@@ -86,7 +86,10 @@ def test_api_guards():
 import faulthandler, time
 #faulthandler.dump_traceback_later(40, exit=True)   # prints where it is stuck after 40 s
 
-from pif_core import pif_geometric
+from pif_core import (warp_eigenmode, _kerr_coef, P_TORQUE, Q_SOUND,
+                      HR_ISCO_DEFAULT, ALPHA, pif_geometric)
+from pif_timescales import _loglog_at
+from setup import r_isco
 
 if __name__ == '__main__':
     """
@@ -94,10 +97,93 @@ if __name__ == '__main__':
         f()
         print('ok  ', f.__name__)
     print('all tests passed')
-    """
+
 
     r = np.geomspace(3.0, 100.0, 400)          # 400 points
     for w in (1, 2, 4, 8):
         t = time.perf_counter()
         pif_geometric(0.5, r, method='eig', n_eig=60, workers=w, progress=True)
         print('workers', w, round(time.perf_counter() - t, 1), 's', flush=True)
+
+    
+
+    d = np.load('output_test/pif_timescales_analysis.npz', allow_pickle=True)
+    print(d['method'], d['closure'], d['n_eig'], d['a_vals'])
+    for an in d['analyses']:
+        T = 1.0 / an['source']['nu0']
+        for m in an['panel1_matches']:
+            r, tw, ta = m['r_out'], m['t_wave'], m['t_align']
+            for rb, ok in zip(m['r_precession'], m['precession_ok']):
+                if not ok:
+                    continue
+                i = np.searchsorted(r, rb)
+                sl = slice(max(i - 2, 0), i + 2)
+                print(f"{an['source']['name']}  a={m['parameter']:.4f}  rbar={rb:.3f}  "
+                    f"1/nu0={T:.3e}  tw={_loglog_at(r, tw, rb):.3e}  "
+                    f"ta={_loglog_at(r, ta, rb):.3e}")
+                print("    r :", r[sl]); print("    ta:", ta[sl])
+
+
+    spins = np.array([0.5, 0.9, 0.998])
+    r_out = np.geomspace(5.0, 100.0, 40)       # tutti > r_isco per questi spin
+    a, ri = spins[:, None], r_isco(spins)[:, None]
+
+    # motta + lt_exact: controparte al primo ordine dell'eig con rate='lt'
+    mo = pif_geometric(a, r_out[None, :], r_in=ri, method='motta',
+                    closure='lt_exact', diagnostics=True)
+    # eig con gli stessi alpha, HR_ref (default di pif_core)
+    ei = pif_geometric(a, r_out[None, :], r_in=ri, method='eig',
+                    rate='lt', n_eig=120, workers=1)
+
+    for i, s in enumerate(spins):
+        print(f"\n=== a = {s} ===")
+        print(" r_out  dl_theta  psi_max  gam/(aOm)  flat  ta_eig/ta_motta  g_eig/g_motta")
+        for j, r in enumerate(r_out):
+            print(f"{r:7.2f} {mo.extra['dl_theta'][i,j]:9.2e} "
+                f"{mo.extra['psi_max'][i,j]:8.2e} "
+                f"{mo.extra['gamma_over_alpha_omega'][i,j]:9.2e} "
+                f"{ei.extra['flatness'][i,j]:6.3f} "
+                f"{ei.tau_a[i,j]/mo.tau_a[i,j]:12.3e} "
+                f"{ei.g[i,j]/mo.g[i,j]:12.3f}")
+
+    
+    a = 0.5
+    ri = float(r_isco(a))
+    coef = _kerr_coef(a, ri, P_TORQUE, Q_SOUND, HR_ISCO_DEFAULT, 'lt')
+    for ro in (9.98, 10.78):
+        w, f = warp_eigenmode(ri, ro, coef, ALPHA, 120, return_all=True)
+        k = np.argsort(-f)[:4]
+        print(f"r_out={ro}")
+        for i in k:
+            print(f"  flat={f[i]:.3f}  g={abs(w[i].real)/(2*np.pi):.4e}  gamma={-w[i].imag:.3e}")
+        
+    """
+
+
+    spins = np.array([0.5, 0.9, 0.998])
+    a = spins[:, None]
+    ri = r_isco(spins)[:, None]
+    x = np.array([1.1, 1.3, 1.5, 2.0, 2.5, 3.0, 4.0, 6.0, 10.0])
+    r_out = ri * x[None, :]                       # shape (3, 9), r_out > r_in
+
+    # scansione in HR a alpha=0.01, poi in alpha a HR=0.1
+    combos = [(0.03, 0.01), (0.1, 0.01), (0.3, 0.01), (0.1, 0.001), (0.1, 0.1)]
+
+    for HR, al in combos:
+        mo = pif_geometric(a, r_out, r_in=ri, HR_ref=HR, alpha=al,
+                        method='motta', closure='lt_exact', diagnostics=True)
+        ei = pif_geometric(a, r_out, r_in=ri, HR_ref=HR, alpha=al,
+                        method='eig', rate='lt', n_eig=120)
+        print(f"\n##### HR={HR}  alpha={al}")
+        for i, s in enumerate(spins):
+            print(f"--- a={s}  r_in={ri[i,0]:.3f}")
+            print("   x   r_out  dl_theta  gam/aOm  Hr/alpha  flat  ta_eig/ta_mo  g_eig/g_mo")
+            for j in range(x.size):
+                print(f"{x[j]:5.2f} {r_out[i,j]:6.2f} "
+                    f"{mo.extra['dl_theta'][i,j]:9.2e} "
+                    f"{mo.extra['gamma_over_alpha_omega'][i,j]:8.2e} "
+                    f"{HR/(x[j]*al):8.2e} "
+                    f"{ei.extra['flatness'][i,j]:6.3f} "
+                    f"{ei.tau_a[i,j]/mo.tau_a[i,j]:11.3e} "
+                    f"{ei.g[i,j]/mo.g[i,j]:10.3f}")
+            
