@@ -249,5 +249,5 @@ def compute_and_save(sources=None, indices=None, output_file=DATA_FILE,
 
 
 if __name__ == '__main__':
-    #compute_and_save(method='eig', n_eig=120, workers=8)
-    compute_and_save()
+    compute_and_save(method='eig', n_eig=120, workers=8)
+    #compute_and_save()
