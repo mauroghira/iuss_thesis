@@ -9,7 +9,8 @@ through exact, factorisable laws:
     t_align  = M * tau_a * (HR_isco / HR_ref)^2 * (ALPHA / alpha)
                                                            [tau_a in s / Msun]
 
-(t_align is inversely proportional to alpha, t_wave does not depend on it.)
+(t_align is inversely proportional to alpha, t_wave does not depend on it;
+both laws are exact because c_s is proportional to HR_isco, see below.)
 g, tau_w, tau_a depend ONLY on (a, r_in, r_out, p, q) and are computed once
 at M = 1, alpha = ALPHA, HR_isco = HR_ref; tau_w = t_wave / M and
 tau_a = t_align / M are therefore directly the timescales per unit mass at
@@ -27,6 +28,18 @@ Units: r = R / R_g is dimensionless, M is in solar masses, times in seconds.
 
 Dependencies from setup.py (they stay there because other models use them):
 C, Rg_SUN, r_isco, g_phi, g_theta, g_LT.
+
+Sound speed: c_s = H Omega_z, with Omega_z the Kerr vertical epicyclic
+frequency (vertical hydrostatic equilibrium in Kerr) and the scale height a
+power law normalised at the ISCO,
+    H / R = HR_isco (R / R_isco)^(3/2 - q)       (H = const for q = 3/2),
+i.e. c_s = c_s^K Omega_z / Omega_K, where c_s^K = c HR_isco r_isco^(q-1/2) r^-q
+is the Newtonian profile of Motta+17 (Omega_K = c / (R_g r^{3/2})). The two
+coincide for r >> r_isco and differ near the ISCO of rapidly spinning holes.
+c_s is not a power law, so t_wave = int 2 dR / c_s is computed numerically
+(it is an elliptic integral; Motta+17 Eq. 6 is its Keplerian limit). For
+a = 1, Omega_z = 0 at r_isco = 1: t_wave diverges logarithmically and
+tau_w = inf, while t_align stays finite.
 
 References: Motta et al. 2017 (arXiv:1709.02608), Foucart & Lai 2014.
 """
@@ -50,7 +63,7 @@ _trapz = getattr(np, 'trapezoid', None) or np.trapz
 # Disc prescriptions (Motta et al. 2017)
 # --------------------------------------------------------------------------
 P_TORQUE = 3.0 / 5.0      # Sigma ~ R^-p (1 - sqrt(r_in/R))^p, zero torque
-Q_SOUND = 3.0 / 2.0       # c_s ~ R^-q, radiation-pressure dominated disc
+Q_SOUND = 3.0 / 2.0       # H/R ~ R^(3/2-q): H = const, radiation-pressure dominated disc
 HR_ISCO_DEFAULT = 0.1     # (H/R) at the ISCO, fixed by hand (not derived)
 ALPHA = 0.01              # Shakura-Sunyaev viscosity parameter (fixed here)
 
@@ -66,6 +79,21 @@ def sigma_torque_zero(R, r_in, p=P_TORQUE):
     R = np.asarray(R, dtype=float)
     ratio = np.clip(r_in / R, 0.0, 1.0)
     return R**(-p) * (1.0 - np.sqrt(ratio))**p
+
+
+def sound_speed(R, a, q=Q_SOUND, HR_ref=HR_ISCO_DEFAULT, gth=None):
+    """
+    c_s = H Omega_z [cm/s] at M = 1 (R in R_g; c_s does not depend on M),
+    with H / R = HR_ref (R / R_isco)^(3/2 - q). R and a must broadcast;
+    gth = g_theta(R, a) can be passed to avoid recomputing it.
+    """
+    R = np.asarray(R, dtype=float)
+    a = np.asarray(a, dtype=float)
+    if gth is None:
+        gth = g_theta(R, a)
+    # H Omega_K * Omega_z / Omega_K, with Omega_z / Omega_K = 2 pi g_theta R_g r^{3/2} / c
+    return (C * HR_ref * r_isco(a)**(q - 0.5) * R**(-q)
+            * gth * (2.0 * np.pi * Rg_SUN / C) * R**1.5)
 
 
 # --------------------------------------------------------------------------
@@ -144,10 +172,12 @@ def _kernel_full(a, r_in, r_out, p, q, HR_ref, alpha, n_rad):
     gs_signed = _trapz((gphi - gth) * w, R, axis=-1) / w_tot
     gs = np.abs(gs_signed)
 
-    # --- t_wave / M (Eq. 6 of Motta+17, closed form) --------------------
-    r_isco_a = r_isco(a)
-    tau_w = (2.0 * Rg_SUN / C / HR_ref * r_isco_a**(0.5 - q)
-             * (r_out**(1.0 + q) - r_in**(1.0 + q)) / (1.0 + q))
+    # --- t_wave / M = int 2 dR / c_s,  c_s = H Omega_z --------------------
+    # (Motta+17 Eq. 6 is the Keplerian limit). For a = 1, c_s(r_isco) = 0
+    # and the integral diverges logarithmically: tau_w = inf.
+    cs = sound_speed(R, a2, q, HR_ref, gth)
+    tau_w = _trapz(2.0 * Rg_SUN / cs, R, axis=-1)
+    tau_w = np.where(a >= 1.0, np.inf, tau_w)
 
     # --- t_align / M (Eq. 7 of Motta+17, Foucart & Lai 2014) ------------
     # Z = (Omega_K^2 - Omega_z^2) / (2 Omega_K^2) = (1 - (g_theta/g_phi)^2) / 2
@@ -159,9 +189,7 @@ def _kernel_full(a, r_in, r_out, p, q, HR_ref, alpha, n_rad):
     integrand_G = two_pi**2 * w * (g_p[:, None] - loc)
     G = cumulative_trapezoid(integrand_G, R, axis=-1, initial=0.0)
 
-    HR0 = HR_ref * r_isco_a**(q - 0.5)
-    cs2 = (C * HR0[:, None])**2 * R**(-2.0 * q)
-    num = _trapz(4.0 * alpha * G**2 / (Sigma * cs2 * R**3), R, axis=-1)
+    num = _trapz(4.0 * alpha * G**2 / (Sigma * cs**2 * R**3), R, axis=-1)
     den = _trapz(two_pi * w, R, axis=-1)                          # Sigma R^3 Omega_K
     # R is in units of r_g: gamma_phys = gamma_hat * Rg^2, Rg = Rg_SUN at M = 1
     gamma = (num / den) * Rg_SUN**2

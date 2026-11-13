@@ -17,7 +17,7 @@
 #                        'exploratory' +/-1 dex in pif_timescales).
 #
 # nu0 is the OBSERVED frequency (not corrected for redshift). The rest-frame
-# frequency is nu0 * (1 + z); 'z' is stored where known.
+# frequency nu_rest = nu0 * (1 + z) is added below and used by the analysis.
 #
 # Extra fields (ignored by the analysis code):
 #   z          redshift (for the catalogue table only; not used by the code)
@@ -105,6 +105,14 @@ CATALOG = [
          mass_ref="H2O maser 1.4e6 (Greenhill+1997)",
          notes="Previous range (9e5, 5e6) had no source found; restore it if you have one."),
 ]
+
+# Rest-frame QPO frequency. The model frequency nu_solid = g / M is emitted in
+# the source frame, while nu0 is observed: cosmological time dilation gives
+# nu_rest = nu0 (1 + z), hence P = M nu_rest. All the analysis scripts use
+# 'nu_rest'; 'nu0' is kept as published (catalogue table).
+for _source in CATALOG:
+    _source['nu_rest'] = _source['nu0'] * (1.0 + _source['z'])
+del _source
 
 # Non-AGN or non-X-ray claims: NOT used by the analysis (kept for reference
 # and for a possible table in the paper). Values from Smith+2021 Table 2 and

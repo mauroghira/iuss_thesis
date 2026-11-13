@@ -42,7 +42,7 @@ from catalog import CATALOG, select_sources
 from pif_core import ALPHA, HR_ISCO_DEFAULT
 from pif_mass_freq_map import (
     make_spins, build_spin_curves, classify_on_P, VALID, FAIL_COLORS,
-    FAIL_LABELS, R_OUT_GRID,
+    FAIL_LABELS, R_OUT_GRID, VALID_COLOR,
 )
 from pif_timescales import A_VALS, resolve_mass_reference, _match_from_curves
 from pif_plots import _plot_precession_markers, safe_filename
@@ -58,7 +58,6 @@ TIMESCALE_SOURCES = [10]                      # Fig. 3: one figure per source
 P_MIN, P_MAX, P_PER_DECADE = 1e-4, 1e5, 50    # covers the whole valid window
 N_M_SOURCE = 120                              # masses per source range
 
-VALID_COLOR = '#009E73'
 OUT_DIR = os.path.join(os.path.dirname(__file__), 'output_hr_alpha')
 DATA_FILE = os.path.join(OUT_DIR, 'pif_hr_alpha.npz')
 
@@ -102,7 +101,7 @@ def compute(output_file=DATA_FILE):
         codes_P[c] = _codes(curves, spins, P, hr, al)
         for j, src in enumerate(sources):
             masses = np.logspace(*np.log10(m_ranges[j]), N_M_SOURCE)
-            frac[c, j] = (_codes(curves, spins, masses * src['nu0'], hr, al)
+            frac[c, j] = (_codes(curves, spins, masses * src['nu_rest'], hr, al)
                           == VALID).mean(axis=1)
 
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
@@ -156,7 +155,7 @@ def plot_P_map(data, outfile=None):
         for k, (s, color) in enumerate(zip(srcs, src_colors)):
             _, lo, hi, kind = resolve_mass_reference(s['mass_range'])
             ls = '-' if kind == 'band' else (0, (2, 1))
-            sx.plot([lo * s['nu0'], hi * s['nu0']], [k, k], color=color,
+            sx.plot([lo * s['nu_rest'], hi * s['nu_rest']], [k, k], color=color,
                     lw=1.2, ls=ls, solid_capstyle='butt')
         sx.set_xscale('log'); sx.set_xlim(P[0], P[-1])
         sx.set_ylim(len(srcs) - 0.3, -0.7)
@@ -270,7 +269,7 @@ def plot_sources(data, indices=SOURCE_INDICES, n_cols=4, outfile=None):
 def plot_source_timescales(curves, source_idx, data, outfile=None):
     set_style()
     src = select_sources([source_idx])[0]
-    nu0 = src['nu0']
+    nu0 = src['nu_rest']
     M_ref, _, _, _ = resolve_mass_reference(src['mass_range'])
     hr_vals, al_vals = list(data['hr_vals']), list(data['alpha_vals'])
     nr, nc = len(al_vals), len(hr_vals)

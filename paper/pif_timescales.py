@@ -28,6 +28,13 @@ from pif_mass_freq_map import build_spin_curves, R_OUT_GRID
 
 A_VALS = np.array([-1, -0.9, -0.5, -0.25, 0.0, 0.01, 0.25, 0.5, 0.9, 1.0])
 A_FIXED = 0.5
+# Spin of the fixed-spin panel for sources whose valid spins exclude A_FIXED
+# (high P = M nu_0: no precession radius at a = 0.5). Keys: catalogue idx.
+A_FIXED_SOURCE = {1: 0.9, 2: 0.9, 4: 0.9, 10: 0.95, 11: 0.9, 12: 0.9,
+                  14: 0.9, 17: 0.95}
+# Sources whose mass range is too narrow for a mass scan to be informative:
+# the second panel is a finer spin scan at M_ref instead. Keys: catalogue idx.
+SPIN_ZOOM_SOURCE = {2: (0.6, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 0.98)}
 N_M = 6
 N_A_GRID = 401
 N_M_GRID = 300
@@ -187,12 +194,17 @@ def _grid_validity(curves, nu0, grid_masses):
 
 
 def _compute_source_analysis(source, curves):
-    nu0 = source['nu0']
+    nu0 = source['nu_rest']
     M_ref, M_lo, M_hi, kind = resolve_mass_reference(source['mass_range'])
 
+    a_fixed = A_FIXED_SOURCE.get(source['idx'], A_FIXED)
     panel1 = _spin_scan(curves, nu0, A_VALS, M_ref)
-    panel2 = _mass_scan(
-        curves, nu0, A_FIXED, np.logspace(np.log10(M_lo), np.log10(M_hi), N_M))
+    if source['idx'] in SPIN_ZOOM_SOURCE:
+        panel2 = _spin_scan(curves, nu0, SPIN_ZOOM_SOURCE[source['idx']], M_ref)
+    else:
+        panel2 = _mass_scan(
+            curves, nu0, a_fixed,
+            np.logspace(np.log10(M_lo), np.log10(M_hi), N_M))
 
     grid_masses = np.logspace(np.log10(1e4), np.log10(1e9), N_M_GRID)
     grid_ok = _grid_validity(curves, nu0, grid_masses)
@@ -203,6 +215,7 @@ def _compute_source_analysis(source, curves):
         'M_lo': float(M_lo),
         'M_hi': float(M_hi),
         'kind': kind,
+        'a_fixed': float(a_fixed),
         'panel1_matches': panel1,
         'panel2_matches': panel2,
         'grid_spins': GRID_SPINS,
@@ -220,7 +233,9 @@ def compute_and_save(sources=None, indices=None, output_file=DATA_FILE):
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
 
     # Geometric curves: once per spin, shared by all sources and masses.
-    all_spins = np.concatenate([A_VALS, [A_FIXED], GRID_SPINS])
+    zoom_spins = [s for spins in SPIN_ZOOM_SOURCE.values() for s in spins]
+    all_spins = np.concatenate([A_VALS, [A_FIXED], list(A_FIXED_SOURCE.values()),
+                                zoom_spins, GRID_SPINS])
     curves = build_spin_curves(all_spins)
     print(f'Geometric curves computed for {len(curves)} spins')
 

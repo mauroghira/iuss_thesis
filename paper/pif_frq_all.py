@@ -77,7 +77,7 @@ def build_solid_channel_grid(a_vals, r_out_vals, p=P_TORQUE, n_rad=300):
 def _mass_levels(source):
     """Levels of G = M * nu0 delimiting the source's accessible region.
     Returns (levels, is_band): a single level for a point-like mass estimate."""
-    nu0 = source['nu0']
+    nu0 = source['nu_rest']
     mass_range = source['mass_range']
     if mass_range is None:
         return [M_AGN_MIN * nu0, M_AGN_MAX * nu0], True

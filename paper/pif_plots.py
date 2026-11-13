@@ -65,7 +65,7 @@ def _draw_timescale_panel(ax, matches, nu_target, colors, r_out_grid,
 
 def plot_source_timescales(analysis, outdir='.'):
     source = analysis['source']
-    nu0 = source['nu0']
+    nu0 = source['nu_rest']
     name = source['name']
     M_ref = analysis['M_ref']
     M_lo = analysis['M_lo']
@@ -96,9 +96,12 @@ def plot_source_timescales(analysis, outdir='.'):
 
     matches2 = analysis['panel2_matches']
     colors_m = plt.cm.plasma(np.linspace(0, 1, len(matches2)))
-    _draw_timescale_panel(ax2, matches2, nu0, colors_m, r_out_grid, 'M')
+    kind2 = matches2[0]['parameter_kind'] if matches2 else 'M'
+    _draw_timescale_panel(ax2, matches2, nu0, colors_m, r_out_grid, 'M')  # 'M': no y label
+    label2 = (fr"$M_{{\rm ref}} = {M_ref:.2e}\,M_\odot$" if kind2 == 'a'
+              else fr"$a={analysis.get('a_fixed', A_FIXED):.2f}$")
     ax2.text(
-        0.98, 0.02, fr"$a={A_FIXED:.2f}$",
+        0.98, 0.02, label2,
         transform=ax2.transAxes, ha='right', va='bottom', fontsize=8,
     )
 

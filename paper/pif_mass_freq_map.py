@@ -66,7 +66,7 @@ NU_MIN, NU_MAX = 1e-7, 1e4
 # grid in P has one node on each of them: every pixel (i, j) is assigned
 # EXACTLY the node i + j (no nearest-node quantisation).
 # Requires the M and nu_0 ranges to span a multiple of 1/N_PER_DECADE dex.
-N_PER_DECADE = 50
+N_PER_DECADE = 100
 
 
 def _n_nodes(lo, hi, per_decade=N_PER_DECADE):
@@ -85,7 +85,7 @@ N_P = N_M + N_NU - 1                  # nodes of the 1D grid in P = M * nu_0
 # then uniform with step A_STEP up to EXACTLY A_MAX = 1; mirrored for a < 0,
 # plus a = 0.
 A_MAX = 1.0
-A_STEP = 0.01
+A_STEP = 0.005
 A_FINE_MIN = 1e-3
 N_A_FINE = 10
 
@@ -100,11 +100,12 @@ R_IN_MARGIN = 1.001      # only r_out > R_IN_MARGIN * r_in is used
 VALID, NOCROSS_HI, NOCROSS_LO, T_WAVE, T_ALIGN, BOTH = range(6)
 FAIL_COLORS = {
     NOCROSS_HI: '0.75',      # light grey
-    NOCROSS_LO: '0.25',      # dark grey (same family: both are "no r_out")
-    T_WAVE: '#56B4E9',
-    T_ALIGN: '#E69F00',
-    BOTH: '#CC79A7',
+    NOCROSS_LO: '0.5',      # dark grey (same family: both are "no r_out")
+    T_WAVE: '0.25',
+    T_ALIGN: '0.1',
+    BOTH: '1',
 }
+VALID_COLOR = '#009E73'      # valid configurations (plot_P_spin)
 FAIL_LABELS = {
     NOCROSS_HI: r'no $r_\mathrm{out}$ ($\nu_0$ too high)',
     NOCROSS_LO: (r'no $r_\mathrm{out}\leq$ ' + f'{R_OUT_GRID[-1]:.0f}'
@@ -117,6 +118,7 @@ FAIL_LABELS = {
 OUT_DIR = os.path.join(os.path.dirname(__file__), 'output_catalog')
 DATA_FILE = os.path.join(OUT_DIR, 'pif_mass_frequency_map.npz')
 FIG_FILE = os.path.join(OUT_DIR, 'pif_mass_frequency_map.pdf')
+FIG_P_FILE = os.path.join(OUT_DIR, 'pif_P_spin_map.pdf')
 
 
 class SpinCurves(NamedTuple):
@@ -172,7 +174,9 @@ def classify_on_P(curve, P, k_w=1.0, k_a=1.0):
     """
     r, geo = curve.r_out, curve.geo
     g, tw, ta = geo.g, geo.tau_w * k_w, geo.tau_a * k_a
-    ok = (np.isfinite(g) & (g > 0) & np.isfinite(tw) & (tw > 0)
+    # tau_w = +inf is kept (a = 1: t_wave diverges, see pif_core): there the
+    # interpolated log tau_w is inf or NaN, so t_wave < 1/nu_0 always fails
+    ok = (np.isfinite(g) & (g > 0) & ~np.isnan(tw) & (tw > 0)
           & np.isfinite(ta) & (ta > 0))
     codes = np.full(P.size, NOCROSS_HI, dtype=np.int8)
     if ok.sum() < 2:                      # e.g. a = 0: g = 0 identically
@@ -186,7 +190,8 @@ def classify_on_P(curve, P, k_w=1.0, k_a=1.0):
     den = dr - dl
     f = np.divide(-dl, den, out=np.zeros_like(dl), where=den != 0)
     f = np.clip(f, 0.0, 1.0)
-    ltw_bar = ltw[:-1] + f * (ltw[1:] - ltw[:-1])
+    with np.errstate(invalid='ignore'):   # inf - inf where tau_w = inf
+        ltw_bar = ltw[:-1] + f * (ltw[1:] - ltw[:-1])
     lta_bar = lta[:-1] + f * (lta[1:] - lta[:-1])
     l_inv_P = -lP[:, None]                # log(1/P)
     w_cond = ltw_bar < l_inv_P            # t_wave  < 1/nu_0
@@ -387,9 +392,9 @@ def plot_map(M, nu, a_min_pos, a_max_neg, cat_pos=None, cat_neg=None,
         if overlay_sources:
             for s, color in zip(CATALOG, source_colors):
                 lo, hi = s['mass_range']
-                ax.plot([lo, hi], [s['nu0']] * 2, color=color, lw=0.8)
+                ax.plot([lo, hi], [s['nu_rest']] * 2, color=color, lw=0.8)
                 ax.plot(
-                    [np.sqrt(lo * hi)], [s['nu0']], marker='o',
+                    [np.sqrt(lo * hi)], [s['nu_rest']], marker='o',
                     color=color, markersize=2, linestyle='None',
                 )
 
@@ -449,6 +454,79 @@ def plot_saved_map(data_file=DATA_FILE, overlay_sources=False, fig_file=FIG_FILE
     )
 
 
+def plot_P_spin(data_file=DATA_FILE, overlay_sources=True,
+                fig_file=FIG_P_FILE, p_lim=(1e-4, 1e6), figsize=(3.6, 3.4)):
+    """
+    Failure code of every (spin, P = M nu_0) from a saved map: since the
+    validity depends on (M, nu_0) only through P, this single panel contains
+    the whole information of the (M, nu_0) maps, spin by spin (codes_P, not
+    the per-sign panel_category). With overlay_sources, a strip on the right
+    shows the interval [M_lo nu_0, M_hi nu_0] of every source (a dot for a
+    point-like mass estimate). p_lim=None shows the whole P grid.
+    """
+    set_style()
+    with np.load(data_file) as data:
+        spins, P, codes = data['spins'], data['P_grid'], data['codes_P']
+
+    if overlay_sources:
+        fig, (ax, sx) = plt.subplots(
+            1, 2, figsize=figsize, sharey=True, constrained_layout=True,
+            gridspec_kw=dict(width_ratios=[1, 0.18], wspace=0.0))
+    else:
+        fig, ax = plt.subplots(figsize=figsize, constrained_layout=True)
+
+    cmap = ListedColormap([VALID_COLOR] + [FAIL_COLORS[k] for k in range(1, 6)])
+    norm = BoundaryNorm(np.arange(-0.5, 6.5, 1.0), cmap.N)
+    ax.pcolormesh(spins, P, codes.T, cmap=cmap, norm=norm,
+                  shading='nearest', rasterized=True)
+    ax.set_yscale('log')
+    ax.set_xlim(spins[0], spins[-1])
+    ax.set_ylim(p_lim if p_lim is not None else (P[0], P[-1]))
+    ax.set_xlabel(r'spin $a$')
+    ax.set_ylabel(r'$M\nu_0\;[M_\odot\,\mathrm{Hz}]$')
+    fix_spines(ax)
+
+    present = sorted(int(k) for k in np.unique(codes))
+    legends = [dict(
+        handles=[Patch(facecolor=VALID_COLOR if k == VALID else FAIL_COLORS[k],
+                       edgecolor='k', linewidth=0.3,
+                       label='valid' if k == VALID else FAIL_LABELS[k])
+                 for k in present],
+        ncol=2)]
+
+    if overlay_sources:
+        colors = plt.get_cmap('rainbow', max(1, len(CATALOG)))(
+            range(len(CATALOG)))
+        for k, (s, color) in enumerate(zip(CATALOG, colors)):
+            lo, hi = s['mass_range']
+            if lo == hi:
+                sx.plot([k], [lo * s['nu_rest']], marker='o', ms=2, color=color)
+            else:
+                sx.plot([k, k], [lo * s['nu_rest'], hi * s['nu_rest']], color=color,
+                        lw=1.2, solid_capstyle='butt')
+        sx.set_xlim(-1, len(CATALOG))
+        sx.set_xticks([])
+        sx.tick_params(axis='y', labelleft=False)
+        fix_spines(sx)
+        legends.append(dict(
+            handles=[Line2D([], [], color=c, lw=1.2, label=s['name'])
+                     for s, c in zip(CATALOG, colors)],
+            ncol=3))
+
+    # legends stacked below the figure (as in plot_map)
+    y = 0.0
+    renderer = fig.canvas.get_renderer()
+    for kw in legends:
+        leg = fig.legend(loc='upper center', bbox_to_anchor=(0.5, y),
+                         fontsize=5.5, frameon=True, **kw)
+        bb = leg.get_window_extent(renderer).transformed(
+            fig.transFigure.inverted())
+        y = bb.y0 - 0.01
+    fig.savefig(fig_file, dpi=300, bbox_inches='tight')
+    print(f'Saved: {fig_file}')
+    return fig
+
+
 if __name__ == '__main__':
     os.makedirs(OUT_DIR, exist_ok=True)
     """
@@ -460,4 +538,5 @@ if __name__ == '__main__':
         a_max_pos=a_max_pos, a_min_neg=a_min_neg,
     )
     #"""
-    plot_saved_map(overlay_sources=True)
+    #plot_saved_map(overlay_sources=True)
+    plot_P_spin(overlay_sources=True)
