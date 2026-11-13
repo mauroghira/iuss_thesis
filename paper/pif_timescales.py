@@ -25,7 +25,7 @@ import numpy as np
 
 from setup import M_AGN_MAX, M_AGN_MIN
 from pif_core import (ALPHA, HR_ISCO_DEFAULT, CLOSURE_DEFAULT, METHOD_DEFAULT,
-                      RATE_DEFAULT, N_EIG)
+                      RATE_DEFAULT, VGRAV_DEFAULT, N_EIG)
 from catalog import CATALOG, select_sources
 from pif_mass_freq_map import build_spin_curves, R_OUT_GRID
 
@@ -215,7 +215,8 @@ def _compute_source_analysis(source, curves):
 
 def compute_and_save(sources=None, indices=None, output_file=DATA_FILE,
                      closure=CLOSURE_DEFAULT, method=METHOD_DEFAULT,
-                     rate=RATE_DEFAULT, n_eig=N_EIG, workers=1):
+                     rate=RATE_DEFAULT, n_eig=N_EIG, workers=1,
+                     vgrav=VGRAV_DEFAULT):
     if sources is not None and indices is not None:
         raise ValueError('Pass either sources or indices, not both')
     if sources is None:
@@ -226,7 +227,8 @@ def compute_and_save(sources=None, indices=None, output_file=DATA_FILE,
     # Geometric curves: once per spin, shared by all sources and masses.
     all_spins = np.concatenate([A_VALS, [A_FIXED], GRID_SPINS])
     curves = build_spin_curves(all_spins, closure=closure, method=method,
-                               rate=rate, n_eig=n_eig, workers=workers)
+                               rate=rate, n_eig=n_eig, workers=workers,
+                               vgrav=vgrav)
     print(f'Geometric curves computed for {len(curves)} spins')
 
     analyses = []
@@ -241,7 +243,7 @@ def compute_and_save(sources=None, indices=None, output_file=DATA_FILE,
         a_fixed=A_FIXED,
         alpha=ALPHA,
         hr_isco=HR_ISCO_DEFAULT,
-        closure=closure, method=method, rate=rate, n_eig=n_eig,
+        closure=closure, method=method, rate=rate, n_eig=n_eig, vgrav=vgrav,
         criterion='t_wave(r_bar) < 1/nu_0 < t_align(r_bar)',
     )
     print(f'Saved: {output_file}')

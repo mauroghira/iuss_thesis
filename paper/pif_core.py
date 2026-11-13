@@ -10,6 +10,8 @@ through exact, factorisable laws:
                                                            [tau_a in s / Msun]
 
 (t_align is inversely proportional to alpha, t_wave does not depend on it.)
+These laws hold for both sound-speed prescriptions below, because c_s is
+proportional to HR_isco in both.
 g, tau_w, tau_a depend ONLY on (a, r_in, r_out, p, q) and are computed once
 at M = 1, alpha = ALPHA, HR_isco = HR_ref; tau_w = t_wave / M and
 tau_a = t_align / M are therefore directly the timescales per unit mass at
@@ -27,6 +29,25 @@ Units: r = R / R_g is dimensionless, M is in solar masses, times in seconds.
 
 Dependencies from setup.py (they stay there because other models use them):
 C, Rg_SUN, r_isco, g_phi, g_theta, g_LT.
+
+==========================================================================
+SOUND SPEED                                  parameter `vgrav`
+==========================================================================
+c_s = H Omega_vert, with the scale height a power law normalised at the ISCO,
+    H / R = HR_isco (R / R_isco)^(3/2 - q)       (H = const for q = 3/2),
+and Omega_vert the frequency of the vertical restoring force:
+  'kerr' (default): Omega_vert = Omega_z, Kerr vertical epicyclic frequency
+      (vertical hydrostatic equilibrium in Kerr). c_s = c_s^K Omega_z/Omega_K
+      is not a power law; t_wave = int 2 dR / c_s is computed numerically
+      (elliptic integral, no elementary closed form). For a = 1, Omega_z = 0
+      at r_isco = 1 and t_wave diverges logarithmically: tau_w = inf there
+      (t_align stays finite).
+  'kepler': Omega_vert = Omega_K = c / (R_g r^{3/2}) (Newtonian vertical
+      gravity, Motta+17): c_s = c HR_isco r_isco^(q - 1/2) r^-q, and t_wave
+      is the closed form of Motta+17 Eq. 6.
+The two coincide for r >> r_isco; they differ near the ISCO of rapidly
+spinning holes (Omega_z / Omega_K = 0.52, 0.13 at r_isco for a = 0.9, 0.998)
+and, in the opposite direction and less, for a < 0.
 
 ==========================================================================
 TWO WAYS OF OBTAINING (g, tau_a)            parameter `method`
@@ -65,7 +86,8 @@ method='eig': full linear eigenmode of the bending-wave equations (FL14
     NB: the eigenproblem depends on (HR_isco, alpha) NOT only through the
     simple scalings above: the curves are valid only for the (HR_ref, alpha)
     used to compute them, and PIFGeometric.physical refuses other values.
-    t_wave stays the closed form of Motta Eq. 6 in both methods.
+    t_wave is the same in both methods (see SOUND SPEED); the eigenproblem
+    uses the same c_s profile as the first-order solution.
     The first-order counterparts of the eigenmodes are closure='lt_exact'
     (rate='lt') and closure='fl' (rate='z'): they coincide with the
     eigenmode in the weak-field / small-warp limit.
@@ -104,6 +126,8 @@ METHODS = ('motta', 'eig')
 METHOD_DEFAULT = 'motta'
 RATES = ('lt', 'z')       # local precession / periastron rates (method='eig')
 RATE_DEFAULT = 'lt'
+VGRAVS = ('kerr', 'kepler')   # vertical frequency in c_s = H Omega_vert
+VGRAV_DEFAULT = 'kerr'
 N_EIG = 120               # radial cells of the eigenproblem (matrix 2N-1)
 
 # Numerical parameters
@@ -118,6 +142,41 @@ def sigma_torque_zero(R, r_in, p=P_TORQUE):
     R = np.asarray(R, dtype=float)
     ratio = np.clip(r_in / R, 0.0, 1.0)
     return R**(-p) * (1.0 - np.sqrt(ratio))**p
+
+
+def sound_speed(R, a, q=Q_SOUND, HR_ref=HR_ISCO_DEFAULT, vgrav=VGRAV_DEFAULT,
+                gth=None):
+    """
+    c_s [cm/s] at M = 1 (R in R_g; c_s does not depend on M), see SOUND SPEED
+    in the module docstring:  c_s = H Omega_vert,
+    H / R = HR_ref (R / R_isco)^(3/2 - q),  Omega_vert = Omega_z ('kerr') or
+    Omega_K ('kepler'). R and a must broadcast. gth = g_theta(R, a) can be
+    passed to avoid recomputing it.
+    """
+    R = np.asarray(R, dtype=float)
+    a = np.asarray(a, dtype=float)
+    cs = C * HR_ref * r_isco(a)**(q - 0.5) * R**(-q)       # H Omega_K
+    if vgrav == 'kerr':
+        if gth is None:
+            gth = g_theta(R, a)
+        # Omega_z / Omega_K = 2 pi g_theta R_g r^{3/2} / c
+        cs = cs * gth * (2.0 * np.pi * Rg_SUN / C) * R**1.5
+    elif vgrav != 'kepler':
+        raise ValueError(f"vgrav must be one of {VGRAVS}, got {vgrav!r}")
+    return cs
+
+
+def _tau_wave_closed(a, r_in, r_out, q, HR_ref):
+    """t_wave / M for vgrav='kepler': Motta+17 Eq. 6 (closed form)."""
+    return (2.0 * Rg_SUN / C / HR_ref * r_isco(a)**(0.5 - q)
+            * (r_out**(1.0 + q) - r_in**(1.0 + q)) / (1.0 + q))
+
+
+def _tau_wave_num(a, R, cs):
+    """t_wave / M = int 2 dR / c_s on the (n, n_rad) grid R (vgrav='kerr').
+    inf for a >= 1, where c_s(r_isco) = 0 and the integral diverges."""
+    tau_w = _trapz(2.0 * Rg_SUN / cs, R, axis=-1)
+    return np.where(np.asarray(a) >= 1.0, np.inf, tau_w)
 
 
 # --------------------------------------------------------------------------
@@ -143,6 +202,7 @@ class PIFGeometric:
     #       sin(beta_out)), 'gamma_over_alpha_omega' (gamma / alpha Omega(r_out))
     #   method='eig': 'flatness' in [0, 1] of the selected mode (1 = rigid)
     extra: dict = field(default_factory=dict)
+    vgrav: str = VGRAV_DEFAULT      # sound-speed prescription of the curves
 
     def physical(self, M, alpha=None, HR_isco=None):
         """
@@ -170,14 +230,19 @@ class PIFGeometric:
 # --------------------------------------------------------------------------
 # Numerical kernels (one chunk of flattened points)
 # --------------------------------------------------------------------------
+def _r_grid(r_in, r_out, n_rad):
+    """(n, n_rad) radial grid R = r_in + xi (r_out - r_in), xi in [EPS, 1]."""
+    xi = np.linspace(EPS, 1.0, n_rad)
+    return r_in[:, None] + xi[None, :] * (r_out - r_in)[:, None]
+
+
 def _radial_setup(a, r_in, r_out, p, n_rad):
     """
     Radial grid R = r_in + xi (r_out - r_in), xi in [EPS, 1], and the
     quantities shared by nu_solid and t_align. All inputs are 1D (n,);
     outputs are (n, n_rad) arrays (a2 is (n, 1)).
     """
-    xi = np.linspace(EPS, 1.0, n_rad)
-    R = r_in[:, None] + xi[None, :] * (r_out - r_in)[:, None]
+    R = _r_grid(r_in, r_out, n_rad)
     a2 = a[:, None]
     gphi = g_phi(R, a2)                          # Omega_K / (2 pi) at M = 1
     Sigma = sigma_torque_zero(R, r_in[:, None], p)
@@ -193,7 +258,8 @@ def _kernel_g(a, r_in, r_out, p, n_rad):
 
 
 def _kernel_full(a, r_in, r_out, p, q, HR_ref, alpha, n_rad,
-                 closure=CLOSURE_DEFAULT, diagnostics=False):
+                 closure=CLOSURE_DEFAULT, diagnostics=False,
+                 vgrav=VGRAV_DEFAULT):
     """
     (g, tau_w, tau_a) for 1D arrays a, r_in, r_out with r_out > r_in, at
     M = 1 and the given alpha, HR_ref.
@@ -201,6 +267,7 @@ def _kernel_full(a, r_in, r_out, p, q, HR_ref, alpha, n_rad,
     recomputed elsewhere.
 
     closure: see the module docstring ('lt', 'z', 'lt_exact', 'fl').
+    vgrav: sound-speed prescription ('kerr', 'kepler'), see SOUND SPEED.
     diagnostics=True appends three arrays (FL14 Eqs. 28, 34, 35):
       dl_theta  = |l_theta(r_in) - l_theta(r_out)| per unit sin(beta_out)
       psi_max   = max_r |d l / d ln r| per unit sin(beta_out)
@@ -220,10 +287,13 @@ def _kernel_full(a, r_in, r_out, p, q, HR_ref, alpha, n_rad,
     gs_signed = _trapz((gphi - gth) * w, R, axis=-1) / w_tot
     gs = np.abs(gs_signed)
 
-    # --- t_wave / M (Eq. 6 of Motta+17, closed form) --------------------
-    r_isco_a = r_isco(a)
-    tau_w = (2.0 * Rg_SUN / C / HR_ref * r_isco_a**(0.5 - q)
-             * (r_out**(1.0 + q) - r_in**(1.0 + q)) / (1.0 + q))
+    # --- sound speed and t_wave / M = int 2 dR / c_s ---------------------
+    cs = sound_speed(R, a2, q, HR_ref, vgrav, gth)
+    if vgrav == 'kepler':
+        tau_w = _tau_wave_closed(a, r_in, r_out, q, HR_ref)   # Motta+17 Eq. 6
+    else:
+        tau_w = _tau_wave_num(a, R, cs)
+    cs2 = cs**2
 
     # --- t_align / M (Eq. 7 of Motta+17, Foucart & Lai 2014) ------------
     # Z = (Omega_K^2 - Omega_z^2) / (2 Omega_K^2) = (1 - (g_theta/g_phi)^2) / 2
@@ -246,8 +316,6 @@ def _kernel_full(a, r_in, r_out, p, q, HR_ref, alpha, n_rad,
     integrand_G = two_pi**2 * w * (g_p[:, None] - loc)
     G = cumulative_trapezoid(integrand_G, R, axis=-1, initial=0.0)
 
-    HR0 = HR_ref * r_isco_a**(q - 0.5)
-    cs2 = (C * HR0[:, None])**2 * R**(-2.0 * q)
     num = _trapz(4.0 * alpha * G**2 / (Sigma * cs2 * R**3), R, axis=-1)
     den = _trapz(two_pi * w, R, axis=-1)                          # Sigma R^3 Omega_K
     # R is in units of r_g: gamma_phys = gamma_hat * Rg^2, Rg = Rg_SUN at M = 1
@@ -336,9 +404,8 @@ def warp_eigenmode(r_in, r_out, coef, alpha, n=N_EIG, return_all=False):
     return w[k], float(flat[k])
 
 
-def _kerr_coef(a, r_in, p, q, HR_ref, rate):
+def _kerr_coef(a, r_in, p, q, HR_ref, rate, vgrav=VGRAV_DEFAULT):
     """coef(r) for warp_eigenmode in Kerr (M = 1, Sigma_0 = 1, R in R_g)."""
-    cs0 = C * HR_ref * float(r_isco(a))**(q - 0.5)
     two_pi = 2.0 * np.pi
 
     def coef(rr):
@@ -353,24 +420,25 @@ def _kerr_coef(a, r_in, p, q, HR_ref, rate):
             zr = 0.5 * Om * (1.0 - (gth / gphi)**2)
             kr = 0.5 * Om * (1.0 - (gr_ / gphi)**2)
         Sig = sigma_torque_zero(rr, r_in, p)
-        cs2 = cs0**2 * rr**(-2.0 * q) / Rg_SUN**2
+        cs2 = (sound_speed(rr, a, q, HR_ref, vgrav, gth) / Rg_SUN)**2
         return Sig, Om, cs2, zr, kr
     return coef
 
 
 def _eig_point(args):
-    a, r_in, r_out, p, q, HR_ref, alpha, n_eig, rate = args
-    om, flat = warp_eigenmode(r_in, r_out, _kerr_coef(a, r_in, p, q, HR_ref, rate),
+    a, r_in, r_out, p, q, HR_ref, alpha, n_eig, rate, vgrav = args
+    om, flat = warp_eigenmode(r_in, r_out,
+                              _kerr_coef(a, r_in, p, q, HR_ref, rate, vgrav),
                               alpha, n_eig)
     return om, flat
 
 
 def _kernel_eig(a, r_in, r_out, p, q, HR_ref, alpha, n_eig, rate, workers=1,
-                bar=None):
+                bar=None, vgrav=VGRAV_DEFAULT, n_rad=N_RAD):
     """(g, tau_w, tau_a, flatness) from the full eigenmode, per point."""
     todo = [k for k in range(a.size) if a[k] != 0.0]    # a = 0: no precession
     args = [(float(a[k]), float(r_in[k]), float(r_out[k]), p, q, HR_ref, alpha,
-             n_eig, rate) for k in todo]
+             n_eig, rate, vgrav) for k in todo]
     res = []
     if workers and workers > 1 and len(args) > 1:
         from concurrent.futures import ProcessPoolExecutor
@@ -392,9 +460,11 @@ def _kernel_eig(a, r_in, r_out, p, q, HR_ref, alpha, n_eig, rate, workers=1,
     g = np.abs(om.real) / (2.0 * np.pi)
     gam = -om.imag
     tau_a = np.where(gam > 0.0, 1.0 / np.where(gam > 0.0, gam, 1.0), np.nan)
-    r_isco_a = r_isco(a)
-    tau_w = (2.0 * Rg_SUN / C / HR_ref * r_isco_a**(0.5 - q)
-             * (r_out**(1.0 + q) - r_in**(1.0 + q)) / (1.0 + q))
+    if vgrav == 'kepler':
+        tau_w = _tau_wave_closed(a, r_in, r_out, q, HR_ref)
+    else:
+        R = _r_grid(r_in, r_out, n_rad)
+        tau_w = _tau_wave_num(a, R, sound_speed(R, a[:, None], q, HR_ref, vgrav))
     return g, tau_w, tau_a, flat
 
 
@@ -433,7 +503,7 @@ def pif_geometric(a, r_out, r_in=None, p=P_TORQUE, q=Q_SOUND,
                   HR_ref=HR_ISCO_DEFAULT, alpha=ALPHA, n_rad=N_RAD,
                   closure=CLOSURE_DEFAULT, method=METHOD_DEFAULT,
                   rate=RATE_DEFAULT, n_eig=N_EIG, workers=1,
-                  diagnostics=False, progress=False):
+                  diagnostics=False, progress=False, vgrav=VGRAV_DEFAULT):
     """
     (g, tau_w, tau_a) at M = 1, alpha = ALPHA, HR_isco = HR_ref.
 
@@ -442,6 +512,8 @@ def pif_geometric(a, r_out, r_in=None, p=P_TORQUE, q=Q_SOUND,
     in memory. Points with r_out <= r_in are NaN.
     method : 'motta' (closed-form first order, uses `closure`) or 'eig' (full
     eigenmode, uses `rate`, `n_eig`, `workers`); see the module docstring.
+    vgrav : sound-speed prescription, 'kerr' (c_s = H Omega_z, default) or
+    'kepler' (c_s = H Omega_K, Motta+17); see SOUND SPEED.
     diagnostics : with method='motta', store the first-order validity
     diagnostics in PIFGeometric.extra; with method='eig' the flatness of the
     selected mode is always stored.
@@ -452,18 +524,21 @@ def pif_geometric(a, r_out, r_in=None, p=P_TORQUE, q=Q_SOUND,
         raise ValueError(f"closure must be one of {CLOSURES}, got {closure!r}")
     if rate not in RATES:
         raise ValueError(f"rate must be one of {RATES}, got {rate!r}")
+    if vgrav not in VGRAVS:
+        raise ValueError(f"vgrav must be one of {VGRAVS}, got {vgrav!r}")
     if method == 'motta':
         n_out = 6 if diagnostics else 3
         outs = _evaluate(
             lambda a_, ri_, ro_: _kernel_full(a_, ri_, ro_, p, q, HR_ref, alpha,
-                                              n_rad, closure, diagnostics),
+                                              n_rad, closure, diagnostics,
+                                              vgrav),
             n_out, a, r_out, r_in, n_rad)
         extra = {}
         if diagnostics:
             extra = dict(dl_theta=outs[3], psi_max=outs[4],
                          gamma_over_alpha_omega=outs[5])
         return PIFGeometric(outs[0], outs[1], outs[2], HR_ref, alpha,
-                            'motta', extra)
+                            'motta', extra, vgrav)
 
     bar = None
     if progress:
@@ -481,13 +556,14 @@ def pif_geometric(a, r_out, r_in=None, p=P_TORQUE, q=Q_SOUND,
     try:
         outs = _evaluate(
             lambda a_, ri_, ro_: _kernel_eig(a_, ri_, ro_, p, q, HR_ref, alpha,
-                                             n_eig, rate, workers, bar),
-            4, a, r_out, r_in, 2000)
+                                             n_eig, rate, workers, bar, vgrav,
+                                             n_rad),
+            4, a, r_out, r_in, n_rad)
     finally:
         if bar is not None:
             bar.close()
     return PIFGeometric(outs[0], outs[1], outs[2], HR_ref, alpha, 'eig',
-                        dict(flatness=outs[3]))
+                        dict(flatness=outs[3]), vgrav)
 
 
 def g_solid(a, r_out, r_in=None, p=P_TORQUE, n_rad=N_RAD):

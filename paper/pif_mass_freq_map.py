@@ -56,7 +56,8 @@ from typing import NamedTuple
 
 from setup import r_isco, set_style, fix_spines
 from pif_core import (ALPHA, HR_ISCO_DEFAULT, CLOSURE_DEFAULT, METHOD_DEFAULT,
-                      RATE_DEFAULT, N_EIG, pif_geometric, PIFGeometric)
+                      RATE_DEFAULT, VGRAV_DEFAULT, N_EIG, pif_geometric,
+                      PIFGeometric)
 from catalog import CATALOG
 
 M_MIN, M_MAX = 1e0, 1e10
@@ -140,7 +141,8 @@ def make_spins():
 
 def build_spin_curves(spins, hr_isco=HR_ISCO_DEFAULT, closure=CLOSURE_DEFAULT,
                       method=METHOD_DEFAULT, rate=RATE_DEFAULT, alpha=ALPHA,
-                      n_eig=N_EIG, workers=1, diagnostics=False, progress=True):
+                      n_eig=N_EIG, workers=1, diagnostics=False, progress=True,
+                      vgrav=VGRAV_DEFAULT):
     """
     Compute the geometric curves once for every unique spin in `spins`.
     Returns {float(spin): SpinCurves}; spins with no valid r_out are omitted.
@@ -148,13 +150,16 @@ def build_spin_curves(spins, hr_isco=HR_ISCO_DEFAULT, closure=CLOSURE_DEFAULT,
     'eig' (full eigenmode, uses `rate`; ~50 ms per (spin, r_out) point, use
     `workers` for processes). With method='eig' the curves are valid ONLY for
     the given (hr_isco, alpha): they cannot be rescaled afterwards.
+    vgrav: sound-speed prescription, 'kerr' (c_s = H Omega_z) or 'kepler'
+    (c_s = H Omega_K, Motta+17); see pif_core.
     """
     spins = np.unique(np.asarray(spins, dtype=float))
     r_in = r_isco(spins)
     geo = pif_geometric(spins[:, None], R_OUT_GRID[None, :],
                         r_in=r_in[:, None], HR_ref=hr_isco, alpha=alpha,
                         closure=closure, method=method, rate=rate, n_eig=n_eig,
-                        workers=workers, diagnostics=diagnostics, progress=True)
+                        workers=workers, diagnostics=diagnostics, progress=True,
+                        vgrav=vgrav)
     curves = {}
     for i, spin in enumerate(spins):
         keep = R_OUT_GRID > R_IN_MARGIN * r_in[i]
@@ -165,7 +170,8 @@ def build_spin_curves(spins, hr_isco=HR_ISCO_DEFAULT, closure=CLOSURE_DEFAULT,
             PIFGeometric(geo.g[i, keep], geo.tau_w[i, keep],
                          geo.tau_a[i, keep], geo.HR_ref, geo.alpha_ref,
                          geo.method,
-                         {k: v[i, keep] for k, v in geo.extra.items()}),
+                         {k: v[i, keep] for k, v in geo.extra.items()},
+                         geo.vgrav),
         )
     return curves
 
@@ -184,7 +190,9 @@ def classify_on_P(curve, P, k_w=1.0, k_a=1.0):
     """
     r, geo = curve.r_out, curve.geo
     g, tw, ta = geo.g, geo.tau_w * k_w, geo.tau_a * k_a
-    ok = (np.isfinite(g) & (g > 0) & np.isfinite(tw) & (tw > 0)
+    # tau_w = +inf is kept (vgrav='kerr', a = 1: t_wave diverges): there the
+    # interpolated log tau_w is inf or NaN, so t_wave < 1/nu_0 always fails
+    ok = (np.isfinite(g) & (g > 0) & ~np.isnan(tw) & (tw > 0)
           & np.isfinite(ta) & (ta > 0))
     codes = np.full(P.size, NOCROSS_HI, dtype=np.int8)
     if ok.sum() < 2:                      # e.g. a = 0: g = 0 identically
@@ -198,7 +206,8 @@ def classify_on_P(curve, P, k_w=1.0, k_a=1.0):
     den = dr - dl
     f = np.divide(-dl, den, out=np.zeros_like(dl), where=den != 0)
     f = np.clip(f, 0.0, 1.0)
-    ltw_bar = ltw[:-1] + f * (ltw[1:] - ltw[:-1])
+    with np.errstate(invalid='ignore'):   # inf - inf where tau_w = inf
+        ltw_bar = ltw[:-1] + f * (ltw[1:] - ltw[:-1])
     lta_bar = lta[:-1] + f * (lta[1:] - lta[:-1])
     l_inv_P = -lP[:, None]                # log(1/P)
     w_cond = ltw_bar < l_inv_P            # t_wave  < 1/nu_0
@@ -262,7 +271,8 @@ def panel_category(codes):
 
 
 def compute_map(alpha=None, hr_isco=None, closure=CLOSURE_DEFAULT,
-                method=METHOD_DEFAULT, rate=RATE_DEFAULT, n_eig=N_EIG, workers=1):
+                method=METHOD_DEFAULT, rate=RATE_DEFAULT, n_eig=N_EIG, workers=1,
+                vgrav=VGRAV_DEFAULT):
     hr = HR_ISCO_DEFAULT if hr_isco is None else hr_isco
     al = ALPHA if alpha is None else alpha
     if method == 'eig':
@@ -275,9 +285,10 @@ def compute_map(alpha=None, hr_isco=None, closure=CLOSURE_DEFAULT,
     spins = make_spins()
     if method == 'eig':
         curves = build_spin_curves(spins, hr_isco=hr, closure=closure, method=method,
-                                   rate=rate, alpha=al, n_eig=n_eig, workers=workers)
+                                   rate=rate, alpha=al, n_eig=n_eig, workers=workers,
+                                   vgrav=vgrav)
     else:
-        curves = build_spin_curves(spins, closure=closure)
+        curves = build_spin_curves(spins, closure=closure, vgrav=vgrav)
     print(f'{spins.size} spins, geometric curves computed for {len(curves)}')
 
     logP_lo, logP_hi = np.log10(M_MIN * NU_MIN), np.log10(M_MAX * NU_MAX)
@@ -309,7 +320,7 @@ def compute_map(alpha=None, hr_isco=None, closure=CLOSURE_DEFAULT,
         a_max_pos=a_max_pos_P[idx], a_min_neg=a_min_neg_P[idx],
         cat_pos=cat_pos_P[idx], cat_neg=cat_neg_P[idx],
         r_out_max=R_OUT_GRID[-1], alpha=al, hr_isco=hr, closure=closure,
-        method=method, rate=rate, n_eig=n_eig)
+        method=method, rate=rate, n_eig=n_eig, vgrav=vgrav)
     print(f'Saved: {DATA_FILE}')
     return (
         M, nu, a_min_pos_P[idx], a_max_neg_P[idx],

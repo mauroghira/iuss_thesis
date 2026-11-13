@@ -75,12 +75,34 @@ def test_api_guards():
         pass
     else:
         raise AssertionError('eig curves must refuse rescaling in alpha')
-    for bad in (dict(method='x'), dict(closure='x'), dict(rate='x')):
+    for bad in (dict(method='x'), dict(closure='x'), dict(rate='x'),
+                dict(vgrav='x')):
         try:
             pc.pif_geometric(0.5, 20.0, **bad)
         except ValueError:
             continue
         raise AssertionError(bad)
+
+
+def test_sound_speed():
+    """vgrav='kepler': numerical int 2 dR / c_s = Motta Eq. 6; vgrav='kerr':
+    same t_wave in both methods, -> kepler for a -> 0, inf for a = 1."""
+    trapz = getattr(np, 'trapezoid', None) or np.trapz
+    ro = np.array([3.0, 30.0, 200.0])
+    ri = np.full(3, float(pc.r_isco(0.9)))
+    R = pc._r_grid(ri, ro, pc.N_RAD)
+    num = trapz(2 * pc.Rg_SUN / pc.sound_speed(R, 0.9, vgrav='kepler'), R, axis=-1)
+    assert np.allclose(num, pc._tau_wave_closed(0.9, ri, ro, pc.Q_SOUND,
+                                                pc.HR_ISCO_DEFAULT), rtol=1e-5)
+    ro0 = float(pc.r_isco(1e-6)) * np.array([1.5, 5.0, 30.0])
+    K = pc.pif_geometric(1e-6, ro0)
+    P = pc.pif_geometric(1e-6, ro0, vgrav='kepler')
+    assert np.allclose(K.tau_w, P.tau_w, rtol=1e-4)
+    E = pc.pif_geometric(0.5, 20.0, method='eig', n_eig=60)
+    F = pc.pif_geometric(0.5, 20.0)
+    assert E.vgrav == F.vgrav == 'kerr' and np.isclose(E.tau_w, F.tau_w)
+    G = pc.pif_geometric(1.0, ro)
+    assert np.all(np.isinf(G.tau_w)) and np.all(np.isfinite(G.tau_a))
 
 
 import faulthandler, time
@@ -93,7 +115,8 @@ from setup import r_isco
 
 if __name__ == '__main__':
     """
-    for f in (test_fl14_circumbinary, test_first_order_limits, test_api_guards):
+    for f in (test_fl14_circumbinary, test_first_order_limits, test_api_guards,
+              test_sound_speed):
         f()
         print('ok  ', f.__name__)
     print('all tests passed')

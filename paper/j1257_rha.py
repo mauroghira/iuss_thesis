@@ -21,6 +21,7 @@ from catalog import select_sources
 from pif_mass_freq_map import build_spin_curves
 from pif_timescales import A_VALS, _match_from_curves
 from pif_plots import _plot_precession_markers
+from pif_core import VGRAV_DEFAULT
 
 COMBOS = [(0.03, 0.01), (0.1, 0.01), (0.3, 0.01), (0.1, 0.001), (0.1, 0.1)]
 METHODS = [('eig', dict(method='eig', rate='lt', n_eig=120)),
@@ -28,8 +29,11 @@ METHODS = [('eig', dict(method='eig', rate='lt', n_eig=120)),
 SOURCE_IDX = 10                 # J1257
 M_REF = 2.0e6                   # Msun, J1257 (catalog)
 WORKERS = 8
+VGRAV = VGRAV_DEFAULT           # sound speed: 'kerr' (H Omega_z) or 'kepler'
 OUT_DIR = 'hr_alpha_test'
-CACHE = os.path.join(OUT_DIR, 'J1257_hr_alpha_curves.pkl')
+# the cache name carries VGRAV, so curves of another c_s are never reused
+# (J1257_hr_alpha_curves.pkl, without suffix, was computed with 'kepler')
+CACHE = os.path.join(OUT_DIR, f'J1257_hr_alpha_curves_{VGRAV}.pkl')
 SEC_PER_YR = 365.25 * 24 * 3600
 
 
@@ -40,7 +44,7 @@ def compute_all():
             print(f'HR={hr} alpha={al} {label}', flush=True)
             extra = dict(workers=WORKERS) if kw['method'] == 'eig' else {}
             cache[(hr, al, label)] = build_spin_curves(
-                A_VALS, hr_isco=hr, alpha=al, **kw, **extra)
+                A_VALS, hr_isco=hr, alpha=al, vgrav=VGRAV, **kw, **extra)
     os.makedirs(OUT_DIR, exist_ok=True)
     with open(CACHE, 'wb') as f:
         pickle.dump(cache, f)
