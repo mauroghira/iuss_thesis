@@ -12,12 +12,15 @@ every (HR, alpha) is an exact rescaling by (k_w, k_a). Moreover validity
 depends on (M, nu_0) only through P = M nu_0 (pif_mass_freq_map), so
 
   * the whole mass-frequency map of one (HR, alpha) is a 1D function of P for
-    each spin: it is shown here in the (P, a) plane, one panel per (HR, alpha)
-    (Fig. 1, replaces a full 2D (M, nu_0) map per combination);
+    each spin: it is shown here in the (a, P) plane (spin on x, P on y, as
+    pif_mass_freq_map.plot_P_spin), one panel per (HR, alpha) (Fig. 1,
+    replaces a full 2D (M, nu_0) map per combination), with the limit of
+    the bending-wave regime r_bar = r_isco HR / alpha;
   * a source occupies the interval [M_lo nu_0, M_hi nu_0] of P, so its
-    (M, a) validity grid is a slice of the same plane. Fig. 2 compresses it
-    to, for every spin, the fraction of the (log) mass range that is valid,
-    with one row per (HR, alpha) and one panel per source;
+    (M, a) validity grid is a slice of the same plane. Fig. 2 (plot_sources,
+    not used in the paper and not produced by default) compresses it to, for
+    every spin, the fraction of the (log) mass range that is valid, with one
+    row per (HR, alpha) and one panel per source;
   * Fig. 3 is the timescale plot of single sources (as pif_plots) for all
     (HR, alpha), at the reference mass.
 
@@ -37,9 +40,9 @@ from matplotlib.colors import BoundaryNorm, ListedColormap
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 
-from setup import set_style, fix_spines
+from setup import r_isco, g_LT, set_style, fix_spines
 from catalog import CATALOG, select_sources
-from pif_core import ALPHA, HR_ISCO_DEFAULT
+from pif_core import ALPHA, HR_ISCO_DEFAULT, g_solid
 from pif_mass_freq_map import (
     make_spins, build_spin_curves, classify_on_P, VALID, FAIL_COLORS,
     FAIL_LABELS, R_OUT_GRID, VALID_COLOR,
@@ -134,72 +137,125 @@ def _mark_ref(ax):
         sp.set_linewidth(1.4)
 
 
-# ----------------------------------------------------- Fig. 1: (P, a) map
-def plot_P_map(data, outfile=None):
+# ----------------------------------------------------- Fig. 1: (a, P) map
+BW_COLOR = '#D55E00'     # limit of the bending-wave regime
+P_LIM = (1e-4, 1e5)      # y-range of the panels
+
+
+def bending_wave_limit(spins, hr, al):
+    """
+    P = g(a, r_bw) with r_bw = r_isco * hr / al, the outer radius of the
+    bending-wave regime (alpha < H/R, with H/R = hr * r_isco / r for q = 3/2):
+    configurations BELOW this curve (larger r_bar) are outside the regime in
+    which t_align is derived. For hr <= al no radius is inside the regime and
+    the curve coincides with g_max = |g_LT(r_isco)|. NaN where r_bw lies
+    beyond the r_out grid (the whole computed region is inside the regime).
+    """
+    spins = np.asarray(spins, dtype=float)
+    r_in = r_isco(spins)
+    r_bw = r_in * hr / al
+    if hr <= al:
+        g = np.abs(g_LT(r_in, spins))
+    else:
+        g = np.abs(g_solid(spins, r_bw, r_in=r_in))
+    g = np.where((r_bw <= R_OUT_GRID[-1]) & (g > 0), g, np.nan)
+    return g
+
+
+def plot_P_map(data, outfile=None, overlay_sources=False, show_bw_limit=True):
+    """
+    Failure code of every (spin, P = M nu_0), one panel per (HR, alpha):
+    spin on the x-axis and P on the y-axis, as pif_mass_freq_map.plot_P_spin.
+    overlay_sources adds a strip on the right with the interval
+    [M_lo nu_0, M_hi nu_0] of every source (off for the paper figure).
+    show_bw_limit draws the limit of the bending-wave regime
+    (bending_wave_limit).
+    """
     set_style()
     P, spins, codes_P = data['P'], data['spins'], data['codes_P']
     hr_vals, al_vals = list(data['hr_vals']), list(data['alpha_vals'])
     combos = [tuple(c) for c in data['combos']]
     nr, nc = len(al_vals), len(hr_vals)
-    srcs = select_sources(SOURCE_INDICES)
-    src_colors = plt.get_cmap('rainbow', max(1, len(srcs)))(range(len(srcs)))
 
-    fig = plt.figure(figsize=(7.0, 1.0 + 1.9 * nr), constrained_layout=True)
-    gs = fig.add_gridspec(nr + 1, nc, height_ratios=[0.55] + [1] * nr)
+    n_extra = 1 if overlay_sources else 0
+    fig = plt.figure(figsize=(7.0 + 0.5 * n_extra, 0.4 + 2.0 * nr),
+                     constrained_layout=True)
+    gs = fig.add_gridspec(nr, nc + n_extra,
+                          width_ratios=[1] * nc + [0.22] * n_extra)
     cmap = ListedColormap([VALID_COLOR] + [FAIL_COLORS[k] for k in range(1, 6)])
     norm = BoundaryNorm(np.arange(-0.5, 6.5, 1.0), cmap.N)
     axes = np.empty((nr, nc), dtype=object)
-    for col in range(nc):
-        # strip with the P interval of every source (same for all columns)
-        sx = fig.add_subplot(gs[0, col])
-        for k, (s, color) in enumerate(zip(srcs, src_colors)):
-            _, lo, hi, kind = resolve_mass_reference(s['mass_range'])
-            ls = '-' if kind == 'band' else (0, (2, 1))
-            sx.plot([lo * s['nu_rest'], hi * s['nu_rest']], [k, k], color=color,
-                    lw=1.2, ls=ls, solid_capstyle='butt')
-        sx.set_xscale('log'); sx.set_xlim(P[0], P[-1])
-        sx.set_ylim(len(srcs) - 0.3, -0.7)
-        sx.set_yticks([]); sx.tick_params(axis='x', labelbottom=False)
-        sx.set_title(fr'$H/R_{{\rm isco}}={hr_vals[col]:g}$')
-        fix_spines(sx)
-        for row in range(nr):
-            ax = fig.add_subplot(gs[row + 1, col], sharex=sx,
-                                 sharey=axes[0, 0] if row or col else None)
+    nz = spins != 0                         # g = 0 at a = 0: break the line
+    for row in range(nr):
+        for col in range(nc):
+            first = axes[0, 0]
+            ax = fig.add_subplot(gs[row, col], sharex=first, sharey=first)
             axes[row, col] = ax
-            c = combos.index((hr_vals[col], al_vals[row]))
-            z = np.ma.masked_less(codes_P[c], 0)
-            ax.pcolormesh(P, spins, z, cmap=cmap, norm=norm,
+            hr, al = hr_vals[col], al_vals[row]
+            c = combos.index((hr, al))
+            z = np.ma.masked_less(codes_P[c], 0).T
+            ax.pcolormesh(spins, P, z, cmap=cmap, norm=norm,
                           shading='nearest', rasterized=True)
-            ax.set_xscale('log')
-            ax.set_ylim(-1, 1)
-            if _is_ref(hr_vals[col], al_vals[row]):
+            if show_bw_limit:
+                g_bw = np.where(nz, bending_wave_limit(spins, hr, al), np.nan)
+                ax.plot(spins, g_bw, color=BW_COLOR, lw=0.8)
+            ax.set_yscale('log')
+            ax.set_xlim(spins[0], spins[-1])
+            ax.set_ylim(*P_LIM)
+            if _is_ref(hr, al):
                 _mark_ref(ax)
+            if row == 0:
+                ax.set_title(fr'$H/R_{{\rm isco}}={hr:g}$')
             if col == 0:
-                ax.set_ylabel(r'spin $a$')
+                ax.set_ylabel(r'$M\nu_0\;[M_\odot\,\mathrm{Hz}]$')
             else:
                 ax.tick_params(axis='y', labelleft=False)
-            if col == nc - 1:
-                ax.text(1.03, 0.5, fr'$\alpha={al_vals[row]:g}$',
+            if col == nc - 1 and not overlay_sources:
+                ax.text(1.03, 0.5, fr'$\alpha={al:g}$',
                         transform=ax.transAxes, rotation=270,
                         ha='left', va='center')
             if row == nr - 1:
-                ax.set_xlabel(r'$P = M\nu_0\;[M_\odot\,\mathrm{Hz}]$')
+                ax.set_xlabel(r'spin $a$')
             else:
                 ax.tick_params(axis='x', labelbottom=False)
             fix_spines(ax)
 
     present = sorted({int(k) for k in np.unique(codes_P) if k >= 0})
-    handles = [Patch(facecolor=VALID_COLOR, label='valid')] + [
+    handles = [Patch(facecolor=VALID_COLOR, edgecolor='k', linewidth=0.3,
+                     label='valid')] + [
         Patch(facecolor=FAIL_COLORS[k], edgecolor='k', linewidth=0.3,
               label=FAIL_LABELS[k]) for k in present if k > 0]
-    leg = fig.legend(handles=handles, loc='upper center', ncol=3, fontsize=6,
+    if show_bw_limit:
+        handles.append(Line2D(
+            [], [], color=BW_COLOR, lw=0.8,
+            label=r'$\bar r=r_\mathrm{ISCO}\,(H/R)_\mathrm{isco}/\alpha$'))
+    leg = fig.legend(handles=handles, loc='upper center', ncol=4, fontsize=6,
                      bbox_to_anchor=(0.5, 0.0))
-    src_handles = [Line2D([], [], color=col, lw=1.2, label=s['name'])
-                   for s, col in zip(srcs, src_colors)]
-    fig.canvas.draw()
-    y0 = leg.get_window_extent().transformed(fig.transFigure.inverted()).y0
-    fig.legend(handles=src_handles, loc='upper center', ncol=5, fontsize=5.5,
-               bbox_to_anchor=(0.5, y0 - 0.005))
+
+    if overlay_sources:
+        srcs = select_sources(SOURCE_INDICES)
+        src_colors = plt.get_cmap('rainbow', max(1, len(srcs)))(range(len(srcs)))
+        for row in range(nr):
+            sx = fig.add_subplot(gs[row, nc], sharey=axes[0, 0])
+            for k, (s, color) in enumerate(zip(srcs, src_colors)):
+                _, lo, hi, kind = resolve_mass_reference(s['mass_range'])
+                ls = '-' if kind == 'band' else (0, (2, 1))
+                sx.plot([k, k], [lo * s['nu_rest'], hi * s['nu_rest']],
+                        color=color, lw=1.0, ls=ls, solid_capstyle='butt')
+            sx.set_xlim(-1, len(srcs))
+            sx.set_xticks([])
+            sx.tick_params(axis='y', labelleft=False)
+            sx.text(1.1, 0.5, fr'$\alpha={al_vals[row]:g}$',
+                    transform=sx.transAxes, rotation=270,
+                    ha='left', va='center')
+            fix_spines(sx)
+        src_handles = [Line2D([], [], color=col, lw=1.2, label=s['name'])
+                       for s, col in zip(srcs, src_colors)]
+        fig.canvas.draw()
+        y0 = leg.get_window_extent().transformed(
+            fig.transFigure.inverted()).y0
+        fig.legend(handles=src_handles, loc='upper center', ncol=5,
+                   fontsize=5.5, bbox_to_anchor=(0.5, y0 - 0.005))
     outfile = outfile or os.path.join(OUT_DIR, 'pif_hr_alpha_map.pdf')
     fig.savefig(outfile, dpi=300, bbox_inches='tight')
     plt.close(fig)
@@ -328,8 +384,8 @@ if __name__ == '__main__':
     if '--recompute' in sys.argv or not os.path.exists(DATA_FILE):
         curves = compute()
     data = load()
-    plot_P_map(data)
-    plot_sources(data)
+    plot_P_map(data)                 # paper figure: no source overlay
+    # plot_sources(data)             # per-source summary, not used in the paper
     if TIMESCALE_SOURCES:
         if curves is None:
             curves = build_spin_curves(A_VALS)
