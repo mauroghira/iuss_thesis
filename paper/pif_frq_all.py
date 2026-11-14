@@ -34,7 +34,7 @@ from pif_core import P_TORQUE, g_solid
 set_style()
 
 MAX_PER_PANEL = 10
-DEFAULT_OUTDIR = os.path.join(os.path.dirname(__file__), 'output_catalog')
+DEFAULT_OUTDIR = os.path.join(os.path.dirname(__file__), 'plots_paper')
 
 
 def _area_from_mask_2d(A, R, mask, log_x=False, log_y=False):

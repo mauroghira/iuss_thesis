@@ -27,18 +27,26 @@ import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 
-from setup import r_isco, set_style, fix_spines
+from setup import r_isco, g_LT, set_style, fix_spines
 from pif_core import ALPHA, HR_ISCO_DEFAULT
 from catalog import CATALOG
 from pif_mass_freq_map import build_spin_curves, make_spins, valid_on_P, R_OUT_GRID
 from pif_timescales import resolve_mass_reference
 
-OUT_DIR = os.path.join(os.path.dirname(__file__), 'output_catalog')
+OUT_DIR = os.path.join(os.path.dirname(__file__), 'plots_paper')
 FIG_FILE = os.path.join(OUT_DIR, 'pif_rmax.pdf')
 TABLE_FILE = os.path.join(OUT_DIR, 'pif_source_constraints.tex')
 
 A_THORNE = 0.998
-SPINS = np.unique(np.r_[make_spins(), A_THORNE])
+A_EXTREMAL = 1.0
+# Largest P = M nu_0 of any valid configuration: test-particle nodal frequency
+# at the ISCO of an a = A_THORNE hole (r_bar -> r_isco), in Hz Msun.
+P_MAX = float(abs(g_LT(r_isco(A_THORNE), A_THORNE)))
+# Same bound for an extremal hole (r_isco = 1, nu_LT = nu_phi = c^3/(4 pi G M)).
+# Note: in pif_core t_wave diverges for a = 1 (c_s = 0 at r_isco), so no
+# configuration with a = 1 is valid; this is the purely kinematic limit.
+P_MAX_EXT = float(abs(g_LT(r_isco(A_EXTREMAL), A_EXTREMAL)))
+SPINS = np.unique(np.r_[make_spins(), A_THORNE, A_EXTREMAL])
 HR_VALS = (0.03, 0.1, 0.3)
 ALPHA_VALS = (0.001, 0.01, 0.1)
 N_M = 400                     # masses per source range
@@ -197,20 +205,25 @@ def source_constraints(source, curves, k_w=1.0, k_a=1.0, mass_range=None):
         a = spins[sel & ok.any(axis=1)]
         return (a.min(), a.max()) if a.size else None
 
-    P_max_any = window(nearest(curves, A_THORNE), k_w, k_a)[3]
     return {
         'P': (P.min(), P.max()),
         'a_pos': srange(spins > 0),
         'a_neg': srange(spins < 0),
         'r_bar': (np.nanmin(rb), np.nanmax(rb)) if ok.any() else None,
-        'M_max': P_max_any / nu0,
+        'M_max': P_MAX / nu0,
+        'M_max_ext': P_MAX_EXT / nu0,
+        'M_hi': hi,
         'frac_M': ok.any(axis=0).mean(),
         'ok': ok, 'spins': spins, 'masses': masses,
     }
 
 
 def _fmt_spin(a):
-    return f'{a:+.3f}' if np.isclose(a, A_THORNE) else f'{a:+.2f}'
+    if np.isclose(a, A_THORNE):
+        return f'{a:+.3f}'
+    if np.isclose(a, A_EXTREMAL):
+        return f'{a:+.0f}'
+    return f'{a:+.2f}'
 
 
 def _fmt_range(r):
@@ -227,6 +240,11 @@ def _fmt_P(P):
     return f'${a:.1f}$' if np.isclose(a, b) else f'${a:.1f}$--${b:.1f}$'
 
 
+def _fmt_sci(x):
+    e = int(np.floor(np.log10(x)))
+    return f'{x / 10**e:.2f}\\times10^{{{e}}}'
+
+
 def write_table(rows, output=TABLE_FILE):
     lines = [
         r'\begin{table*}',
@@ -234,31 +252,43 @@ def write_table(rows, output=TABLE_FILE):
         r'($h_\textup{ISCO}=0.1$, $\alpha=0.01$).}',
         r'\label{tab:constraints}',
         r'\centering',
-        r'\begin{tabular}{lccccc}',
+        r'\begin{tabular}{lcccccc}',
         r'\hline\hline',
         r'Source & $\log P$ & $a>0$ & $a<0$ & $\bar r$ [$R_g$] & '
-        r'$\log M_\textup{max}$ \\',
+        r'\multicolumn{2}{c}{$\log M_\textup{max}$} \\',
+        r'\cline{6-7}',
+        f'& & & & & $a={A_THORNE:g}$ & $a={A_EXTREMAL:g}$ \\\\',
         r'\hline',
     ]
+
+    def fmt_M(M, M_hi):
+        cut = r'$^\dagger$' if M < M_hi else ''
+        return f'${np.log10(M):.2f}${cut}'
+
     for name, c in rows:
         rb = '--' if c['r_bar'] is None else f"${c['r_bar'][0]:.1f}$--${c['r_bar'][1]:.1f}$"
-        cut = r'$^\dagger$' if c['frac_M'] < 1 else ''
         lines.append(
             f"{name} & {_fmt_P(c['P'])} & {_fmt_range(c['a_pos'])} & "
-            f"{_fmt_range(c['a_neg'])} & {rb} & ${np.log10(c['M_max']):.1f}${cut} \\\\")
+            f"{_fmt_range(c['a_neg'])} & {rb} & {fmt_M(c['M_max'], c['M_hi'])} & "
+            f"{fmt_M(c['M_max_ext'], c['M_hi'])} \\\\")
     lines += [
         r'\hline',
         r'\end{tabular}',
         r'\tablefoot{',
-        r'$P=M\nu_0(1+z)$ in Hz\,$M_\odot$, with the rest-frame frequency, over the mass range '
-        r'of Table~\ref{tab:catalog} (at the point estimate for NGC~4945 and J1257).',
+        r'$P=M\nu_0$ in Hz\,$M_\odot$, with the rest-frame frequency $\nu_0=\nu_\textup{obs}(1+z)$, '
+        r'over the mass range of Table~\ref{tab:catalog}.',
         r'Columns 3--5: range of prograde and retrograde spins, and of precession radii, '
         r'for which at least one mass in the range is valid (spin step 0.005).',
         r'$M_\textup{max}$ in $M_\odot$: largest mass with a valid configuration, '
-        r'$M_\textup{max}=P_\textup{max}/[\nu_0(1+z)]$, where '
-        r'$P_\textup{max}=|\nu_\textup{LT}(r_\textup{ISCO})|\,m\simeq1.05\times10^4$\,Hz\,$M_\odot$ '
-        r'is the largest $P$ allowed for any spin, reached for $a=0.998$ and $\bar r\to r_\textup{ISCO}$; '
-        r'it does not depend on $h_\textup{ISCO}$ and $\alpha$.',
+        r'$M_\textup{max}=P_\textup{max}/\nu_0$, where '
+        r'$P_\textup{max}=|\nu_\textup{LT}(r_\textup{ISCO})|\,m$ '
+        r'is the largest $P$ allowed for a given spin, reached for $\bar r\to r_\textup{ISCO}$: '
+        rf'$P_\textup{{max}}\simeq{_fmt_sci(P_MAX)}$\,Hz\,$M_\odot$ for $a={A_THORNE:g}$ and '
+        rf'$P_\textup{{max}}\simeq{_fmt_sci(P_MAX_EXT)}$\,Hz\,$M_\odot$ for $a={A_EXTREMAL:g}$ '
+        r'($\nu_\textup{LT}=\nu_\phi$ at $r_\textup{ISCO}=1$); '
+        r'it does not depend on $h_\textup{ISCO}$ and $\alpha$. '
+        r'For $a=1$ this is a kinematic bound only: $t_\textup{wave}$ diverges '
+        r'($c_s=0$ at $r_\textup{ISCO}$), so no configuration with $a=1$ satisfies the PIF conditions.',
         r'$^\dagger$~$M_\textup{max}$ is below the upper end of the mass range.',
         r'}',
         r'\end{table*}',
@@ -289,7 +319,7 @@ if __name__ == '__main__':
           'OK' if not bad else f'FAILS for spins {bad}')
 
     print('\nr_max(a), fiducial:')
-    for s in (-1, -0.5, -0.1, 0.1, 0.3, 0.5, 0.7, 0.9, 0.95, 0.98, A_THORNE):
+    for s in (-1, -0.5, -0.1, 0.1, 0.3, 0.5, 0.7, 0.9, 0.95, 0.98, A_THORNE, A_EXTREMAL):
         rm, lim, Pmin, Pmax = window(nearest(curves, s))
         print(f'  a={s:+.3f} r_isco={r_isco(s):.2f} r_max={rm:6.1f} '
               f'({rm / r_isco(s):.2f} r_isco, {lim:5s}) P=[{Pmin:.3g}, {Pmax:.3g}]')

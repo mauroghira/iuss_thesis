@@ -117,8 +117,9 @@ FAIL_LABELS = {
 
 OUT_DIR = os.path.join(os.path.dirname(__file__), 'output_catalog')
 DATA_FILE = os.path.join(OUT_DIR, 'pif_mass_frequency_map.npz')
-FIG_FILE = os.path.join(OUT_DIR, 'pif_mass_frequency_map.pdf')
-FIG_P_FILE = os.path.join(OUT_DIR, 'pif_P_spin_map.pdf')
+PLOT_DIR = os.path.join(os.path.dirname(__file__), 'plots_paper')
+FIG_FILE = os.path.join(PLOT_DIR, 'pif_mass_frequency_map.pdf')
+FIG_P_FILE = os.path.join(PLOT_DIR, 'pif_P_spin_map.pdf')
 
 
 class SpinCurves(NamedTuple):
@@ -513,15 +514,19 @@ def plot_P_spin(data_file=DATA_FILE, overlay_sources=True,
                      for s, c in zip(CATALOG, colors)],
             ncol=3))
 
-    # legends stacked below the figure (as in plot_map)
+    # area legend inside the panel, source legend stacked below if needed
     y = 0.0
     renderer = fig.canvas.get_renderer()
-    for kw in legends:
-        leg = fig.legend(loc='upper center', bbox_to_anchor=(0.5, y),
-                         fontsize=5.5, frameon=True, **kw)
-        bb = leg.get_window_extent(renderer).transformed(
-            fig.transFigure.inverted())
-        y = bb.y0 - 0.01
+    for idx, kw in enumerate(legends):
+        if idx == 0:
+            leg = ax.legend(loc='upper center', bbox_to_anchor=(0.5, 1.0),
+                            fontsize=5.5, frameon=True, **kw)
+        else:
+            leg = fig.legend(loc='upper center', bbox_to_anchor=(0.5, y),
+                             fontsize=5.5, frameon=True, **kw)
+            bb = leg.get_window_extent(renderer).transformed(
+                fig.transFigure.inverted())
+            y = bb.y0 - 0.01
     fig.savefig(fig_file, dpi=300, bbox_inches='tight')
     print(f'Saved: {fig_file}')
     return fig
@@ -539,4 +544,4 @@ if __name__ == '__main__':
     )
     #"""
     #plot_saved_map(overlay_sources=True)
-    plot_P_spin(overlay_sources=True)
+    plot_P_spin(overlay_sources=False)

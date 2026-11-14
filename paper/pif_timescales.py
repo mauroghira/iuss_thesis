@@ -34,7 +34,7 @@ A_FIXED_SOURCE = {1: 0.9, 2: 0.9, 4: 0.9, 10: 0.95, 11: 0.9, 12: 0.9,
                   14: 0.9, 17: 0.95}
 # Sources whose mass range is too narrow for a mass scan to be informative:
 # the second panel is a finer spin scan at M_ref instead. Keys: catalogue idx.
-SPIN_ZOOM_SOURCE = {2: (0.6, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 0.98)}
+SPIN_ZOOM_SOURCE = {}
 N_M = 6
 N_A_GRID = 401
 N_M_GRID = 300
