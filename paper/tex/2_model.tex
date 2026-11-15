@@ -1,0 +1,367 @@
+%==========================================================================
+\section{Model}
+\label{sec:model}
+%==========================================================================
+
+This section defines the precessing-flow model and the two conditions for an observable precession (Sects.~\ref{sec2:kerr}--\ref{sec2:timescales}), and shows that all the quantities involved depend on the BH mass and on the observed frequency only through their product (Sect.~\ref{sec2:scaling}), which is the starting point of the question posed in the introduction.
+
+\subsection{Kerr epicyclic frequencies and mass scaling}
+\label{sec2:kerr}
+
+Around a Kerr black hole of mass $M$ and dimensionless spin $a \doteq Jc/GM^2 \in [-1,1]$, nearly circular equatorial geodesics have the azimuthal, radial and vertical epicyclic frequencies
+\begin{align}
+    \label{eq2:epiphi}
+    \Omega_\varphi &= \frac{c}{R_g} \frac{1}{r^{3/2} + a} = \frac{t_g^{-1}}{r^{3/2} + a}\\
+    \label{eq2:epir}
+    \Omega_r &= \Omega_\varphi \sqrt{ 1 - \frac{6}{r} + \frac{8a}{r^{3/2}} - \frac{3a^2}{r^2}} = \kappa\\
+    \label{eq2:epiz}
+    \Omega_z &= \Omega_\varphi \sqrt{ 1 - \frac{4a}{r^{3/2}} + \frac{3a^2}{r^2}}
+\end{align}
+where $R_g \doteq GM/c^2$, $t_g \doteq R_g/c$, and $r \doteq R/R_g$ ($R$ is the cylindrical radius, with the origin on the BH and the $z$-axis along the spin).
+Negative $a$ describes an orbit counter-rotating with respect to the hole: Eqs.~\eqref{eq2:epiphi}-\eqref{eq2:epiz} with $a<0$ are the retrograde-orbit frequencies, and $\Omega_\varphi$ is always the (positive) modulus of the orbital frequency.
+The inner edge of the disc is the innermost stable circular orbit (ISCO),
+\begin{align}
+    \label{eq2:isco}
+    r_\textup{ISCO}(a) &= 3 + Z_2 - \text{sign}(a)\sqrt{(3-Z_1)(3+Z_1+2Z_2)}, \\
+    Z_1 &= 1+(1-a^2)^{1/3}\left[(1+a)^{1/3}+(1-a)^{1/3}\right], \\
+    Z_2 &=\sqrt{3a^2+Z_1^2}.
+\end{align}
+In Newtonian gravity $\Omega_\varphi=\kappa=\Omega_z$ and orbits are closed; in general relativity the differences produce precession.
+The nodal (Lense-Thirring) frequency of a free test particle on a slightly tilted circular orbit is
+\begin{equation}
+    \label{eq2:omlt}
+    \Omega_\textup{LT} \doteq \Omega_\varphi - \Omega_z ,
+\end{equation}
+non-zero only for $a\neq0$ and \emph{negative} for $a<0$.
+
+\paragraph{Signs.}
+\label{sec2:signs}
+All frequencies are measured in the frame whose $z$-axis is the angular momentum of the disc, so that $\Omega_\varphi>0$ (indeed $r^{3/2}+a>0$ since $r\geq r_\textup{ISCO}\geq1\geq|a|$), and $a<0$ is a BH spin anti-parallel to it.
+Writing $\Omega_z=\Omega_\varphi\sqrt{1+\varepsilon}$, Eq.~\eqref{eq2:epiz} gives $\varepsilon=a\,r^{-2}\left(3a-4r^{1/2}\right)$.
+The bracket is negative for $r\geq r_\textup{ISCO}$: trivially for $a\leq0$, and for $a>0$ because $3a<4r^{1/2}\iff r>9a^2/16$, while $9a^2/16<1\leq r$.
+Hence $\textup{sign}\,\varepsilon=-\textup{sign}\,a$ and, $\sqrt{\cdot}$ being increasing,
+\begin{equation}
+    \label{eq2:signLT}
+    \Omega_\textup{LT}(r)=\textup{sign}(a)\,|\Omega_\textup{LT}(r)| \qquad \forall\, r\geq r_\textup{ISCO}(a):
+\end{equation}
+for $a<0$ the nodes regress, i.e.\ the precession is opposite to the orbital motion, at every radius.
+
+\paragraph{Mass scaling.}
+Since $R_g = R_{g,\odot}\,m$ with $m\doteq M/M_\odot$, Eq.~\eqref{eq2:epiphi} gives
+\begin{equation}
+    \label{eq2:scale_nu}
+    \nu_\varphi=\frac{\Omega_\varphi}{2\pi}=\frac{g_\varphi(r,a)}{m},
+    \quad
+    g_\varphi(r,a)\doteq\frac{c}{2\pi R_{g,\odot}}\frac{1}{r^{3/2}+a}.
+\end{equation}
+The ratios $\kappa/\Omega_\varphi$ and $\Omega_z/\Omega_\varphi$ depend on $(r,a)$ only, so every frequency has the form $\nu_X=g_X(r,a)/m$ with $X\in\{\varphi,r,z\}$ and $g_X$ independent of the BH mass.
+In particular $\Omega_\textup{LT}=2\pi g_\textup{LT}/m$ with $g_\textup{LT}\doteq g_\varphi-g_z$.
+Any weighted average of such frequencies with mass-independent weights keeps the $1/m$ scaling.
+Hence, the frequency $\nu_0$ observed in an AGN of mass $M_0$ corresponds, all else being equal, to $\nu_\textup{XRB}=(M_0/M_\textup{XRB})\,\nu_0$ in a binary; e.g.\ for J1257 ($M_0=10^{6.3}\,M_\odot$, $\nu_0=3.3\times10^{-5}$~Hz) and $M_\textup{XRB}=10\,M_\odot$, $\nu_\textup{XRB}\simeq6.6$~Hz.
+The comparison is made through the product $M\nu_0$, which is the variable that controls the whole model (Sect.~\ref{sec2:scaling}).
+
+%--------------------------------------------------------------------------
+\subsection{Precessing inner flow}
+\label{sec2:pif}
+
+We adopt the precessing inner flow (PIF) model \citep{PIF}, in the formulation of \citet{Motta2017}: an optically thin, geometrically thick flow between $r_\textup{in}=r_\textup{ISCO}(a)$ and a truncation radius $r_\textup{out}$, misaligned with the BH spin by a small angle ($\lesssim15^\circ$), precesses as a rigid body.
+This model includes the simple single-particle precession \citep{stella1,stella2} in the limit $r_\textup{out}\to r_\textup{in}$.
+
+For $\alpha \lesssim H/R$, with $\alpha$ the Shakura-Sunyaev viscosity parameter and $H/R$ the aspect ratio of the flow, the warp is communicated by bending waves instead of diffusing \citep{FoucartLai2014}, and the flow precesses at a frequency given by averaging the torque of each annulus on the neighbouring ones \citep[see e.g.][]{Lodato_solid}:
+\begin{equation}
+    \label{eq2:nusolid}
+    \Omega_\textup{solid} = \frac{\int_{R_\textup{in}}^{R_\textup{out}}\Omega_\textup{LT}(R) \, L(R) \, R \, \textup{d}R}{\int_{R_\textup{in}}^{R_\textup{out}} L(R) \, R \, \textup{d}R},
+    \qquad L(R) \doteq \Sigma(R)\,R^2\,\Omega_\varphi(R),
+\end{equation}
+where $L$ is the angular momentum surface density and $\Sigma$ the surface density.
+$\Omega_\textup{solid}$ has the sign of $\Omega_\textup{LT}$, hence of $a$.
+Equation~\eqref{eq2:nusolid} is the average of $\Omega_\textup{LT}$ with the weight $\Sigma R^3\Omega_\varphi$, a fact used in Sect.~\ref{sec2:timescales}.
+
+\paragraph{Surface density.}
+We use a zero-torque profile
+\begin{equation}
+    \label{eq2:sigma}
+    \Sigma(R)=\Sigma_0\,r^{-p}\left(1-\sqrt{r_\textup{in}/r}\right)^{p}, \qquad p=\tfrac35 ,
+\end{equation}
+which vanishes at $r_\textup{in}$.
+$\Sigma_0$ (and any dependence of it on $M$) multiplies numerator and denominator of Eq.~\eqref{eq2:nusolid} and cancels.
+The reasons and consequences of this choice on the precession frequency have been widely discussed in \citet{Motta2017}, whose results scale directly to the AGN regime in virtue of the above discussion (provided all other parameters are physically reliable for an XRB as well as for an AGN).
+% devo mettere più dettagli sul perché assumiamo questo profilo o basta rimandare a Motta?
+
+\paragraph{Dimensionless form.}
+With $R=rR_g$ and $\textup{d}R=R_g\,\textup{d}r$, all powers of $R_g$ in the weight $\Sigma R^3\Omega_\varphi\,\textup{d}R$ cancel between numerator and denominator, and only the factor $1/m$ of $\Omega_\textup{LT}=2\pi g_\textup{LT}/m$ is left:
+\begin{equation}
+    \label{eq2:gdef}
+    \nu_\textup{solid}=\frac{g}{m},
+    \quad
+    w\doteq\Sigma r^3 g_\varphi ,
+    \quad
+    g(a,r_\textup{out})=\left|\frac{\int_{r_\textup{in}}^{r_\textup{out}} g_\textup{LT}\,w\,\textup{d}r}{\int_{r_\textup{in}}^{r_\textup{out}}w\,\textup{d}r}\right|,
+\end{equation}
+where $g$ depends only on $(a,r_\textup{in},r_\textup{out},p)$.
+
+
+%--------------------------------------------------------------------------
+\subsection{Timescales: wave propagation and alignment}
+\label{sec2:timescales}
+
+Equation~\eqref{eq2:nusolid} reproduces a signal at $\nu_0$ only if the flow can behave as a rigid body over a precession period $1/\nu_0$.
+According to \citet{Motta2017} two conditions are required: 
+(i) the bending waves must cross the flow in less than one period, $t_\textup{wave}<1/\nu_0$; 
+(ii) the flow must not align with the BH equatorial plane within one precession period, $t_\textup{align}>1/\nu_0$, otherwise the precession is damped before a single cycle is completed and no periodic modulation can arise\footnote{\citet{Motta2017} impose the stricter condition $t_\textup{align}>2/\nu_0$, arguing that QPOs have quality factor $Q>2$ and that $Q$ approximates the number of precession cycles within $t_\textup{align}$. Since $Q>2$ is a classification convention, and the relation between $Q$ and $\nu_0 t_\textup{align}$ holds only up to a factor of order unity, we adopt the minimal requirement of one complete cycle. The allowed regions found here are therefore upper envelopes, whereas the excluded regions hold a fortiori under the stricter criterion.}.
+
+Condition (ii) compares $t_\textup{align}$ with a timescale of the flow itself.
+For the second explanation of Sect.~\ref{sec:intro}, $t_\textup{align}$ must instead be compared with the times on which misaligned gas reaches the inner disc.
+Assume that such episodes occur as a stationary Poisson process of rate $\Gamma$, and that after each episode the flow precesses visibly for a time $t_\textup{align}$ (and only if conditions (i) and (ii) hold).
+At a random time $t$, the time $s$ elapsed since the last episode has the distribution of the waiting time of a Poisson process, $\textup{Pr}(s\le\tau)=1-e^{-\Gamma\tau}$ for $\tau\ge0$.
+A QPO is visible at $t$ if and only if $s<t_\textup{align}$, so the fraction of time during which it is visible is
+\begin{equation}
+    \label{eq2:duty}
+    f_\textup{QPO}=1-e^{-\Gamma t_\textup{align}}\simeq\Gamma\,t_\textup{align}\qquad(\Gamma t_\textup{align}\ll1).
+\end{equation}
+In XRBs the companion keeps supplying misaligned gas, which corresponds to $\Gamma t_\textup{align}\gtrsim1$ and $f_\textup{QPO}\simeq1$; in AGNs $\Gamma$ is unknown and may be small.
+Equation~\eqref{eq2:duty} also holds when overlapping episodes simply restart the precession, since visibility depends only on the time since the last episode.
+% TODO: non so bene se fosse questo quello che proponvate di fare parlando del rate di TDE ecc... in caso mi servirebbero le stime per gamma per fare i confronti.
+
+\paragraph{Sound speed.}
+In a thick flow warps propagate as bending waves at about half the sound speed.
+\citet{FoucartLai2014} define the sound speed that sets both this propagation speed and the alignment rate of Eq.~\eqref{eq2:talign} through the vertically integrated pressure (their Eq.~3),
+\begin{equation}
+    \label{eq2:csdef}
+    \int p\,\textup{d}z\doteq\Omega_z^2\,\Sigma\,H^2,
+    \qquad
+    c_s\doteq H\,\Omega_z ,
+\end{equation}
+where the vertical epicyclic frequency $\Omega_z$ is the restoring frequency of vertical hydrostatic equilibrium.
+\citet{Motta2017} instead set $H=c_s/\Omega_\textup{K}$ with $c_s(R_g)=c\,(H/R)_0$ (their Sect.~4.1).
+%This normalisation requires $R\,\Omega_\textup{K}=c\,r^{-1/2}$, i.e.\ the Newtonian $\Omega_\textup{K}=(c/R_g)\,r^{-3/2}$, although in their Eqs.~(2) and (7) the same symbol denotes the relativistic orbital frequency.
+The two definitions of $c_s$ coincide in Newtonian gravity but not around a spinning hole.
+With $u\doteq a\,r^{-3/2}$, Eq.~\eqref{eq2:epiphi} gives $\Omega_\varphi/\Omega_\textup{K}=1/(1+u)$, and Eq.~\eqref{eq2:epiz} then gives
+\begin{equation}
+    \label{eq2:OzOK}
+    \left(\frac{\Omega_z}{\Omega_\textup{K}}\right)^2=\frac{1-4u+3a^2r^{-2}}{(1+u)^2}.
+\end{equation}
+Since $(1+u)^2>0$, $\Omega_z<\Omega_\textup{K}$ if and only if $1-4u+3a^2r^{-2}<1+2u+u^2$, i.e.\ $a^2r^{-2}\left(3-r^{-1}\right)<6\,a\,r^{-3/2}$.
+For $a>0$, dividing by $a\,r^{-3/2}>0$ gives $a\,r^{-1/2}(3-r^{-1})<6$, which holds because $0<a\leq1$ and $r\geq r_\textup{ISCO}\geq1$ bound the left-hand side by three.
+For $a<0$ the left-hand side is positive and the right-hand side negative, so the inequality is reversed.
+Hence, at every $r\geq r_\textup{ISCO}$, $\Omega_z<\Omega_\textup{K}$ for $a>0$ and $\Omega_z>\Omega_\textup{K}$ for $a<0$.
+Expanding Eq.~\eqref{eq2:OzOK} for $r\gg1$ gives $\Omega_z/\Omega_\textup{K}\simeq1-3a\,r^{-3/2}$.
+At fixed $H$, the Newtonian prescription therefore overestimates $c_s$ at every radius for prograde spins and underestimates it for retrograde ones.
+Since $t_\textup{wave}$ is an integral of $1/c_s$ (Eq.~\ref{eq2:twave_int}), and $t_\textup{align}$ increases with $c_s$ at every radius (Eq.~\ref{eq2:talign}, where $\mathcal{G}$ and $\Sigma$ do not depend on $c_s$), the prescription $c_s=H\Omega_\textup{K}$ makes both conditions (i) and (ii) easier to satisfy for $a>0$ and harder for $a<0$.
+We use Eq.~\eqref{eq2:csdef} throughout.
+Figure~\ref{fig:cs_choice} shows the effect on both timescales.
+At $r_\textup{out}=3\,r_\textup{ISCO}$, Eq.~\eqref{eq2:csdef} lengthens $t_\textup{wave}$ by factors of 1.95 and 1.16 for $a=0.998$ and $0.8$, and shortens $t_\textup{align}$ by factors of 3.8 and 1.4; for $a=-1$ it shortens $t_\textup{wave}$ by $4\%$ and lengthens $t_\textup{align}$ by $10\%$.
+The difference is largest for compact flows around rapidly spinning holes, and becomes negligible at large radii.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\hsize]{2_model/t_cs_vgrav.pdf}
+    \caption{
+    Wave-propagation time (top) and alignment time (bottom) per unit mass as functions of $r_\textup{out}$, for $c_s=H\Omega_z$ (solid; this work, Eq.~\ref{eq2:csdef}) and $c_s=H\Omega_\textup{K}$ (dashed; \citealt{Motta2017}), with the same $H$ and the spins in the legend ($a=1$ is actually $a=0.998$, so that $t_\textup{wave}$ is not divergent).
+    Both use $\Omega_\textup{loc}=\Omega_\textup{LT}$, $h_\textup{ISCO}=0.1$, $\alpha=0.01$, $p=3/5$ and $q=3/2$.
+    }
+    \label{fig:cs_choice}
+\end{figure}
+
+\paragraph{Thickness profile.}
+We keep the radial profile of the aspect ratio of \citet{Motta2017},
+\begin{equation}
+    \label{eq2:HR}
+    \frac{H}{R}=h_\textup{ISCO}\left(\frac{r}{r_\textup{ISCO}}\right)^{1/2-q},
+    \qquad q=\frac32 ,
+\end{equation}
+with $h_\textup{ISCO}\doteq(H/R)(r_\textup{ISCO})$.
+In their formulation $c_s=c\,h_0\,r^{-q}$ and $H=c_s/\Omega_\textup{K}$, so that $H=h_0\,r^{3/2-q}R_g$.
+The choice $q=3/2$ is therefore equivalent to a thickness independent of radius, the property of a radiation-pressure dominated flow \citep{accretion}.
+We retain this property, $H=h_\textup{ISCO}\,r_\textup{ISCO}\,R_g$, and obtain the sound speed from Eq.~\eqref{eq2:csdef}.
+For general $q$, writing $\Omega_z=f_z(r,a)/t_g$ with
+\begin{equation}
+    f_z(r,a)\doteq\frac{1}{r^{3/2}+a}\sqrt{1-\frac{4a}{r^{3/2}}+\frac{3a^2}{r^2}},
+\end{equation}
+Eq.~\eqref{eq2:HR} and $c_s=(H/R)\,R\,\Omega_z$ give
+\begin{equation}
+    \label{eq2:cs}
+    c_s=c\,h_\textup{ISCO}\,r_\textup{ISCO}^{\,q-1/2}\,r^{3/2-q}\,f_z(r,a).
+\end{equation}
+Since $H$ is normalised at each spin's own ISCO, a retrograde flow, with its larger $r_\textup{ISCO}$, is thicker than a prograde one: for $|a|=0.9$, $H(-0.9)/H(0.9)=r_\textup{ISCO}(-0.9)/r_\textup{ISCO}(0.9)\simeq3.8$.
+At fixed $r$ the ratio of sound speeds is larger still, because there $\Omega_z(-0.9)>\Omega_\textup{K}>\Omega_z(0.9)$.
+
+\paragraph{Wave-propagation time.}
+The time bending waves take to cross the flow is \citep[][Eq.~5]{Motta2017}
+\begin{equation}
+    \label{eq2:twave_int}
+    t_\textup{wave}=\int_{R_\textup{in}}^{R_\textup{out}}\frac{2\,\textup{d}R}{c_s(R)} .
+\end{equation}
+Substituting $R=rR_g$, $\textup{d}R=R_g\,\textup{d}r$ and Eq.~\eqref{eq2:cs},
+\begin{equation}
+    \label{eq2:twave}
+    t_\textup{wave}=\frac{2\,t_g}{h_\textup{ISCO}}\,r_\textup{ISCO}^{\,1/2-q}\int_{r_\textup{in}}^{r_\textup{out}}\frac{r^{\,q-3/2}}{f_z(r,a)}\,\textup{d}r ,
+\end{equation}
+which we evaluate numerically.
+In the Newtonian limit $f_z\to r^{-3/2}$, the integrand reduces to $r^{q}$, and Eq.~\eqref{eq2:twave} becomes Eq.~(6) of \citet{Motta2017}.
+For $a=1$ the radicand of $f_z$ factorises as $\left(1-r^{-1/2}\right)^2\left(1+2r^{-1/2}+3r^{-1}\right)$.
+Hence $\Omega_z$ vanishes linearly at $r_\textup{ISCO}(1)=1$, and the integral in Eq.~\eqref{eq2:twave} diverges logarithmically: the flow cannot communicate a warp at the ISCO of an extremal hole.
+
+
+\paragraph{Alignment time.}
+\citet{FoucartLai2014} write the linear bending-wave equations as an eigenvalue problem for modes $\propto e^{-i\omega t}$ (their Eqs.~17--18), with $\omega=\omega_p-i\gamma$, where $\omega_p$ is the precession rate and $\gamma$ the damping rate of the tilt (their Eq.~21).
+They solve it to lowest order in the perturbation from a flat, rigidly precessing disc.
+The internal stress is linear in the external torque and is given by (their Eq.~31)
+\begin{equation}
+    \label{eq2:G}
+    \mathcal{G}(R)=\int_{R_\textup{in}}^{R}\Sigma x^3\,\Omega_\varphi\left(\Omega_\textup{p}-\Omega_\textup{loc}\right)\textup{d}x ,
+\end{equation}
+where $\Omega_\textup{loc}(R)$ is the rate at which the ring at $R$ would precess on its own.
+$\mathcal{G}$ is the stress needed to force every ring to precess at $\omega_\textup{p}$ instead of $\Omega_\textup{loc}$, and viscosity dissipates it.
+Imposing zero torque at both edges ($\mathcal{G}_\theta(R_\textup{in})=\mathcal{G}_\theta(R_\textup{out})=0$) gives (their Eq.~35)
+\begin{equation}
+    \label{eq2:talign}
+    t_\textup{align}^{-1}\doteq\gamma=\frac{\int_{R_\textup{in}}^{R_\textup{out}}\frac{4\alpha\,\mathcal{G}^2}{\Sigma\,c_s^2\,R^3}\,\textup{d}R}{\int_{R_\textup{in}}^{R_\textup{out}}\Sigma R^3\Omega_\varphi\,\textup{d}R}.
+\end{equation}
+The first condition holds by Eq.~\eqref{eq2:G}.
+With the weight $\tilde w\doteq\Sigma x^3\Omega_\varphi>0$, the second condition requires
+\begin{equation}
+    \label{eq2:BC}
+    \int_{R_\textup{in}}^{R_\textup{out}}\tilde w\left(\omega_\textup{p}-\Omega_\textup{loc}\right)\textup{d}x=0
+    \iff
+    \omega_\textup{p}=\frac{\int\tilde w\,\Omega_\textup{loc}\,\textup{d}x}{\int\tilde w\,\textup{d}x},
+\end{equation}
+that is, $\omega_\textup{p}$ must be the $\tilde w$-weighted mean of $\Omega_\textup{loc}$.
+The weight of Eq.~\eqref{eq2:nusolid} is exactly $\tilde w$, since $L\,R=\Sigma R^3\Omega_\varphi$.
+
+\citet{FoucartLai2014} work with a quasi-Keplerian potential taking $\Omega_\textup{loc}=\mathcal{Z}\Omega_\varphi$, with (their Eq.~16)
+\begin{equation}
+    \label{eq2:Zdef}
+    \mathcal{Z}\doteq\frac{\Omega_\varphi^2-\Omega_z^2}{2\Omega_\varphi^2}
+    =\frac12\left[1-\left(\frac{g_z}{g_\varphi}\right)^{2}\right].
+\end{equation}
+
+\citet{Motta2017} adopt instead Eq.~\eqref{eq2:talign} with $\Omega_\textup{loc}=\mathcal{Z}\Omega_\varphi$, but take $\omega_\textup{p}=\Omega_\textup{solid}$ from Eq.~\eqref{eq2:nusolid}, i.e.\ the $\tilde w$-mean of $\Omega_\textup{LT}$ (their Eqs.~2 and 7).
+This violates Eq.~\eqref{eq2:BC}.
+Using $\Omega_z=\Omega_\varphi-\Omega_\textup{LT}$ (Eq.~\ref{eq2:omlt}), $\Omega_\varphi^2-\Omega_z^2=2\Omega_\varphi\Omega_\textup{LT}-\Omega_\textup{LT}^2$, hence, exactly,
+\begin{equation}
+    \label{eq2:LTminusZ}
+    \Omega_\textup{LT}-\mathcal{Z}\Omega_\varphi=\frac{\Omega_\textup{LT}^2}{2\Omega_\varphi}.
+\end{equation}
+Splitting $\omega_\textup{p}-\mathcal{Z}\Omega_\varphi=(\Omega_\textup{solid}-\Omega_\textup{LT})+(\Omega_\textup{LT}-\mathcal{Z}\Omega_\varphi)$, their stress is
+\begin{equation}
+    \label{eq2:GM}
+    \mathcal{G}_\textup{M}(R)=\mathcal{G}_\textup{LT}(R)+E(R),
+    \qquad
+    E(R)\doteq\frac12\int_{R_\textup{in}}^{R}\Sigma x^3\,\Omega_\textup{LT}^2\,\textup{d}x ,
+\end{equation}
+where $\mathcal{G}_\textup{LT}$ is Eq.~\eqref{eq2:G} with $\Omega_\textup{loc}=\Omega_\textup{LT}$, and we used $\tilde w\,\Omega_\textup{LT}^2/(2\Omega_\varphi)=\Sigma x^3\Omega_\textup{LT}^2/2$.
+Since $\Omega_\textup{solid}$ is the $\tilde w$-mean of $\Omega_\textup{LT}$, $\mathcal{G}_\textup{LT}(R_\textup{out})=\Omega_\textup{solid}\int\tilde w-\int\tilde w\,\Omega_\textup{LT}=0$, and therefore
+\begin{equation}
+    \mathcal{G}_\textup{M}(R_\textup{out})=E(R_\textup{out})>0\qquad(a\neq0).
+\end{equation}
+The stress then does not vanish at the outer edge, contrary to the boundary condition from which Eq.~\eqref{eq2:talign} is derived.
+
+In this work we take $\Omega_\textup{loc}=\Omega_\textup{LT}$, together with $\Omega_\textup{solid}$ from Eq.~\eqref{eq2:nusolid}, for three reasons.
+First, Eq.~\eqref{eq2:BC} then holds by construction for every $\Sigma$, $a$ and $r_\textup{out}$, and the scheme is formally that of \citet{FoucartLai2014} with $\mathcal{Z}\Omega_\varphi$ replaced by $\Omega_\textup{LT}$.
+Second, the linear theory cannot distinguish between the two consistent choices.
+Writing $\Omega_z=\Omega_\varphi(1-\eta)$, Eq.~\eqref{eq2:omlt} gives $\Omega_\textup{LT}=\eta\,\Omega_\varphi$, and Eq.~\eqref{eq2:Zdef} gives $\mathcal{Z}\Omega_\varphi=\Omega_\varphi(\eta-\eta^2/2)$, since $\Omega_\varphi^2-\Omega_z^2=\Omega_\varphi^2(2\eta-\eta^2)$.
+The two choices thus coincide at first order in the deviation from Keplerian motion, with relative difference $\eta/2=\Omega_\textup{LT}/(2\Omega_\varphi)$.
+The bending-wave equations require $|\Omega_z^2-\Omega_\varphi^2|\lesssim(H/R)\,\Omega_\varphi^2$ \citep{FoucartLai2014}, i.e.\ $2|\mathcal{Z}|\lesssim H/R$.
+Since $\Omega_z\geq0$ implies $\eta\leq1$, we have $|2-\eta|\geq1$ and hence $2|\mathcal{Z}|=|\eta|\,|2-\eta|\geq|\eta|$.
+Wherever the equations hold, the two choices therefore differ by $|\eta|/2\leq|\mathcal{Z}|\lesssim(H/R)/2$, which is of the same order as the terms in $H/R$ neglected in deriving the equations.
+Third, the remaining ambiguity is fixed by the single-particle limit, which the model is required to contain (Sect.~\ref{sec2:pif}).
+Since $\Omega_\textup{loc}$ is continuous on $[R_\textup{in},R_\textup{out}]$ and $\tilde w>0$, the $\tilde w$-mean in Eq.~\eqref{eq2:BC} lies between the minimum and the maximum of $\Omega_\textup{loc}$ on that interval, and therefore tends to $\Omega_\textup{loc}(R_\textup{in})$ as $R_\textup{out}\to R_\textup{in}$.
+With $\Omega_\textup{loc}=\Omega_\textup{LT}$, a narrow ring therefore precesses at the exact nodal frequency of the geodesics it is made of.
+With $\Omega_\textup{loc}=\mathcal{Z}\Omega_\varphi$ it would precess at $\Omega_\textup{LT}(R_\textup{in})\left[1-\Omega_\textup{LT}/(2\Omega_\varphi)\right]$ (Eq.~\ref{eq2:LTminusZ}).
+This underestimates the nodal frequency by $39\%$ at the ISCO of an $a=0.998$ hole, where $\Omega_\textup{LT}/\Omega_\varphi\simeq0.77$ (Eqs.~\ref{eq2:epiphi}--\ref{eq2:omlt}).
+Our choice thus uses the same rate in the observable frequency, Eq.~\eqref{eq2:nusolid}, and in the stress, and recovers the exact test-particle limit in both.
+
+The relative difference $\Omega_\textup{LT}/(2\Omega_\varphi)$ is $\simeq a\,r^{-3/2}$ for $r\gg1$ and vanishes for $a\to0$, but it becomes of order unity close to the ISCO of a fast-spinning hole.
+There, however, the validity condition above is violated anyway: $2\mathcal{Z}=-\varepsilon$ (Sect.~\ref{sec2:signs}) equals $\simeq0.57$ at $r_\textup{ISCO}$ for $a=0.9$ and $\simeq0.95$ for $a=0.998$, both well above $h_\textup{ISCO}$.
+The analogous condition on $\kappa$ fails close to the ISCO for every spin, since $\kappa(r_\textup{ISCO})=0$.
+However, $\kappa$ enters the first-order solution of \citet{FoucartLai2014} only through the periastron term in the warp profile and amplitude (their Eqs.~28 and 34), not through $\mathcal{G}$ or $\gamma$ (their Eqs.~31 and 35).
+In the innermost region of a fast-spinning hole, the choice of $\Omega_\textup{loc}$ is therefore a systematic uncertainty of the linear theory that cannot be settled within it.
+
+Its size and sign follow from Eq.~\eqref{eq2:GM}.
+Both closures share the denominator of Eq.~\eqref{eq2:talign}, $\Sigma$ and $c_s$, so they differ only through $\mathcal{G}^2$, with $\mathcal{G}_\textup{M}^2-\mathcal{G}_\textup{LT}^2=E\,(E+2\mathcal{G}_\textup{LT})$.
+By Eq.~\eqref{eq2:signLT}, $\mathcal{G}_\textup{LT}=s\,\mathcal{G}_\textup{abs}$ with $s\doteq\textup{sign}(a)$ (see below), while $E\geq0$ is even in $s$.
+Moreover, $\mathcal{G}_\textup{abs}\leq0$ wherever $|\Omega_\textup{LT}|$ decreases with $r$, which we verified numerically on $r_\textup{ISCO}\leq r\leq500$ for all the spins considered.
+Indeed, $\textup{d}\mathcal{G}_\textup{abs}/\textup{d}R=\tilde w\,(|\Omega_\textup{solid}|-|\Omega_\textup{LT}|)$ changes sign once, from negative to positive, and $\mathcal{G}_\textup{abs}$ vanishes at both edges.
+For $a<0$, then, $E+2\mathcal{G}_\textup{LT}=E+2|\mathcal{G}_\textup{abs}|\geq0$ at every radius: the closure of \citet{Motta2017} overestimates $\gamma$, and our $t_\textup{align}$ is longer at every $r_\textup{out}$.
+For $a>0$ the two terms compete, and the sign of the difference depends on $r_\textup{out}$.
+Figure~\ref{fig:omloc_choice} shows the result.
+For $a=-1$ our $t_\textup{align}$ is longer by a factor of 1.11 at $r_\textup{out}=3\,r_\textup{ISCO}$ and by $4\%$ at $r_\textup{out}=500$.
+For $a>0$ it is shorter, except in very compact flows around rapidly spinning holes ($r_\textup{out}\lesssim1.5\,r_\textup{ISCO}$ for $a=0.998$, $\lesssim1.1\,r_\textup{ISCO}$ for $a=0.8$).
+The difference reaches a factor of about five for $a=0.998$ at $r_\textup{out}\simeq2.3\,r_\textup{ISCO}$, and stays below $5\%$ for $|a|\leq0.2$ and $r_\textup{out}\geq3\,r_\textup{ISCO}$.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\hsize]{2_model/t_align_oloc.pdf}
+    \caption{
+    Alignment time per unit mass as a function of $r_\textup{out}$ for $\Omega_\textup{loc}=\Omega_\textup{LT}$ (solid; this work) and for $\Omega_\textup{loc}=\mathcal{Z}\Omega_\varphi$ with $\Omega_\textup{solid}$ from Eq.~\eqref{eq2:nusolid} (dashed; \citealt{Motta2017}), for the spins in the legend, with $c_s=H\Omega_\textup{K}$ (top) and $c_s=H\Omega_z$ (bottom).
+    Both panels use $h_\textup{ISCO}=0.1$, $\alpha=0.01$, $p=3/5$ and $q=3/2$.
+    For $a=1$, $\Omega_z\to0$ at the ISCO, so that $\mathcal{Z}\Omega_\varphi\to\Omega_\varphi/2$ while $\Omega_\textup{LT}\to\Omega_\varphi$: with $\Omega_\textup{loc}=\mathcal{Z}\Omega_\varphi$ the difference $\Omega_\textup{solid}-\Omega_\textup{loc}$ near the ISCO is comparable to $\Omega_\varphi$ instead of a residual that averages to zero, the internal torque does not vanish at $R_\textup{out}$, and $t_\textup{align}$ is shortened (dashed below solid for $r_\textup{out}\lesssim2$).
+    With $c_s=H\Omega_z$ the sound speed also vanishes at the ISCO, $c_s^2\propto(R-R_\textup{ISCO})^2$, which cancels the $(r_\textup{out}-r_\textup{ISCO})^{-2}$ divergence of compact flows: the dashed curve then tends to a finite value as $r_\textup{out}\to r_\textup{ISCO}$, whereas the solid one still diverges.
+    }
+    \label{fig:omloc_choice}
+\end{figure}
+
+\paragraph{Retrograde flows.}
+By Eq.~\eqref{eq2:signLT}, $\Omega_\textup{LT}=s\,|\Omega_\textup{LT}|$ with $s$ uniform in $r$.
+Since $\tilde w>0$, it follows that $\Omega_\textup{solid}=s\,|\Omega_\textup{solid}|$, with $|\Omega_\textup{solid}|$ the $\tilde w$-mean of $|\Omega_\textup{LT}|$.
+With $\Omega_\textup{loc}=\Omega_\textup{LT}$, Eq.~\eqref{eq2:G} then gives $\mathcal{G}=s\,\mathcal{G}_\textup{abs}$, where $\mathcal{G}_\textup{abs}$ is obtained by replacing both rates with their moduli.
+Since $\mathcal{G}$ enters Eq.~\eqref{eq2:talign} only through $\mathcal{G}^2$ and all other factors are positive, $t_\textup{align}$ does not depend on $s$.
+A retrograde flow therefore differs from a prograde one only through $r_\textup{ISCO}(a)$, $\Omega_\varphi$, $\Omega_z$ and $|\Omega_\textup{LT}|$, never through the sign of the torque.
+This symmetry does not hold for the closure of \citet{Motta2017}, because the term $E$ in Eq.~\eqref{eq2:GM} is even in $s$.
+
+\paragraph{Range of validity.}
+The first-order solution holds for a small warp and a small twist gradient, $\gamma\ll\alpha\Omega_\varphi$, and $\alpha\lesssim H/R$ \citep{FoucartLai2014}.
+With $H/R=h_\textup{ISCO}\,r_\textup{ISCO}/r$ for $q=3/2$, the last condition reads $r\lesssim r_\textup{ISCO}\,h_\textup{ISCO}/\alpha$: for the fiducial values $(h_\textup{ISCO} = 0.1,\,\alpha=0.01)$ the bending-wave regime extends to $\simeq10\,r_\textup{ISCO}$.
+
+
+\subsection{Exact scalings and reduction to $P=M\nu_0$}
+\label{sec2:scaling}
+
+All three quantities of the model scale with the BH mass only through $t_g$.
+For fixed $h_\textup{ISCO}$ and $\alpha$, equations~\eqref{eq2:nusolid}, \eqref{eq2:twave} and \eqref{eq2:talign} can therefore be rewritten as
+\begin{equation}
+    \label{eq2:scalings}
+    \nu_\textup{solid}=\frac{g(a,r_\textup{out})}{m},\ 
+    t_\textup{wave}=m\,\tau_w(a,r_\textup{out}),\ 
+    t_\textup{align}=m\,\tau_a(a,r_\textup{out}),
+\end{equation}
+where $g$ and $\tau_{w,a}$ are the values of $\nu_\textup{solid}$ and $t_\textup{wave,align}$ for $M=1\,M_\odot$, with $r_\textup{in}=r_\textup{ISCO}(a)$, $p$, and $q$ fixed.
+
+The observed frequency enters the model only through the requirement $\nu_\textup{solid}=\nu_0$, which by Eq.~\eqref{eq2:scalings} reads
+\begin{equation}
+    \label{eq2:Pcond}
+    g(a,r_\textup{out})=P,\qquad P\doteq m\,\nu_0 .
+\end{equation}
+At given spin, Eq.~\eqref{eq2:Pcond} fixes the outer edge of the flow.
+We denote by $\bar r$ its solution, that is, the value of $r_\textup{out}$ for which the flow precesses rigidly at the observed frequency.
+Since $M$ and $\nu_0$ enter Eq.~\eqref{eq2:Pcond} only through their product, $\bar r=\bar r(a,P)$.
+
+Conditions (i) and (ii) of Sect.~\ref{sec2:timescales} thus reduce to
+\begin{equation}
+    \label{eq2:Ncond}
+    g\,\tau_w,<1<g\,\tau_a,
+\end{equation}
+which depend only on $a$ and $\bar r$.
+Whether a precessing flow of given spin and outer edge is rigid and long-lived enough to produce a QPO therefore does not depend on the BH mass.
+
+Equation~\eqref{eq2:Pcond} makes the question of Sect.~\ref{sec:intro} precise.
+Let $A(P)$ be the set of spins for which a valid $\bar r$ exists at a given $P$.
+At fixed $(h_\textup{ISCO},\alpha)$ it is the same for an XRB and for an AGN with the same $P$, whatever their masses.
+A $10\,M_\odot$ BH with a QPO at $\nu_\textup{XRB}$ and an AGN of mass $M$ with a QPO at $\nu_0=\nu_\textup{XRB}\,(10\,M_\odot/M)$ are therefore equally allowed by the model.
+Differences in the occurrence of QPOs must come from the distribution of the two classes in $P$ (first explanation), from different values of $(h_\textup{ISCO},\alpha)$, or from quantities that do not enter Eqs.~\eqref{eq2:Ncond} and \eqref{eq2:Pcond}, such as $\Gamma$ in Eq.~\eqref{eq2:duty} (second explanation) or the duration of the observations (third explanation).
+
+
+%--------------------------------------------------------------------------
+\subsection{Numerical implementation}
+\label{sec2:numerics}
+
+For each spin, $g$, $\tau_w$ and $\tau_a$ are computed on a grid of $r_\textup{out}$ with 200 nodes (100 logarithmically spaced in $[1,10)$ and 100 in $[10,200]$), keeping only $r_\textup{out}>1.001\,r_\textup{ISCO}$.
+The spin grid has a step of 0.005 in $[-1,1]$.
+The radial integrals use the trapezoidal rule on 2000 nodes $r=r_\textup{in}+\xi\,(r_\textup{out}-r_\textup{in})$, with $\xi\in[10^{-6},1]$; the lower limit avoids the $0/0$ of $\mathcal{G}^2/\Sigma$ at $r_\textup{in}$, where $\Sigma=0$.
+$\mathcal{G}$ is a cumulative trapezoid on the same nodes, and Eq.~\eqref{eq2:twave} is integrated on them as well.
+For $a=1$, $t_\textup{wave}$ diverges (Sect.~\ref{sec2:timescales}), so no configuration with $a=1$ is valid.
+
+For every spin of the grid, $g$ decreases monotonically with $r_\textup{out}$, so Eq.~\eqref{eq2:Pcond} has at most one solution.
+It is located by linear interpolation in $(\ln r,\ln g)$ between two nodes of the $r_\textup{out}$ grid, and $\ln\tau_w$, $\ln\tau_a$ are interpolated at the same position before testing Eq.~\eqref{eq2:Ncond}.
+Because validity depends only on $P$, each spin requires a single one-dimensional evaluation on a grid of $P$, which is then mapped onto any set of masses and frequencies.

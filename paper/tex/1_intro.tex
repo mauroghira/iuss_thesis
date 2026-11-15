@@ -1,0 +1,115 @@
+%==========================================================================
+\section{Introduction}
+\label{sec:intro}
+%==========================================================================
+
+Quasi-periodic oscillations (QPOs) are narrow peaks in the X-ray power spectra of accreting compact objects\footnote{A precise definition, together with the timing and spectral properties of these features, can be found in \citet{ingram}.}.
+They were first found in neutron-star and black-hole (BH) X-ray binaries (XRBs), where they are common, and have since been reported in a small number of active galactic nuclei (AGNs).
+
+AGNs are usually regarded as the supermassive counterparts of BH-XRBs: in both classes a BH accretes through a disc, and the relevant physics is expected to be the same.
+In particular, when gravitational units ($R_g \doteq GM/c^2$, $t_g \doteq R_g/c$) are adopted, the Kerr metric no longer contains the BH mass $M$, so every relativistic orbital frequency scales exactly as $M^{-1}$ at fixed dimensionless radius and spin (Sect.~\ref{sec2:kerr}).
+Any model that ties a QPO to these frequencies therefore predicts that a feature seen at frequency $\nu_\textup{XRB}$ around a BH of $10\,M_\odot$ appears around an AGN of mass $M$ at $\nu_0=\nu_\textup{XRB}\,(10\,M_\odot/M)$, i.e. in the $10^{-7}$--$10^{-3}$~Hz range for $M\sim10^{5}$--$10^{8}\,M_\odot$.
+The same invariance holds for other characteristic timescales of the flow, which also scale as $M$ once the disc parameters (aspect ratio, viscosity, surface-density profile) are fixed.
+What does not scale is the comparison with timescales external to the flow: the duration of an X-ray observation, the time over which misaligned gas is supplied to the inner disc, and the lifetime of the active phase.
+
+%--------------------------------------------------------------------------
+\paragraph{Observations.}
+Table~\ref{tab:catalog} collects the X-ray QPOs reported in AGNs so far, with the redshift of the host and the published BH mass estimates.
+The first robust detection, and still the best studied, is the $\sim1$~h QPO of RE~J1034+396 \citep{Gierlinski2008}, which has persisted for years \citep{Alston2014}.
+Similar signals at $\nu_\textup{obs}\sim10^{-4}$~Hz were later reported in MS~2254.9-3712 \citep{Alston2015}, Mrk~766 \citep{Zhang2017}, MCG-06-30-15 \citep{Gupta2018}, 1H~0707-495 \citep{Pan2016,Zhang2018a}, ESO~113-G010 \citep{Zhang2020}, NGC~1365 \citep{Yan2024}, NGC~5506 \citep{Zhang2025}, Mrk~142 \citep{Zhong2024} and NGC~4151 \citep{Yan2025}.
+Longer periods, from hours to weeks, were found in XMMU~J134736.6+173403 \citep[J1347 hereafter;][]{Carpano2018}, 2XMM~J123103.2+110648 \citep[J1231;][]{Lin2013}, NGC~4945 \citep{Smith2020} and 2MASX~J12571076+2724177 \citep[J1257;][]{j1257}.
+At the other end, the changing-look AGN 1ES~1927+654 shows a millihertz QPO whose frequency drifted from 0.9 to 2.4~mHz within two years and then stabilised \citep{Masterson2025,Masterson2026}.
+QPOs have also been claimed in tidal disruption events and in extreme-UV light curves of AGNs; we do not consider them here and refer to the compilation of \citet{Smith2021}.
+
+Two features of this sample are relevant for what follows.
+First, the reported significances are often computed only over the portion of the light curve where the QPO is present, and systematic re-analyses of archival data confirm only the QPO of RE~J1034+396 \citep{GonzalezMartin2012,Zhang2023}.
+A re-analysis based on Gaussian processes also lowers the significance of the QPOs of NGC~1365 and NGC~4945 to about $1.7\sigma$ and $2.5\sigma$, respectively \citep{Gurpide2025}.
+Second, all detections come from long archival observations taken for other purposes, which favours bright, highly variable narrow-line Seyfert~1 galaxies \citep{Smith2021}.
+The sample is therefore small, heterogeneous and affected by selection, and the mass estimates of individual sources often disagree by an order of magnitude or more (Table~\ref{tab:catalog}).
+
+\begin{table*}
+\caption{X-ray QPOs reported in AGNs.}
+\label{tab:catalog}
+\centering
+\begin{tabular}{lcccll}
+\hline\hline
+Source & $z$ & $\nu_\textup{obs}$ [Hz] & $M$ [$10^6\,M_\odot$] & QPO ref. & Mass ref. \\
+\hline
+RE J1034+396           & 0.0424  & $2.7\times10^{-4}$                    & 0.44--55   & 1, 2   & 3 \\
+MS 2254.9-3712         & 0.039   & $1.5\times10^{-4}$                    & 4--10      & 4      & 5, 6 \\
+Mrk 766                & 0.0129  & $1.55\times10^{-4}$                   & 1.3--7.4   & 7      & 8, 9, 10 \\
+MCG-06-30-15           & 0.00775 & $2.7\times10^{-4}$                    & 1.2--58    & 11     & 12, 13 \\
+ESO 113-G010           & 0.0257  & $1.24\times10^{-4}$, $6.8\times10^{-5}$ & 4.1--10  & 14     & 15 \\
+J1347  & 0.045   & $1.17\times10^{-5}$, $3.9\times10^{-6}$ & 6.2--28  & 16     & 16 \\
+J1231 & 0.119   & $7.3\times10^{-5}$                    & 0.03--0.1  & 17     & 18, 19 \\
+NGC 4945               & 0.0019  & $2.74\times10^{-7}$                   & 0.7--7.4  & 20     & 21, 22, 23 \\
+J1257                  & 0.0207  & $3.3\times10^{-5}$                    & 1.0--5.9  & 24     & 25 \\
+1ES 1927+654           & 0.0194  & $0.9$--$2.4\times10^{-3}$             & 0.65--5.1 & 26, 27 & 28 \\
+1H 0707-495            & 0.0411  & $2.63\times10^{-4}$, $1.2\times10^{-4}$ & 2--86    & 29, 30 & 31, 32, 33 \\
+NGC 1365               & 0.0055  & $2.19\times10^{-4}$                   & 2--63      & 34     & 35, 36, 37 \\
+NGC 5506               & 0.0062  & $6.2\times10^{-5}$                    & 4--100     & 38     & 39 \\
+Mrk 142                & 0.045   & $7.0\times10^{-5}$                    & 0.6--3.9   & 40     & 41, 42 \\
+NGC 4151               & 0.0033  & $5.9\times10^{-4}$                    & 2.5--51    & 43     & 44, 45, 46 \\
+\hline
+\end{tabular}
+\tablefoot{
+$\nu_\textup{obs}$ is the observed frequency; two values denote two QPOs in the same source, a range a drifting QPO.
+The mass range covers all published independent estimates, including discordant ones; estimates derived from the QPO itself are excluded.
+References:
+(1)~\citet{Gierlinski2008}; (2)~\citet{Alston2014}; (3)~\citet{Czerny2016};
+(4)~\citet{Alston2015}; (5)~\citet{Grupe2010}; (6)~\citet{Shields2003};
+(7)~\citet{Zhang2017}; (8)~\citet{BentzKatz2015}; (9)~\citet{Bentz2009}; (10)~\citet{Giacche2014};
+(11)~\citet{Gupta2018}; (12)~\citet{Bentz2016}; (13)~\citet{Das2025};
+(14)~\citet{Zhang2020}; (15)~\citet{Cackett2013};
+(16)~\citet{Carpano2018};
+(17)~\citet{Lin2013}; (18)~\citet{Ho2012}; (19)~\citet{Cao2025};
+(20)~\citet{Smith2020}; (21)~\citet{Greenhill1997}; (22)~\citet{Braatz2003}; (23)~\citet{Gaspar2022};
+(24)~\citet{j1257}; (25)~\citet{massa};
+(26)~\citet{Masterson2025}; (27)~\citet{Masterson2026}; (28)~\citet{Li2022};
+(29)~\citet{Pan2016}; (30)~\citet{Zhang2018a}; (31)~\citet{ZhouWang2005}; (32)~\citet{DoneJin2016}; (33)~\citet{Titarchuk2025};
+(34)~\citet{Yan2024}; (35)~\citet{Fazeli2019}; (36)~\citet{Combes2019}; (37)~\citet{Risaliti2009};
+(38)~\citet{Zhang2025}; (39)~\citet{Gofford2015};
+(40)~\citet{Zhong2024}; (41)~\citet{Du2014}; (42)~\citet{Li2018};
+(43)~\citet{Yan2025}; (44)~\citet{Bentz2006}; (45)~\citet{Onken2014}; (46)~\citet{Roberts2021}.
+}
+\end{table*}
+
+%--------------------------------------------------------------------------
+\paragraph{Model.}
+Many models have been proposed for QPOs in XRBs.
+We adopt the one most widely used for type-C QPOs, the Lense-Thirring precession of a geometrically thick inner flow misaligned with the BH spin \citep{PIF}.
+We remain agnostic on whether it is the correct description of AGN QPOs: we use it because its predictions follow from a few transparent assumptions and because it contains explicit conditions for the precession to be observable.
+Following \citet{Motta2017}, rigid precession at the observed frequency requires that bending waves cross the flow within one period and that the flow does not align with the BH equator within one period; the latter condition rests on the alignment rate of \citet{FoucartLai2014}, for which we adopt a local precession rate consistent with the zero-torque boundary conditions (Sect.~\ref{sec2:timescales}).
+Other classes of models are discussed in Sect.~\ref{sec:discussion}.
+
+%--------------------------------------------------------------------------
+\paragraph{The question.}
+Within this model the scaling with mass is exact: once the disc parameters are fixed, the observed frequency, the wave-crossing time and the alignment time depend on $M$ and $\nu_0$ only through the product $P=M\nu_0$ (Sect.~\ref{sec2:scaling}).
+A configuration that produces a QPO around a $10\,M_\odot$ BH has therefore an exact counterpart around any AGN with the same $P$, and the conditions for the QPO to exist are satisfied, or violated, in the same way.
+If QPOs are common in XRBs, why are so few observed in AGNs?
+
+We consider three classes of explanations, which are not mutually exclusive.
+\begin{enumerate}
+    \item \textit{Restricted parameter space.}
+    For given disc parameters, only part of the $(M,\nu_0)$ plane admits a valid precessing configuration, i.e. one where bending waves cross the flow and the flow does not align within one precession period.
+    If the allowed region excludes the masses and frequencies where most AGNs lie, QPOs are rare intrinsically.
+    \item \textit{Alignment.}
+    The flow aligns with the BH spin on the timescale $t_\textup{align}$.
+    Even where both conditions above hold, $t_\textup{align}$ must also be compared with the time between successive episodes that bring misaligned gas to the inner disc and with the duration of the active phase.
+    In XRBs the companion continuously supplies gas \citep{Motta2017}, whereas in AGNs a misaligned inner flow may form only occasionally, for instance after a tidal disruption event or a change in the fuelling; the fraction of time during which a QPO is visible would then be of order $t_\textup{align}$ times the rate of such episodes.
+    The QPO of 1ES~1927+654, which appeared after a major change of the accretion flow \citep{Masterson2025}, would fit this picture.
+    \item \textit{Detectability.}
+    At fixed $P$ the period grows linearly with $M$, so for massive AGNs a QPO may exist but last too few cycles within an observation to be detected.
+\end{enumerate}
+
+%--------------------------------------------------------------------------
+\paragraph{This work.}
+We first use the model to constrain the BH spin and the extent of the precessing flow for each source of Table~\ref{tab:catalog}.
+We then map the valid region of the $(M,\nu_0)$ plane, identify which condition fails where no configuration is valid, and test how the results depend on the poorly known aspect ratio and viscosity of the flow.
+Finally, we compare the allowed region with the observational window and estimate the alignment timescales, in order to assess the three explanations above.
+% TODO: modificare risultati
+
+The paper is organised as follows.
+Section~\ref{sec:model} describes the model and its exact scalings.
+Section~\ref{sec:results} presents the constraints on the individual sources, while Section~\ref{sec:general} generalises the analysis to a complete mass-frequency map.
+Section~\ref{sec:discussion} discusses the three explanations and summarises our conclusions.

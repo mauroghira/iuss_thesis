@@ -1,0 +1,156 @@
+%==========================================================================
+\section{Dependence on $h_\textup{ISCO}$ and $\alpha$}
+\label{app:params}
+%==========================================================================
+% Figure expected in appendix/ (copy of plots_paper/pif_hr_alpha_map.pdf,
+% produced by pif_hr_alpha.py). All numbers from pif_hr_alpha.py and
+% pif_constraints.py (spin step 0.005, r_out <= 200).
+
+All the results of Sects.~\ref{sec:results} and \ref{sec:general} were obtained for $h_\textup{ISCO}=0.1$ and $\alpha=0.01$.
+The aspect ratio and the viscosity of the inner flow are however not constrained by observations, and they need not be the same in XRBs and AGNs.
+The equivalence of Sect.~\ref{sec2:scaling} between an XRB and an AGN with the same $P$ holds at fixed $(h_\textup{ISCO},\alpha)$, so that different disc parameters in the two classes are one way of breaking it.
+In this appendix we therefore repeat the analysis of Sect.~\ref{sec:general} for other values of the two parameters, and then examine how the constraints on the individual sources change.
+
+%--------------------------------------------------------------------------
+\subsection{Scalings}
+\label{appA:scalings}
+
+The two parameters enter the model only through constant factors.
+The precession frequency, Eq.~\eqref{eq2:gdef}, does not depend on them.
+By Eq.~\eqref{eq2:twave}, $\tau_w\propto h_\textup{ISCO}^{-1}$; by Eqs.~\eqref{eq2:talign} and \eqref{eq2:cs}, $\tau_a\propto c_s^2/\alpha\propto h_\textup{ISCO}^{2}/\alpha$.
+The two sides of Eq.~\eqref{eq2:Ncond} thus scale as
+\begin{equation}
+    \label{eqA:scal}
+    g\,\tau_w\propto h_\textup{ISCO}^{-1},
+    \qquad
+    g\,\tau_a\propto\frac{h_\textup{ISCO}^{2}}{\alpha},
+\end{equation}
+at every $(a,r_\textup{out})$.
+Three consequences follow without any computation.
+First, the upper edge of the valid region, $P<g_\textup{max}(a)$, is the same for all disc parameters, because Eq.~\eqref{eq2:Pcond} is, and because both conditions hold for $\bar r\to r_\textup{ISCO}$ whatever the constant factors.
+Second, wave propagation depends on $h_\textup{ISCO}$ only: a thinner flow has a lower sound speed and is crossed more slowly.
+Third, alignment depends on the single combination $h_\textup{ISCO}^{2}/\alpha$: a thicker or less viscous flow aligns more slowly.
+
+We consider the grid $h_\textup{ISCO}\in\{0.03,0.1,0.3\}$, $\alpha\in\{10^{-3},10^{-2},10^{-1}\}$, over which $h_\textup{ISCO}^{2}/\alpha$ spans four orders of magnitude, from $9\times10^{-3}$ to 90, with the fiducial case in the middle.
+By Eq.~\eqref{eqA:scal} this requires no new integration.
+Figure~\ref{fig:hr_alpha_map} shows the $(a,P)$ plane of Fig.~\ref{fig:Pspin} for the nine combinations.
+
+\begin{figure*}
+    \centering
+    \includegraphics[width=0.9\hsize]{appendix/pif_hr_alpha_map.pdf}
+    \caption{
+    As Fig.~\ref{fig:Pspin}, for $h_\textup{ISCO}\in\{0.03,0.1,0.3\}$ (columns) and $\alpha\in\{10^{-3},10^{-2},10^{-1}\}$ (rows); the fiducial case has a thick frame.
+    The orange line is the value of $P$ for which $\bar r=r_\textup{ISCO}\,h_\textup{ISCO}/\alpha$, the outer limit of the bending-wave regime: configurations below it lie outside the regime.
+    For $\alpha\geq h_\textup{ISCO}$ the line coincides with $g_\textup{max}(a)$; for $h_\textup{ISCO}/\alpha\geq100$ it lies outside the panel or beyond $r_\textup{out}=200$.
+    }
+    \label{fig:hr_alpha_map}
+\end{figure*}
+
+The validity of each panel is limited by the condition $\alpha\lesssim H/R$, i.e.\ $\bar r\lesssim r_\textup{ISCO}\,h_\textup{ISCO}/\alpha$ (Sect.~\ref{sec2:timescales}), which also depends on the two parameters.
+The limit is $100$ and $300\,r_\textup{ISCO}$ for $\alpha=10^{-3}$ and $h_\textup{ISCO}\geq0.1$, and $30\,r_\textup{ISCO}$ for $(0.03,10^{-3})$ and $(0.3,10^{-2})$: in these four cases, as in the fiducial one, the valid region lies within the bending-wave regime, except at most for $|a|\lesssim0.1$.
+For $(0.03,10^{-2})$ and $(0.3,10^{-1})$ the limit is $3\,r_\textup{ISCO}$, and only part of the valid region is within it: $|a|\gtrsim0.3$ in the first case, $a\gtrsim0.93$ in the second.
+For $(0.1,10^{-1})$ and $(0.03,10^{-1})$, $\alpha\geq h_\textup{ISCO}$ and no radius is in the bending-wave regime: the warp would diffuse instead of propagating, Eq.~\eqref{eq2:talign} does not apply, and the corresponding panels are only formal.
+The bottom row of Fig.~\ref{fig:hr_alpha_map} must therefore be read with caution.
+
+%--------------------------------------------------------------------------
+\subsection{The valid region}
+\label{appA:general}
+
+For all nine combinations $g$ is the same function, and the radii that satisfy Eq.~\eqref{eq2:Ncond} still form a single interval starting at the ISCO.
+The description of Sect.~\ref{sec4:rmax} therefore holds unchanged: at fixed spin the valid configurations are $r_\textup{ISCO}<\bar r<r_\textup{max}(a)$, i.e.\ $P_\textup{min}(a)<P<g_\textup{max}(a)$, and the disc parameters only move $r_\textup{max}$, hence the lower edge $P_\textup{min}$.
+In Fig.~\ref{fig:hr_alpha_map} the upper edge of the green region is the same in all panels, as are the cusp at $a=0$ and the limits $P<110$~Hz\,$M_\odot$ for retrograde and $P<1.62\times10^4$~Hz\,$M_\odot$ for prograde spins.
+The grey band of Fig.~\ref{fig:rmax} is the range spanned by $r_\textup{max}$.
+
+\paragraph{Alignment.}
+Where alignment sets $r_\textup{max}$, the lower edge depends only on $h_\textup{ISCO}^{2}/\alpha$ (Table~\ref{tab:hr_alpha}).
+Combinations with the same $h_\textup{ISCO}^{2}/\alpha$ within $10\%$ have the same $r_\textup{max}$ within about $5\%$: in Fig.~\ref{fig:hr_alpha_map} the panels along the diagonals from top left to bottom right differ only at high prograde spin, where wave propagation takes over.
+For each decade in $h_\textup{ISCO}^{2}/\alpha$, $r_\textup{max}$ increases by a factor of $1.5$--$2.6$ and $P_\textup{min}$ decreases by $0.3$--$1$~dex, the more so the larger $h_\textup{ISCO}^{2}/\alpha$.
+At $a=0.5$ the valid interval of $P$ is 0.4~dex wide for $h_\textup{ISCO}^{2}/\alpha=9\times10^{-3}$, 1.3~dex for the fiducial case and 3.1~dex for $h_\textup{ISCO}^{2}/\alpha=90$, and the largest valid flow extends to 7, 20 and 170~$R_g$, respectively.
+A thin and viscous flow can thus precess visibly only if it is a narrow ring close to the ISCO, $\bar r\lesssim2\,r_\textup{ISCO}$, whereas a thick flow of low viscosity can extend to tens of $r_\textup{ISCO}$.
+For retrograde spins the effect is the same: the lowest $P$ valid for $a=-1$ goes from 39 to less than 0.3~Hz\,$M_\odot$.
+
+\begin{table}
+\caption{Largest valid precession radius and lower limit of the valid interval of $P$ where they are set by alignment, as functions of $h_\textup{ISCO}^{2}/\alpha$.}
+\label{tab:hr_alpha}
+\centering
+\begin{tabular}{lcccc}
+\hline\hline
+$h_\textup{ISCO}^{2}/\alpha$ & \multicolumn{2}{c}{$a=-1$} & \multicolumn{2}{c}{$a=0.5$} \\
+ & $r_\textup{max}$ & $P_\textup{min}$ & $r_\textup{max}$ & $P_\textup{min}$ \\
+\hline
+$9\times10^{-3}$ & 15       & 39          & 7.1      & 137 \\
+$0.09$--$0.1$    & 23       & 18          & 10--11   & 64--67 \\
+$0.9$--$1$       & 43--45   & 4.9--5.2    & 20       & 19--20 \\
+$9$--$10$        & 113--119 & 0.72--0.80  & 50--53   & 2.9--3.2 \\
+$90$             & $>200$   & $<0.26$     & 171      & 0.29 \\
+\hline
+\end{tabular}
+\tablefoot{
+Radii in $R_g$, $P_\textup{min}$ in Hz\,$M_\odot$; for comparison $g_\textup{max}=110$ and $347$~Hz\,$M_\odot$ for $a=-1$ and $0.5$.
+Rows with a range contain two or three combinations of the grid: $(h_\textup{ISCO},\alpha)=(0.03,10^{-2})$ and $(0.1,10^{-1})$; $(0.1,10^{-2})$ and $(0.3,10^{-1})$; $(0.1,10^{-3})$ and $(0.3,10^{-2})$.
+The combination $(0.03,10^{-3})$, with $h_\textup{ISCO}^{2}/\alpha=0.9$, is omitted at $a=0.5$, where it is limited by wave propagation ($r_\textup{max}=18$, $P_\textup{min}=24$~Hz\,$M_\odot$).
+}
+\end{table}
+
+\paragraph{Wave propagation.}
+Wave propagation limits the valid region only for rapidly spinning prograde holes, from a spin $a_w$ upwards (dark grey in Fig.~\ref{fig:hr_alpha_map}).
+Since it becomes the limiting condition where it fails before alignment, $a_w$ decreases with $h_\textup{ISCO}$ and with $\alpha$: $a_w=0.48$, $0.65$ and $0.80$ for $h_\textup{ISCO}=0.03$ and $\alpha=10^{-3}$, $10^{-2}$, $10^{-1}$; $a_w=0.77$, $0.91$ and $0.965$ for $h_\textup{ISCO}=0.1$; $a_w=0.95$ and $0.998$ for $h_\textup{ISCO}=0.3$ and $\alpha=10^{-3}$, $10^{-2}$, while for $(0.3,10^{-1})$ alignment is the limit at all spins.
+Above $a_w$ the lower edge depends on $h_\textup{ISCO}$ only.
+For $h_\textup{ISCO}=0.03$ the valid flows around rapidly spinning holes are very narrow rings, $r_\textup{max}=1.24\,r_\textup{ISCO}$ at $a=0.9$ and $1.03\,r_\textup{ISCO}$ at $a=0.998$, and the valid interval of $P$ is only 0.15 and 0.02~dex wide.
+For $h_\textup{ISCO}=0.3$, instead, wave propagation is almost irrelevant: at $a=0.998$ the flow can extend to $2.3$--$3.9\,r_\textup{ISCO}$, and the valid interval is $0.6$--$1$~dex wide.
+The narrowing of the valid region towards $a\to1$ found in Sect.~\ref{sec4:aP} is therefore a property of thin flows.
+
+\paragraph{Valid spins at fixed $P$.}
+In terms of the set $A(P)$ of Sect.~\ref{sec4:AP}, the end of each interval closer to $a=0$, which is set by $g_\textup{max}(a)=P$, does not move, while the other end does.
+The minimum $|a|$ required by a given $P$, and the absence of retrograde solutions above $110$~Hz\,$M_\odot$, are thus independent of the disc parameters.
+The maximum valid spin increases with $h_\textup{ISCO}^{2}/\alpha$ and with $h_\textup{ISCO}$.
+At $P=100$~Hz\,$M_\odot$, where the minimum prograde spin is $0.24$, it goes from $0.44$ for $(0.03,10^{-1})$ to $0.76$ for the fiducial case and $0.98$ for $(0.3,10^{-3})$.
+At $P=10^3$~Hz\,$M_\odot$, where the minimum is $0.75$, it depends almost only on the thickness: $0.84$ for $h_\textup{ISCO}=0.03$, $0.92$--$0.94$ for $0.1$, and $0.97$--$0.995$ for $0.3$.
+At low $P$ the change is the largest.
+At $P=1$~Hz\,$M_\odot$ the valid spins are $|a|\lesssim0.03$ for $(0.03,10^{-1})$, $a\leq0.16$ and $a\geq-0.23$ for the fiducial case, and $a\leq0.35$--$0.66$ with all retrograde spins for $h_\textup{ISCO}^{2}/\alpha\geq9$.
+The correspondence between $P$ and spin of Sect.~\ref{sec4:AP} is therefore robust at high $P$, where a rapidly spinning hole is required in all cases, and becomes weak for $P\lesssim10$~Hz\,$M_\odot$.
+
+%--------------------------------------------------------------------------
+\subsection{Individual sources}
+\label{appA:sources}
+
+Each source selects an interval of $P$ in Fig.~\ref{fig:hr_alpha_map}, so that the constraints of Table~\ref{tab:constraints} change as follows.
+
+The lower bounds on $|a|$ and the upper bounds on the mass are the same for all nine combinations, since they follow from $g_\textup{max}$ (Sect.~\ref{sec3:grids}).
+In particular, the need for a prograde spin in the ten sources of Sect.~\ref{sec3:highP}, their minimum spins, and the mass limits of NGC~4151, RE~J1034+396, MCG-06-30-15, 1H~0707-495, NGC~1365 and 1ES~1927+654 do not depend on the disc parameters.
+% Numerical note: for h_ISCO = 0.03 the valid interval at a ~ 0.998 is narrower than the
+% r_out grid spacing (2.3%), so the grid loses the last ~0.1 dex below the mass limit
+% (e.g. the valid fraction of the mass range of RE J1034+396 drops from 0.91 to 0.85).
+% The continuous limit is unchanged.
+
+For the same ten sources the upper bound on the spin changes by about $0.1$, mostly with $h_\textup{ISCO}$.
+Where the mass range does not reach $M_\textup{max}$, the maximum spin is $0.85$ for $h_\textup{ISCO}=0.03$ and $0.97$--$0.998$ for $h_\textup{ISCO}=0.3$ for Mrk~766 ($0.95$ in the fiducial case), $0.89$ and $0.98$--$0.998$ for MS~2254.9-3712 ($0.96$), and $0.86$ and $0.98$--$0.998$ for the higher-frequency QPO of ESO~113-G010 ($0.95$).
+The precessing flow remains compact, $\bar r<15\,R_g$ in all cases.
+A fast but not necessarily extremal spin and a compact flow are thus required for all combinations.
+
+For the five sources of Sect.~\ref{sec3:lowP} the change is larger.
+The maximum prograde spin varies between $0.57$ and $0.99$ for J1257, between $0.46$ and $0.98$ for the lower-frequency QPO of J1347, and between $0.65$ and $0.99$ for Mrk~142, while their retrograde solutions do not change.
+The two sources with the lowest $P$ are the most sensitive.
+For J1231 the maximum prograde spin goes from $0.11$ to $0.89$, and retrograde spins are limited to $|a|\leq0.14$--$0.36$ for $h_\textup{ISCO}^{2}/\alpha\leq0.1$.
+For NGC~4945 the valid spins go from $|a|\leq0.04$ for $(0.03,10^{-1})$ to $a\leq0.74$ and all retrograde spins for $(0.3,10^{-3})$; retrograde spins down to $a=-1$ are valid only for $h_\textup{ISCO}^{2}/\alpha\geq9$.
+The conclusion that these two sources require a slowly spinning hole (Sect.~\ref{sec3:lowP}) therefore holds only for $h_\textup{ISCO}^{2}/\alpha\lesssim1$.
+
+The source most affected is 1ES~1927+654 (Sect.~\ref{sec3:pairs}).
+Its two frequencies differ by a factor of $2.7$, i.e.\ $0.43$~dex in $P$ at fixed mass, and both require $a\geq0.84$.
+A common spin exists only if the valid interval of $P$ at that spin is wider than $0.43$~dex.
+For $h_\textup{ISCO}=0.03$ it is less than $0.3$~dex wide for $a\geq0.84$, and no spin reproduces both frequencies, whatever $\alpha$: in the model, the observed drift excludes a thin flow.
+For $h_\textup{ISCO}=0.1$ the solution is that of Eq.~\eqref{eq3:1es}, with the mass limit reduced to $1.3\times10^6\,M_\odot$ for $\alpha=10^{-1}$.
+For $h_\textup{ISCO}=0.3$ it widens to $0.85\lesssim a\leq0.998$ and $M\lesssim4.1\times10^6\,M_\odot$.
+The joint solutions of the simultaneous pairs survive in all cases, but shrink for thin flows: for 1H~0707-495, $0.62\lesssim a\lesssim0.77$ and $M\lesssim4\times10^6\,M_\odot$ for $h_\textup{ISCO}=0.03$ and $\alpha\leq10^{-2}$.
+
+%--------------------------------------------------------------------------
+\subsection{Summary}
+\label{appA:summary}
+
+The constraints that follow from the precession frequency alone, i.e.\ the upper edge of the valid region, the minimum spins and the maximum masses, do not depend on $h_\textup{ISCO}$ and $\alpha$.
+The disc parameters set how far from the ISCO a valid flow can extend, hence the lowest valid $P$ at each spin: alignment through $h_\textup{ISCO}^{2}/\alpha$ at all spins, wave propagation through $h_\textup{ISCO}$ for rapidly spinning prograde holes.
+Thin or viscous flows are valid only as narrow rings close to the ISCO, in an interval of $P$ of a few tenths of a dex below $g_\textup{max}(a)$; thick flows of low viscosity are valid over two to three decades in $P$.
+
+With respect to the question of Sect.~\ref{sec:intro}, a difference in the disc parameters between XRBs and AGNs does not move the upper edge, and so it cannot make accessible to one class values of $P$ that are forbidden to the other.
+It changes instead the extent of the valid region below the edge, i.e.\ the range of spins compatible with a given $P$ and the range of $P$ compatible with a given spin.
+If the inner flows of AGNs were thinner or more viscous than those of XRBs, at a given spin a QPO could appear only in a narrow interval of $P$ just below $g_\textup{max}(a)$, and only for a flow confined to the immediate vicinity of the ISCO.

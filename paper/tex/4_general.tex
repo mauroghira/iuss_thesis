@@ -1,0 +1,260 @@
+%==========================================================================
+\section{A more general analysis}
+\label{sec:general}
+%==========================================================================
+
+The constraints of Sect.~\ref{sec:results} were derived source by source, but the valid regions of Fig.~\ref{fig:grid} all have the same shape.
+In this section we drop the catalogue and ask, for any mass and any frequency, which spins admit a valid configuration, for the fiducial parameters $h_\textup{ISCO}=0.1$ and $\alpha=0.01$.
+We first show the result in the $(M,\nu_0)$ plane (Sect.~\ref{sec4:map}), then reduce it to the $(a,P)$ plane (Sect.~\ref{sec4:aP}), explain its shape through the largest valid precession radius (Sect.~\ref{sec4:rmax}), and finally give the valid spins as a function of $P$ alone (Sect.~\ref{sec4:AP}).
+
+%--------------------------------------------------------------------------
+\subsection{Valid spins in the $(M,\nu_0)$ plane}
+\label{sec4:map}
+
+We consider masses $1\leq M/M_\odot\leq10^{10}$ and frequencies $10^{-7}\leq\nu_0/\textup{Hz}\leq10^{4}$, which include both XRBs and AGNs.
+For each $(M,\nu_0)$ we find the spins of the grid of Sect.~\ref{sec2:numerics} for which a precession radius exists (Eq.~\ref{eq2:Pcond}) and satisfies Eq.~\eqref{eq2:Ncond}.
+Figure~\ref{fig:mfmap} shows the lowest and the highest valid prograde (top) and retrograde (bottom) spins.
+For every spin sign the valid spins form a single interval (Sect.~\ref{sec4:rmax}), so the four panels describe the valid set completely.
+
+\begin{figure*}
+    \centering
+    \includegraphics[width=0.9\hsize]{4_general/pif_mass_frequency_map.pdf}
+    \caption{
+    Valid spins in the $(M,\nu_0)$ plane for the fiducial parameters.
+    Top: lowest (left) and highest (right) valid prograde spin.
+    Bottom: valid retrograde spin closest to zero (left) and farthest from zero (right).
+    Where no spin of the given sign is valid, the grey shade gives the reason: light grey, no flow precesses as fast as $\nu_0$; medium grey, the precession radius would lie beyond the limits of the numerical grid ($r_\textup{out}>200$ or $|a|<0.005$); dark grey, a precession radius exists only for $a=1$, where $t_\textup{wave}$ diverges.
+    The segments are the sources of Table~\ref{tab:catalog}, at their rest-frame frequency and over their mass range; the dot is the geometric mean of the range.
+    }
+    \label{fig:mfmap}
+\end{figure*}
+
+The main property of Fig.~\ref{fig:mfmap} is that all the quantities shown are constant along straight lines of slope $-1$ in the logarithmic plane, i.e.\ along $M\nu_0=\textup{const}$.
+This is the direct consequence of Eqs.~\eqref{eq2:Pcond} and \eqref{eq2:Ncond}: mass and frequency enter only through $P$.
+An XRB and an AGN on the same diagonal are valid for exactly the same spins and the same precession radii in units of $R_g$.
+
+The valid region is a diagonal band, bounded from above by the lines of Eqs.~\eqref{eq3:Mmax} and \eqref{eq3:Mmaxretro}:
+\begin{equation}
+    \label{eq4:numax}
+    \nu_0<1.62\times10^{4}\,\textup{Hz}\left(\frac{M}{M_\odot}\right)^{-1}
+    \quad\textup{and}\quad
+    \nu_0<110\,\textup{Hz}\left(\frac{M}{M_\odot}\right)^{-1}
+\end{equation}
+for prograde and retrograde flows, respectively.
+Above the first line no flow precesses fast enough, whatever the spin; between the two lines only prograde flows do.
+%For $M=10^6$, $10^8$ and $10^9\,M_\odot$ the shortest possible periods are 62~s, 1.7~h and 17~h for a prograde flow, and 2.5~h, 10.5~d and 105~d for a retrograde one.
+Within the band, the required spin increases with $P$.
+The lowest valid prograde spin goes from $a\simeq0$ at the lower edge to $a\to1$ at the upper edge, and the same holds for the highest one, which is always larger by a finite amount: no value of $P$ is valid for all spins.
+For retrograde flows, the lowest spin reaches $a=-1$ already at $P\simeq5$~Hz\,$M_\odot$, a factor of $\simeq20$ below the upper edge.
+
+Two features of Fig.~\ref{fig:mfmap} are numerical and not physical.
+The first is the dark band just below the upper edge of the prograde panels.
+The spin grid contains $a=0.995$ and $a=1$, but nothing in between.
+For $8.9\times10^3<P<1.62\times10^4$~Hz\,$M_\odot$ a precession radius exists only for $a>0.995$, and the only such spin of the grid, $a=1$, is never valid (Sect.~\ref{sec2:numerics}).
+Spins $0.995<a<1$ are valid there, in an interval of $P$ that narrows as $a\to1$ (Sect.~\ref{sec4:aP}).
+The second is the lower edge of the band, at $P\simeq1.7\times10^{-3}$~Hz\,$M_\odot$, which is set by the smallest non-zero spin of the grid, $|a|=0.005$, and by the largest outer radius, $r_\textup{out}=200$.
+As shown in Sect.~\ref{sec4:rmax}, valid configurations exist for arbitrarily low $P$, with a spin that tends to zero.
+% If preferred, the map can be recomputed with the log-spaced fine spins near 0 (commented out in make_spins) and with a = 0.998 added: the two artefacts shrink but do not disappear.
+
+Figure~\ref{fig:mfmap} also shows where all the sources in Table~\ref{tab:catalog} lie, exactly matching what discussed in Sect.~\ref{sec3:highP}.
+
+
+%--------------------------------------------------------------------------
+\subsection{Reduction to the $(a,P)$ plane}
+\label{sec4:aP}
+
+Since Fig.~\ref{fig:mfmap} depends on $M$ and $\nu_0$ only through $P$, the same information is contained in a single panel in the $(a,P)$ plane, which also shows every spin instead of the extremes only.
+Figure~\ref{fig:Pspin} shows it, together with the reason why a given $(a,P)$ is not valid.
+Any pair $(M,\nu_0)$ is read on it at $P=m\,\nu_0$.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\hsize]{4_general/pif_P_spin_map.pdf}
+    \caption{
+    Validity of the model in the $(a,P)$ plane for the fiducial parameters.
+    Green: a precession radius exists and satisfies Eq.~\eqref{eq2:Ncond}.
+    Light grey: $P>g_\textup{max}(a)$, no flow precesses fast enough.
+    Black: the flow aligns within one period.
+    Dark grey: bending waves do not cross the flow within one period.
+    White: both conditions fail.
+    Medium grey: the precession radius lies beyond $r_\textup{out}=200$.
+    The right-hand strip shows the interval of $P$ covered by each source of Table~\ref{tab:catalog} over its mass range.
+    }
+    \label{fig:Pspin}
+\end{figure}
+
+At fixed spin the valid values of $P$ form a single interval,
+\begin{equation}
+    \label{eq4:window}
+    P_\textup{min}(a)<P<g_\textup{max}(a).
+\end{equation}
+The upper limit is the geometric one of Eq.~\eqref{eq3:gmax}, the precession frequency of a ring at the ISCO.
+It vanishes linearly for $a\to0$, $g_\textup{max}\simeq300\,|a|$~Hz\,$M_\odot$ for $|a|\lesssim0.05$, which produces the cusp at $a=0$, and it is strongly asymmetric: it saturates at $110$~Hz\,$M_\odot$ for $a=-1$, and keeps increasing up to $1.62\times10^4$~Hz\,$M_\odot$ for $a\to1$.
+The lower limit $P_\textup{min}$ is where the precession radius becomes too large for the flow to precess rigidly for one period (Sect.~\ref{sec4:rmax}).
+Below it the flow aligns within one period (black) for $a\lesssim0.9$; for $a\gtrsim0.9$ bending waves fail first (dark grey), and for $a\gtrsim0.5$ both conditions fail at still lower $P$ (white).
+
+Table~\ref{tab:window} lists the two limits for some values of the spin.
+The valid interval is $\simeq1.4$--$1.5$~dex wide for retrograde spins with $|a|\geq0.5$ and for prograde spins $0.3\lesssim a\lesssim0.4$.
+It widens towards $a=0$, to 2~dex at $|a|=0.1$, and narrows for rapidly spinning prograde holes: 1~dex at $a=0.8$, 0.5~dex at $a=0.95$ and 0.07~dex at $a=0.998$.
+A maximally spinning hole can therefore host a valid precessing flow only in a narrow range of $P$, close to $10^4$~Hz\,$M_\odot$.
+Conversely, values of $P$ in this range require $a\gtrsim0.99$.
+
+\begin{table}
+\caption{Valid interval of $P$ and largest valid precession radius as functions of spin, for the fiducial parameters.}
+\label{tab:window}
+\centering
+\begin{tabular}{rccccl}
+\hline\hline
+$a$ & $r_\textup{ISCO}$ & $r_\textup{max}$ & $P_\textup{min}$ & $g_\textup{max}$ & limit \\
+\hline
+$-1$     & 9.00 & 45   & 4.9               & 110               & align \\
+$-0.5$   & 7.55 & 45   & 2.7               & 85                & align \\
+$-0.3$   & 6.95 & 49   & 1.4               & 63                & align \\
+$-0.1$   & 6.32 & 70   & 0.26              & 26                & align \\
+$-0.02$  & 6.07 & 149  & 0.012             & 5.8               & align \\
+$0.02$   & 5.93 & 143  & 0.013             & 6.2               & align \\
+$0.1$    & 5.67 & 59   & 0.39              & 34                & align \\
+$0.3$    & 4.98 & 31   & 4.5               & 141               & align \\
+$0.5$    & 4.23 & 20   & 19                & 347               & align \\
+$0.7$    & 3.39 & 13   & 66                & 816               & align \\
+$0.8$    & 2.91 & 10   & 134               & $1.33\times10^3$  & align \\
+$0.9$    & 2.32 & 7.4  & 328               & $2.49\times10^3$  & align \\
+$0.95$   & 1.94 & 3.9  & $1.24\times10^3$  & $3.91\times10^3$  & wave \\
+$0.98$   & 1.61 & 2.3  & $3.39\times10^3$  & $5.96\times10^3$  & wave \\
+$0.998$  & 1.24 & 1.39 & $8.96\times10^3$  & $1.05\times10^4$  & wave \\
+\hline
+\end{tabular}
+\tablefoot{
+Radii in units of $R_g$; $P_\textup{min}=g(a,r_\textup{max})$ and $g_\textup{max}$ (Eq.~\ref{eq3:gmax}) in Hz\,$M_\odot$.
+The last column gives the condition of Eq.~\eqref{eq2:Ncond} that fails beyond $r_\textup{max}$: alignment within one period, or wave propagation.
+}
+\end{table}
+
+%--------------------------------------------------------------------------
+\subsection{The largest valid precession radius}
+\label{sec4:rmax}
+
+The shape of the valid region follows from two properties of the model, which we verified on the whole spin grid.
+First, $g(a,r_\textup{out})$ decreases monotonically with $r_\textup{out}$ (Sect.~\ref{sec2:numerics}), so that at fixed spin a lower $P$ corresponds to a larger precession radius.
+Second, the radii that satisfy Eq.~\eqref{eq2:Ncond} form a single interval that starts at the ISCO,
+\begin{equation}
+    \label{eq4:rmax}
+    r_\textup{ISCO}(a)<\bar r<r_\textup{max}(a).
+\end{equation}
+For $\bar r\to r_\textup{ISCO}$ the conditions hold because $t_\textup{wave}\to0$ and $t_\textup{align}\to\infty$ (cf. Fig.~\ref{fig:mrk766}); as the flow widens, the number of wave crossings per period decreases and the alignment becomes faster, until one of the two conditions fails.
+Since $g\,\tau_w$ and $g\,\tau_a$ do not depend on the mass, neither does $r_\textup{max}$.
+The mass and the frequency only select, through $P$, which radius precesses at $\nu_0$, and Eq.~\eqref{eq4:window} is Eq.~\eqref{eq4:rmax} mapped through $g$, with $P_\textup{min}(a)=g(a,r_\textup{max}(a))$.
+For the fiducial parameters the model is therefore summarised by a single function of the spin, $r_\textup{max}(a)$, shown in Fig.~\ref{fig:rmax} and listed in Table~\ref{tab:window}.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\hsize]{4_general/pif_rmax.pdf}
+    \caption{
+    Largest valid precession radius as a function of spin for the fiducial parameters (thick line): blue where the flow aligns within one period beyond $r_\textup{max}$, red where bending waves do not cross it within one period.
+    Valid configurations have $r_\textup{ISCO}<\bar r<r_\textup{max}$ (dashed line: $r_\textup{ISCO}$).
+    The dotted line is $r_\textup{ISCO}\,h_\textup{ISCO}/\alpha$, the outer limit of the bending-wave regime.
+    The grey band is the range of $r_\textup{max}$ for the values of $h_\textup{ISCO}$ and $\alpha$ of Appendix~\ref{app:params}.
+    }
+    \label{fig:rmax}
+\end{figure}
+
+Three regimes can be distinguished.
+
+For $a\leq-0.3$, $r_\textup{max}$ is almost independent of the spin, $r_\textup{max}\simeq45$--$49$, i.e.\ $5$--$7\,r_\textup{ISCO}$, and it is set by alignment.
+Correspondingly, $P_\textup{min}$ varies only between 1.4 and 4.9~Hz\,$M_\odot$.
+
+For $a>0$, $r_\textup{max}$ decreases steadily with the spin, from 59 at $a=0.1$ to 20 at $a=0.5$ and 7.4 at $a=0.9$, and so does its ratio to the ISCO radius, from 10 to 3.
+Up to $a\simeq0.9$ the limit is alignment.
+For $a\geq0.91$ wave propagation takes over, because $c_s=H\Omega_z$ becomes small near the ISCO of a rapidly spinning hole (Sect.~\ref{sec2:timescales}), and $r_\textup{max}$ drops more steeply, to $2\,r_\textup{ISCO}$ at $a=0.95$ and $1.13\,r_\textup{ISCO}$ at $a=0.998$.
+For $a\to1$ the valid interval of radii closes on the ISCO.
+A valid flow around a rapidly spinning hole is therefore necessarily compact: $\bar r<7.4$ for $a\geq0.9$ and $\bar r<2.4$ for $a\geq0.98$.
+This is the origin of the compact flows found in Sect.~\ref{sec3:highP}.
+
+For $a\to0$, $r_\textup{max}$ increases without bound, roughly as $|a|^{-1/2}$, and exceeds the largest radius of the grid for $|a|\leq0.01$.
+The reason is that $g\propto a$ at fixed $r_\textup{out}$ for small $|a|$, while $\tau_w$ does not depend on $a$ and $\tau_a\propto a^{-2}$, because the internal stress of Eq.~\eqref{eq2:G} is proportional to the torque.
+Hence $g\,\tau_w\propto|a|$ and $g\,\tau_a\propto|a|^{-1}$: a slowly spinning hole exerts a weak torque, the flow precesses slowly but aligns even more slowly, and both conditions hold out to larger radii.
+As a consequence $P_\textup{min}\to0$, approximately as $P_\textup{min}\simeq50\,a^{2.1}$ for $a>0$ and $16\,|a|^{1.8}$~Hz\,$M_\odot$ for $a<0$ in the range $0.02\leq|a|\leq0.2$, and every $P<g_\textup{max}(1)$ is valid for some spin.
+% the two power laws are fits, not derived; the exponent of r_max is -0.55 (a > 0), -0.42 (a < 0)
+These configurations must however be taken with caution.
+For $|a|\lesssim0.11$, $r_\textup{max}$ exceeds $r_\textup{ISCO}\,h_\textup{ISCO}/\alpha=10\,r_\textup{ISCO}$ (dotted line in Fig.~\ref{fig:rmax}), so that the outer part of the valid interval lies outside the bending-wave regime in which Eq.~\eqref{eq2:talign} holds (Sect.~\ref{sec2:timescales}).
+For $|a|\gtrsim0.11$, instead, the whole valid interval is within it.
+
+%--------------------------------------------------------------------------
+\subsection{Valid spins as a function of $P$}
+\label{sec4:AP}
+
+Reading Fig.~\ref{fig:Pspin} at fixed $P$ gives the set $A(P)$ of Sect.~\ref{sec2:scaling}.
+For each sign of the spin it is a single interval: its end closer to $a=0$ is the spin for which $g_\textup{max}(a)=P$, and the other end is the spin for which $P_\textup{min}(a)=P$.
+The first is the minimum $|a|$ needed to precess at $\nu_0$, and does not depend on $h_\textup{ISCO}$ and $\alpha$; the second is the maximum $|a|$ for which the flow that precesses at $\nu_0$ is still rigid and long-lived, and does depend on them (Appendix~\ref{app:params}).
+Table~\ref{tab:AP} lists $A(P)$ at intervals of 0.5~dex, with the frequencies to which each $P$ corresponds for three masses.
+
+\begin{table*}
+\caption{Valid spins as a function of $P=m\,\nu_0$ for the fiducial parameters.}
+\label{tab:AP}
+\centering
+\begin{tabular}{rccccccl}
+\hline\hline
+$\log P$ & \multicolumn{3}{c}{$\nu_0$ [Hz]} & $a>0$ & $a<0$ & $\bar r_\textup{max}$ & limit \\
+\cline{2-4}
+ & $10\,M_\odot$ & $10^6\,M_\odot$ & $10^8\,M_\odot$ & & & [$R_g$] & \\
+\hline
+$-1.0$ & $10^{-2}$          & $10^{-7}$          & $10^{-9}$          & $<0.05$         & $>-0.06$            & 84   & align \\
+$0.0$  & $0.1$              & $10^{-6}$          & $10^{-8}$          & $<0.16$         & $>-0.23$            & 52   & align \\
+$0.5$  & $0.32$             & $3.2\times10^{-6}$ & $3.2\times10^{-8}$ & $0.01$--$0.26$  & $-0.59$ to $-0.01$  & 45   & align \\
+$1.0$  & $1$                & $10^{-5}$          & $10^{-7}$          & $0.03$--$0.41$  & $-1$ to $-0.03$     & 31   & align \\
+$1.5$  & $3.2$              & $3.2\times10^{-5}$ & $3.2\times10^{-7}$ & $0.09$--$0.58$  & $-1$ to $-0.12$     & 17   & align \\
+$2.0$  & $10$               & $10^{-4}$          & $10^{-6}$          & $0.24$--$0.76$  & $-1$ to $-0.72$     & 12   & align \\
+$2.5$  & $32$               & $3.2\times10^{-4}$ & $3.2\times10^{-6}$ & $0.48$--$0.90$  & --                  & 7.5  & align \\
+$3.0$  & $100$              & $10^{-3}$          & $10^{-5}$          & $0.74$--$0.94$  & --                  & 4.3  & wave \\
+$3.5$  & $320$              & $3.2\times10^{-3}$ & $3.2\times10^{-5}$ & $0.93$--$0.98$  & --                  & 2.4  & wave \\
+$4.0$  & $10^3$             & $10^{-2}$          & $10^{-4}$          & $\simeq0.998$   & --                  & 1.3  & wave \\
+\hline
+\end{tabular}
+\tablefoot{
+$P$ in Hz\,$M_\odot$.
+Columns 2--4: frequency corresponding to $P$ for the three masses.
+Columns 5--6: valid prograde and retrograde spins (spin step 0.005); the end closer to zero is set by $g_\textup{max}(a)=P$, the other by $P_\textup{min}(a)=P$.
+For $\log P\leq0$ the end closer to zero is below the resolution of the spin grid.
+$\bar r_\textup{max}$: largest precession radius among the valid configurations, reached at the largest valid $|a|$.
+Last column: condition that sets the largest valid prograde spin.
+}
+\end{table*}
+
+The valid spins shift to higher values and to narrower intervals as $P$ increases.
+For $P\lesssim1$~Hz\,$M_\odot$ only slowly spinning holes are valid, $|a|\lesssim0.2$, with extended flows.
+For $P\simeq10$--$100$~Hz\,$M_\odot$ the valid set is the widest: all retrograde spins beyond a minimum $|a|$, and prograde spins over an interval $\Delta a\simeq0.4$--$0.5$ centred on $a\simeq0.2$--$0.5$.
+Above $P=110$~Hz\,$M_\odot$ only prograde spins remain, in an interval that narrows from $\Delta a\simeq0.4$ at $P=10^{2.5}$ to $\Delta a\simeq0.2$ at $P=10^3$ and $\Delta a\simeq0.05$ at $P=10^{3.5}$~Hz\,$M_\odot$, while the flow shrinks to a few $R_g$.
+For $P\geq370$~Hz\,$M_\odot$ the largest valid spin is set by wave propagation instead of alignment.
+
+Two consequences are relevant for the question of Sect.~\ref{sec:intro}.
+
+\paragraph{Spin from $P$.}
+At fixed disc parameters a measurement of $P$ is a measurement of the spin, to within the width of $A(P)$.
+If the spin is known independently, the model predicts the range of $P$ in which a QPO can appear, Eq.~\eqref{eq4:window}: for a population of rapidly spinning prograde holes, $a\gtrsim0.9$, it is $P\gtrsim330$~Hz\,$M_\odot$, and for slowly spinning ones, $|a|\lesssim0.3$, $P\lesssim140$~Hz\,$M_\odot$.
+A QPO at $P\gtrsim10^{2.5}$~Hz\,$M_\odot$ is in turn incompatible with $a\lesssim0.45$, whatever the disc parameters.
+
+\paragraph{XRBs and AGNs.}
+The type-C QPOs of BH XRBs have frequencies of $\simeq0.1$--$30$~Hz \citep{ingram}, i.e.\ $P\simeq1$--$300$~Hz\,$M_\odot$ for $M=10\,M_\odot$.
+This interval lies entirely within the valid region, and it is the one in which $A(P)$ is the widest.
+The sources of Table~\ref{tab:catalog} cover instead $0.2\lesssim P\lesssim3\times10^4$~Hz\,$M_\odot$, and the median of $P$ at the geometric mean of the mass ranges is $\simeq10^3$~Hz\,$M_\odot$.
+Most of them thus lie at higher $P$ than type-C QPOs: scaled to $10\,M_\odot$, a typical AGN QPO would be at $\sim100$~Hz, in the range of the high-frequency QPOs of XRBs rather than of the type-C ones.
+Within the model this is allowed, but only for $a\gtrsim0.5$--$0.9$ and for flows of a few $R_g$ (Table~\ref{tab:AP}), which is the result of Sect.~\ref{sec3:highP}.
+Only the five sources of Sect.~\ref{sec3:lowP} lie within or close to the interval of type-C QPOs over their whole mass range ($P\lesssim340$~Hz\,$M_\odot$).
+The AGN counterparts of type-C QPOs would have $\nu_0=10^{-6}$--$3\times10^{-4}$~Hz for $M=10^6\,M_\odot$ (periods from 1~h to 12~d) and $10^{-8}$--$3\times10^{-6}$~Hz for $M=10^8\,M_\odot$ (from 4~d to 3~yr).
+Whether such periods can be detected is the third explanation of Sect.~\ref{sec:intro}, to which we return in Sect.~\ref{sec:discussion}.
+
+
+%--------------------------------------------------------------------------
+\subsection{Summary}
+\label{sec4:summary}
+
+For the fiducial parameters, the model in the whole $(M,\nu_0)$ plane reduces to the following.
+\begin{itemize}
+    \item Validity depends on $M$ and $\nu_0$ only through $P=m\,\nu_0$: the valid region of the $(M,\nu_0)$ plane is a diagonal band, and all the information is contained in the $(a,P)$ plane (Figs.~\ref{fig:mfmap} and \ref{fig:Pspin}).
+    \item At fixed spin the valid configurations are those with $r_\textup{ISCO}<\bar r<r_\textup{max}(a)$, i.e.\ $P_\textup{min}(a)<P<g_\textup{max}(a)$.
+    The upper limit in $P$ is geometric and independent of the disc parameters; the lower one is set by alignment for $a\lesssim0.9$ and by wave propagation for $a\gtrsim0.9$.
+    \item No valid configuration exists for $P>1.62\times10^4$~Hz\,$M_\odot$, and no retrograde one for $P>110$~Hz\,$M_\odot$.
+    Every lower $P$ is valid for some spin, but never for all spins: the valid interval is $\simeq1$--$1.5$~dex wide in $P$ for $|a|\gtrsim0.3$ and shrinks to less than 0.1~dex for $a\to1$.
+    \item The valid spins increase with $P$, from $|a|\lesssim0.2$ at $P\lesssim1$~Hz\,$M_\odot$ to $a\gtrsim0.75$ at $P\gtrsim10^3$~Hz\,$M_\odot$, and the valid flows become more compact, from several tens of $R_g$ to a few $R_g$.
+    \item Type-C QPOs of XRBs correspond to $P\simeq1$--$300$~Hz\,$M_\odot$, where the constraints on the spin are the weakest; most of the AGN sources lie at higher $P$, where a rapidly spinning hole and a compact flow are required.
+\end{itemize}

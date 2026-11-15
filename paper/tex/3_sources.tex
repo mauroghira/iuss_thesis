@@ -1,0 +1,232 @@
+%==========================================================================
+\section{Constraints on the individual sources}
+\label{sec:results}
+%==========================================================================
+
+For each source of Table~\ref{tab:catalog} we search the $(a,M)$ plane for valid configurations, i.e.\ for a precession radius $\bar r$ that satisfies Eqs.~\eqref{eq2:Pcond} and \eqref{eq2:Ncond}, using the fiducial parameters $h_\textup{ISCO}=0.1$ and $\alpha=0.01$.
+%The dependence on $h_\textup{ISCO}$ and $\alpha$ is discussed in Appendix~\ref{app:params}, and the regularities that emerge from the individual sources are generalised to the whole $(M,\nu_0)$ plane in Sect.~\ref{sec:general}.
+
+The precession frequency of Eq.~\eqref{eq2:gdef} is defined in the rest frame of the source, whereas Table~\ref{tab:catalog} lists the observed frequencies.
+Cosmological time dilation stretches every period by $1+z$, so we compare the model with
+\begin{equation}
+    \label{eq3:nurest}
+    \nu_0=\nu_\textup{obs}\,(1+z),
+    \qquad
+    P=m\,\nu_0=m\,\nu_\textup{obs}\,(1+z).
+\end{equation}
+The correction increases $P$ by 0.049~dex for J1231 ($z=0.119$) and by less than 0.02~dex for all the other sources, much less than the uncertainty on the masses; it changes the bounds on the spin by at most 0.04.
+
+As a first step we impose only the frequency condition, Eq.~\eqref{eq2:Pcond}, without the timescale conditions.
+Figure~\ref{fig:solid_aR} shows, for each source, the outer radii at which the flow precesses at the observed frequency for some mass within the published range.
+Two features are already apparent.
+First, every band is bounded from below by the ISCO: at a given spin, the fastest precession is that of a ring at the ISCO, so for $|a|$ below a minimum value no radius reproduces $\nu_0$.
+For the sources with $\nu_0\gtrsim10^{-4}$~Hz and $M\gtrsim10^6\,M_\odot$ this rules out retrograde spins and requires $r_\textup{out}\lesssim15\,R_g$.
+Second, the sources with lower $P$ (J1347, J1257, Mrk~142, J1231 and NGC~4945) admit both spin signs and larger radii, up to several $10^2\,R_g$ for NGC~4945.
+In the following we add the conditions of Eq.~\eqref{eq2:Ncond}, which select the part of each band where the flow precesses rigidly for at least one period.
+\begin{figure}
+    \centering
+    \includegraphics[width=\linewidth]{3_sources/pif_solid_aR.pdf}
+    \caption{
+    Outer radii $r_\textup{out}$ at which the flow precesses at the rest-frame QPO frequency, $\nu_\textup{solid}(a,r_\textup{out})=\nu_\textup{obs}(1+z)$, as a function of spin, for each source of Table~\ref{tab:catalog} (split between the two panels in the order of the table).
+    The shaded band of each source is bounded by the curves for the lowest and highest mass of its published range.
+    The dashed line is $r_\textup{ISCO}(a)$.
+    }
+    \label{fig:solid_aR}
+\end{figure}
+
+
+%--------------------------------------------------------------------------
+\subsection{Valid configurations}
+\label{sec3:grids}
+
+Figure~\ref{fig:grid} shows the valid configurations of each source in the $(a,M)$ plane, and Table~\ref{tab:constraints} summarises them within the published mass ranges.
+Since validity depends on $M$ and $\nu_0$ only through $P$, the valid regions of all the sources have the same shape, shifted in $\log M$ by $-\log\nu_0$; the sources differ in where their mass range falls within this shape.
+
+The shape has two edges.
+The upper edge, at high mass, is a geometric limit.
+By Eq.~\eqref{eq2:signLT}, $g_\textup{LT}$ has the same sign at all radii, so that $g(a,r_\textup{out})$ in Eq.~\eqref{eq2:gdef} is the $w$-weighted mean of $|g_\textup{LT}|$ over $[r_\textup{ISCO},r_\textup{out}]$.
+Since $|g_\textup{LT}|$ decreases with $r$, this mean is lower than the value at the inner edge, and tends to it for $r_\textup{out}\to r_\textup{ISCO}$:
+\begin{equation}
+    \label{eq3:gmax}
+    g(a,r_\textup{out})<g_\textup{max}(a)\doteq\left|g_\textup{LT}\left(r_\textup{ISCO}(a),a\right)\right| .
+\end{equation}
+The fastest flow is thus the narrowest one, a ring at the ISCO, which precesses at the test-particle frequency (Sect.~\ref{sec2:pif}).
+Equation~\eqref{eq2:Pcond} therefore has a solution only if $P<g_\textup{max}(a)$, that is, at a given spin, only for
+\begin{equation}
+    \label{eq3:Mmax_a}
+    M<g_\textup{max}(a)\,\frac{M_\odot}{\nu_0},
+\end{equation}
+whatever $h_\textup{ISCO}$ and $\alpha$.
+For $a<1$ this is also the edge of the valid region, because for $\bar r\to r_\textup{ISCO}$ the wave-propagation time vanishes and the alignment time diverges, so that Eq.~\eqref{eq2:Ncond} holds.
+
+The function $g_\textup{max}$ vanishes for $a=0$ and increases with $|a|$ for both signs of the spin, but much faster for prograde spins, whose ISCO is closer to the hole.
+For retrograde spins it reaches $110$~Hz at $a=-1$, a value that prograde spins already attain at $a=0.25$.
+For prograde spins it is $1.05\times10^4$~Hz at $a=0.998$ and tends to $c/(4\pi R_{g,\odot})=1.62\times10^4$~Hz for $a\to1$, where $r_\textup{ISCO}\to1$ and $\Omega_z(r_\textup{ISCO})\to0$, so that $g_\textup{LT}\to g_\varphi=c/[2\pi R_{g,\odot}(1+a)]$ (Eqs.~\ref{eq2:epiz} and \ref{eq2:scale_nu}).
+Each source has therefore a maximal mass
+\begin{equation}
+    \label{eq3:Mmax}
+    M_\textup{max}=1.62\times10^{4}\,M_\odot\left(\frac{\nu_0}{\textup{Hz}}\right)^{-1},
+\end{equation}
+and retrograde configurations exist only for
+\begin{equation}
+    \label{eq3:Mmaxretro}
+    M<110\,M_\odot\left(\frac{\nu_0}{\textup{Hz}}\right)^{-1},
+\end{equation}
+i.e.\ for $P<110$~Hz\,$M_\odot$.
+The limit of Eq.~\eqref{eq3:Mmax} is approached for $a\to1$ and $\bar r\to r_\textup{ISCO}$ but is not reached, because no configuration with $a=1$ is valid (Sect.~\ref{sec2:numerics}).
+If the spin is limited to $a\leq0.998$ \citep{Thorne1974}, the coefficient of Eq.~\eqref{eq3:Mmax} decreases by a factor of 1.53, to $1.05\times10^4\,M_\odot$.
+
+At lower masses the precession radius moves outwards.
+The lower edge of the valid region is where it moves so far that the flow aligns within one period, or, for $a\gtrsim0.9$, where bending waves no longer cross it within one period.
+Because the lower edge depends on $h_\textup{ISCO}$ and $\alpha$ and the upper one does not, the bounds on $|a|$ from below and on $M$ from above in Table~\ref{tab:constraints} are independent of the disc parameters, whereas the bounds on $|a|$ from above are not (Appendix~\ref{app:params}).
+
+According to Eq.~\eqref{eq3:Mmaxretro}, the sources fall into two groups: those with $P>110$~Hz\,$M_\odot$ over their whole mass range, for which retrograde flows are excluded (Sect.~\ref{sec3:highP}), and those whose mass range extends below this value (Sect.~\ref{sec3:lowP}).
+
+\begin{figure*}
+    \centering
+    \includegraphics[width=0.9\hsize]{3_sources/pif_timescales_parameter_grids.pdf}
+    \caption{
+    Valid configurations in the $(a,M)$ plane for each source of Table~\ref{tab:catalog}, for the fiducial parameters and the rest-frame frequency.
+    Green: valid within the published mass range; grey: valid outside it.
+    }
+    \label{fig:grid}
+\end{figure*}
+
+\input{3_sources/pif_source_constraints.tex}
+% generated by pif_constraints.py; edit there, not here
+% NOTE: the table must be regenerated with P_MAX evaluated at a = 1 (see Eq. eq3:Mmax)
+
+%--------------------------------------------------------------------------
+\subsection{Fast prograde spins and compact flows}
+\label{sec3:highP}
+
+Ten of the fifteen sources (RE~J1034+396, MS~2254.9-3712, Mrk~766, MCG-06-30-15, ESO~113-G010, 1H~0707-495, NGC~1365, NGC~5506, NGC~4151 and 1ES~1927+654) have $P>110$~Hz\,$M_\odot$ over their whole mass range.
+Retrograde flows are excluded for all of them, and a prograde spin above a minimum value is required, between $0.29$ (RE~J1034+396, at its lowest mass) and $0.84$ (1ES~1927+654 at 2.4~mHz).
+The precessing flow is compact: $\bar r\lesssim9\,R_g$ (up to $11\,R_g$ at the lowest mass of RE~J1034+396), and in most cases $\bar r\simeq2$--$6\,R_g$, at most a few times $r_\textup{ISCO}$.
+The sources with the narrowest mass ranges are the most constraining: the valid spins lie in $0.65\lesssim a\lesssim0.96$ for MS~2254.9-3712 and in $0.47\lesssim a\lesssim0.95$ for ESO~113-G010.
+
+Figure~\ref{fig:mrk766} illustrates this group with Mrk~766, whose published masses range from $1.3\times10^6\,M_\odot$ \citep{Giacche2014} to the reverberation-mapping value of $6.6\times10^6\,M_\odot$ \citep{BentzKatz2015}, i.e.\ $P\simeq200$--$1200$~Hz\,$M_\odot$.
+At the geometric mean of the range ($M=3.1\times10^6\,M_\odot$, left panel), no flow precesses fast enough for $a\leq0.5$: even a ring at the ISCO is slower than the QPO.
+Of the spins shown, only $a=0.9$ is valid, with $\bar r=6.0\,R_g$.
+At fixed $a=0.9$ (right panel) the precession radius moves inwards as the mass increases, from $6.6\,R_g$ at $2.6\times10^6\,M_\odot$ to $3.7\,R_g$ at $7.4\times10^6\,M_\odot$, and all these configurations are valid.
+For $M\leq1.8\times10^6\,M_\odot$ it lies instead at $\bar r\geq7.9\,R_g$, where both conditions fail.
+The required spin therefore increases with the mass: $0.39\leq a\leq0.85$ at the lowest mass and $0.76\leq a\leq0.94$ at the reverberation-mapping value.
+For the highest masses the upper bound on the spin is set by wave propagation, because near the ISCO of a rapidly spinning hole $\Omega_z\ll\Omega_\varphi$ and the sound speed $c_s=H\Omega_z$ is small (Sect.~\ref{sec2:timescales}).
+
+\begin{figure*}
+    \centering
+    \includegraphics[width=0.9\hsize]{3_sources/pif_timescales_Mrk_766.pdf}
+    \caption{
+    Wave-propagation time (dotted) and alignment time (dashed) as functions of $r_\textup{out}$ for Mrk~766 ($\nu_0=1.57\times10^{-4}$~Hz), for the fiducial parameters.
+    Left: spins between $-1$ and $1$ at the geometric mean of the mass range, $M=3.1\times10^6\,M_\odot$.
+    Right: masses spanning the range of Table~\ref{tab:catalog} at $a=0.9$.
+    The horizontal line is the period $1/\nu_0$.
+    Circles mark the precession radii $\nu_\textup{solid}(\bar r)=\nu_0$: filled if $t_\textup{wave}(\bar r)<1/\nu_0<t_\textup{align}(\bar r)$, open otherwise.
+    Curves without a circle have no precession radius.
+    For $a=1$, $t_\textup{wave}$ diverges and is not shown.
+    }
+    \label{fig:mrk766}
+\end{figure*}
+
+\paragraph{Upper limits on the mass.}
+For two entries, NGC~4151 and the higher-frequency QPO of 1H~0707-495, $M_\textup{max}$ falls below the upper end of the mass range (daggers in Table~\ref{tab:constraints}), so that part of the published estimates is incompatible with the model for any spin and any $(h_\textup{ISCO},\alpha)$.
+The most significant case is NGC~4151, the source with the highest $P$, for which $M_\textup{max}=2.7\times10^7\,M_\odot$.
+The upper fifth of its mass range in logarithm, which includes the reverberation-mapping estimate \citep{Bentz2006}, is excluded, and the QPO requires both a mass in the lower part of the published range and $a\gtrsim0.83$.
+For instance, at $a=0.95$ precession radii exist only for $M\lesssim6.5\times10^6\,M_\odot$, with $\bar r\simeq2.4$--$3.5\,R_g$.
+For 1H~0707-495 (QPO a), $M_\textup{max}=5.9\times10^7\,M_\odot$ excludes the central value of the highest estimate in Table~\ref{tab:catalog} \citep{Titarchuk2025}, although not the lower end of its uncertainty.
+
+These limits require a spin arbitrarily close to one.
+For $a\leq0.998$ they decrease by a factor of 1.53: the limit for NGC~4151 becomes $1.8\times10^7\,M_\odot$, which excludes the upper third of its mass range in logarithm, and the limit for 1H~0707-495 (QPO a) becomes $3.9\times10^7\,M_\odot$, below the whole uncertainty interval of the highest estimate.
+Four more entries are then affected.
+For RE~J1034+396 and MCG-06-30-15 the limit, $\simeq3.8\times10^7\,M_\odot$, excludes the highest estimates in Table~\ref{tab:catalog} \citep{Czerny2016,Das2025}.
+For NGC~1365, $4.8\times10^7\,M_\odot$ excludes the estimate from the bulge luminosity \citep{Risaliti2009}, and for 1ES~1927+654 at 2.4~mHz, $4.2\times10^6\,M_\odot$ excludes the highest of the host-galaxy estimates \citep{Li2022}.
+For the second QPO of 1H~0707-495 the limit, $8.4\times10^7\,M_\odot$, is close to the top of the range.
+In all these sources the lower estimates remain allowed, with $a\gtrsim0.3$--$0.85$.
+% check that the excluded estimates are the ones attributed to these references in Table 1
+% Optional figure: output_catalog/pif_timescales_NGC_4151.pdf (right panel at a = 0.95)
+% shows the mass cut directly.
+
+%--------------------------------------------------------------------------
+\subsection{Both spin signs and larger flows}
+\label{sec3:lowP}
+
+For J1347, J1257, Mrk~142, J1231 and NGC~4945 the mass range extends below $P=110$~Hz\,$M_\odot$, so that retrograde flows are possible.
+Every mass of their ranges is allowed for some prograde spin.
+Retrograde spins are allowed over the whole range only for J1231 and NGC~4945 ($P\leq8$~Hz\,$M_\odot$).
+For the other three sources, whose ranges reach $P\simeq200$--$340$~Hz\,$M_\odot$, they are restricted by Eq.~\eqref{eq3:Mmaxretro} to $M<3.3\times10^6\,M_\odot$ (J1257), $M<1.5\times10^6\,M_\odot$ (Mrk~142), and $M<9.0\times10^6\,M_\odot$ (J1347, higher frequency); at higher masses only prograde spins are allowed, as in Sect.~\ref{sec3:highP}.
+The spin is less constrained than in the first group: for J1347, J1257 and Mrk~142, prograde spins between $\simeq0.1$--$0.2$ and $0.8$--$0.9$ and retrograde spins with $|a|\gtrsim0.1$--$0.4$ are valid for some mass of the range.
+The precessing flow is larger, $\bar r\simeq4$--$20\,R_g$.
+
+Figure~\ref{fig:j1257} shows the timescales of J1257 at the geometric mean of its mass range, $M=2.4\times10^6\,M_\odot$ ($P=82$~Hz\,$M_\odot$), close to the virial estimates.
+Retrograde spins with $|a|\geq0.5$ and prograde spins $0.25\leq a\leq0.5$ are valid, with $\bar r\simeq6$--$11\,R_g$.
+For $a=-0.25$ and $|a|\leq0.01$ even a ring at the ISCO precesses too slowly, while for $a\geq0.9$ the precession radius moves out to $15$--$21\,R_g$, where both conditions fail.
+At fixed $a=0.5$ (right panel) the whole mass range is valid, and the precession radius decreases from $15\,R_g$ at $10^6\,M_\odot$ to $5.8\,R_g$ at $5.9\times10^6\,M_\odot$.
+Over the mass range, J1257 requires $0.11\leq a\leq0.84$ or $a\leq-0.14$.
+
+\begin{figure*}
+    \centering
+    \includegraphics[width=0.9\hsize]{3_sources/pif_timescales_J1257.pdf}
+    \caption{
+    As Fig.~\ref{fig:mrk766}, for J1257 ($\nu_0=3.37\times10^{-5}$~Hz).
+    Left: spins between $-1$ and $1$ at the geometric mean of the mass range, $M=2.4\times10^6\,M_\odot$.
+    Right: masses spanning the range of Table~\ref{tab:catalog} at $a=0.5$.
+    }
+    \label{fig:j1257}
+\end{figure*}
+
+Two sources require a slowly spinning hole.
+J1231, the least massive of the sample ($3$--$10\times10^4\,M_\odot$, $P=2.5$--$8$~Hz\,$M_\odot$), is valid only for $0<a\leq0.38$ or $a<0$, with the largest precession radii of the sample, up to $46\,R_g$ (Fig.~\ref{fig:2xmm}).
+At these radii $t_\textup{wave}$ and $t_\textup{align}$ are both close to $1/\nu_0$, so that the range of valid radii is narrow.
+For $a=0.5$ no mass of the range is valid, because the flow aligns within one period at all the precession radii ($31$--$58\,R_g$); for $a=0.9$ both conditions fail.
+NGC~4945, with the lowest frequency of the sample ($P=0.2$--$2$~Hz\,$M_\odot$), requires $0<a\leq0.21$ or $-0.39\leq a<0$, and $\bar r\simeq6$--$74\,R_g$, partly outside the bending-wave regime (Sect.~\ref{sec2:timescales}).
+At the mass given by the rotation of the masers, $1.4\times10^6\,M_\odot$ \citep{Greenhill1997}, the valid spins are $|a|\lesssim0.1$.
+
+\begin{figure*}
+    \centering
+    \includegraphics[width=0.9\hsize]{3_sources/pif_timescales_J1231.pdf}
+    \caption{
+    As Fig.~\ref{fig:mrk766}, for J1231 ($\nu_0=8.18\times10^{-5}$~Hz).
+    Left: spins between $-1$ and $1$ at the geometric mean of the mass range, $M=5.5\times10^4\,M_\odot$.
+    Right: masses spanning the range of Table~\ref{tab:catalog} at $a=0.5$.
+    }
+    \label{fig:2xmm}
+\end{figure*}
+
+%--------------------------------------------------------------------------
+\subsection{Sources with two QPOs}
+\label{sec3:pairs}
+
+Four sources show two frequencies (Table~\ref{tab:catalog}), which must be reproduced by the same $M$ and $a$.
+
+\paragraph{1ES~1927+654.}
+The two frequencies were observed at different epochs, as the QPO drifted from 0.9 to 2.4~mHz \citep{Masterson2025}.
+In the model this is a single flow around a fixed BH whose outer radius shrinks.
+Both frequencies are valid together only for
+\begin{equation}
+    \label{eq3:1es}
+    0.85\lesssim a\lesssim0.96,\qquad M\lesssim1.6\times10^6\,M_\odot ,
+\end{equation}
+which excludes the upper part of the published mass range (Table~\ref{tab:catalog}).
+Within this region the precession radius decreases from $\bar r\simeq3$--$5\,R_g$ at 0.9~mHz to $\bar r\simeq2$--$3\,R_g$ at 2.4~mHz: the drift corresponds to a contraction of the precessing region by a factor of $\simeq1.8$, after which it remained at $\bar r\simeq2$--$3\,R_g$ as the frequency stabilised \citep{Masterson2026}.
+
+\paragraph{Simultaneous pairs.}
+In ESO~113-G010, 1H~0707-495 and J1347 the two QPOs were detected in the same data, with frequency ratios of 1.8, 2.2 and 3.0.
+A joint solution exists for all three: $0.61\lesssim a\lesssim0.93$ for ESO~113-G010 over its whole mass range, $0.62\lesssim a\lesssim0.97$ and $M\lesssim1.7\times10^7\,M_\odot$ for 1H~0707-495, and $-1\leq a\lesssim0.78$ for J1347.
+A joint solution, however, assigns two different outer radii to the same flow at the same time, whereas a single rigidly precessing flow has a single precession frequency.
+If the model applies, the two peaks of each pair therefore cannot be two independent precession frequencies.
+They can instead be interpreted as harmonics of the same precession: a periodic modulation that is not sinusoidal has power not only at its fundamental frequency, the precession frequency, but also at integer multiples of it.
+This is commonly observed for type-C QPOs in XRBs, whose power spectra show a second harmonic, and often a subharmonic, besides the fundamental \citep{ingram}.
+In this interpretation only the fundamental is the precession frequency, and the constraints on the source are those of the single entry of Table~\ref{tab:constraints} that is identified with it.
+
+%--------------------------------------------------------------------------
+\subsection{Summary}
+\label{sec3:summary}
+
+For the fiducial parameters, every source of the catalogue admits valid configurations within its published mass range, but only in a restricted part of the $(a,M)$ plane:
+\begin{itemize}
+    \item the ten sources with $P>110$~Hz\,$M_\odot$ over their whole mass range require a prograde spin, $a\gtrsim0.3$--$0.85$, and a compact precessing flow, $\bar r\lesssim9\,R_g$;
+    \item the mass is bounded from above by Eq.~\eqref{eq3:Mmax}, independently of the disc parameters, which excludes part of the published estimates for NGC~4151 and 1H~0707-495 whatever the spin, and also for RE~J1034+396, MCG-06-30-15, NGC~1365 and 1ES~1927+654 if $a\leq0.998$;
+    \item the five sources whose mass range extends below $P=110$~Hz\,$M_\odot$ allow larger flows, $\bar r\simeq4$--$75\,R_g$, and retrograde spins for $M<110\,M_\odot\,(\nu_0/\textup{Hz})^{-1}$; the two with the lowest $P$ (J1231, NGC~4945) require $a\lesssim0.2$--$0.4$ if the flow is prograde.
+\end{itemize}
+The common shape of the valid regions in Fig.~\ref{fig:grid} reflects the fact that validity depends on $M$ and $\nu_0$ only through $P$.
+In Sect.~\ref{sec:general} we use this property to extend the analysis from the observed sources to the whole $(M,\nu_0)$ plane.
