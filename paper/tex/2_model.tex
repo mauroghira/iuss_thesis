@@ -2,7 +2,7 @@
 \section{The model}
 \label{sec:model}
 %==========================================================================
-
+% forse sto paragrafo introduttivo non serve
 %This section defines the precessing-flow model and the two conditions for an observable precession (Sects.~\ref{sec2:kerr}--\ref{sec2:timescales}), and shows that all the quantities involved depend on the BH mass and on the observed frequency only through their product (Sect.~\ref{sec2:scaling}), which is the starting point of the question posed in the introduction.
 
 
@@ -19,7 +19,7 @@ Around a Kerr black hole of mass $M$ and dimensionless spin $a \doteq Jc/GM^2 \i
     \Omega_z &= \Omega_\varphi \sqrt{ 1 - \frac{4a}{r^{3/2}} + \frac{3a^2}{r^2}}
 \end{align}
 where $R_g \doteq GM/c^2$, $t_g \doteq R_g/c$, and $r \doteq R/R_g$.
-All frequencies are expressed in cylindrical coordinates with origin at the BH and $z$-axis along the angular momentum of the disc, so that $\Omega_\varphi>0$, and $a<0$ is a BH spin anti-parallel to it.
+All frequencies are expressed in cylindrical coordinates with origin at the BH and $z$-axis along the angular momentum of the disc\footnote{Actually, the $z$-axis is along the BH spin. Since we always consider any existing misalignment between disc and BH to be small, the frequencies remains unaffected at first order, except for a sign  convention.}, so that $\Omega_\varphi>0$, and $a<0$ is a BH spin anti-parallel to it.
 
 In Newtonian gravity $\Omega_\varphi=\kappa=\Omega_z$ and orbits are closed; in general relativity the differences produce precession.
 The nodal (Lense-Thirring) frequency of a free test particle on a slightly tilted circular orbit is
@@ -38,26 +38,24 @@ Since the disc cannot extend closer to the BH than the innermost stable circular
     Z_2 &=\sqrt{3a^2+Z_1^2},
 \end{align}
 the bracket is always negative: trivially for $a\leq0$, and for $a>0$ because $3a<4r^{1/2}\iff r>9a^2/16$, while $9a^2/16<1\leq r$.
-Hence $\textup{sign}\,\varepsilon=-\textup{sign}\,a$ and, $\sqrt{\cdot}$ being increasing,
+Hence $\textup{sign}\,\varepsilon=-\textup{sign}\,a$ and, $\sqrt{\cdot}$ being increasing\footnote{$\Omega_\textup{LT}=\Omega_\varphi(1-\sqrt{1+\varepsilon})>0 \Leftrightarrow \sqrt{1+\varepsilon}<1 \Leftrightarrow \varepsilon <0 $},
 \begin{equation}
     \label{eq2:signLT}
     \Omega_\textup{LT}(r)=\textup{sign}(a)\,|\Omega_\textup{LT}(r)| \qquad \forall\, r\geq r_\textup{ISCO}(a):
 \end{equation}
 for $a<0$ the nodes regress, i.e.\ the precession is opposite to the orbital motion, at every radius.
 
-\paragraph{Mass scaling.}
 Since $R_g = R_{g,\odot}\,m$ with $m\doteq M/M_\odot$, Eq.~\eqref{eq2:epiphi} gives
 \begin{equation}
     \label{eq2:scale_nu}
     \nu_\varphi=\frac{\Omega_\varphi}{2\pi}=\frac{g_\varphi(r,a)}{m},
     \quad
-    g_\varphi(r,a)\doteq\frac{c}{2\pi R_{g,\odot}}\frac{1}{r^{3/2}+a}.
+    g_\varphi(r,a)\doteq\frac{t_{g,\odot}^{-1}}{2\pi}\frac{1}{r^{3/2}+a}.
 \end{equation}
 The ratios $\kappa/\Omega_\varphi$ and $\Omega_z/\Omega_\varphi$ depend on $(r,a)$ only, so every frequency has the form $\nu_X=g_X(r,a)/m$ with $X\in\{\varphi,r,z\}$ and $g_X$ independent of the BH mass.
 In particular $\Omega_\textup{LT}=2\pi g_\textup{LT}/m$ with $g_\textup{LT}\doteq g_\varphi-g_z$.
 Any weighted average of such frequencies with mass-independent weights keeps the $1/m$ scaling.
-%Hence, the frequency $\nu_0$ observed in an AGN of mass $M_0$ corresponds, all else being equal, to $\nu_\textup{XRB}=(M_0/M_\textup{XRB})\,\nu_0$ in a binary; e.g.\ for J1257 ($M_0=10^{6.3}\,M_\odot$, $\nu_0=3.3\times10^{-5}$~Hz) and $M_\textup{XRB}=10\,M_\odot$, $\nu_\textup{XRB}\simeq6.6$~Hz.
-%The comparison is made through the product $M\nu_0$, which is the variable that controls the whole model (Sect.~\ref{sec2:scaling}).
+
 
 %--------------------------------------------------------------------------
 \subsection{Precessing inner flow}
@@ -67,7 +65,7 @@ We adopt the precessing inner flow (PIF) model \citep{PIF}: an optically thin, g
 This model includes the simple single-particle precession \citep{stella1,stella2} in the limit $r_\textup{out}\to r_\textup{in}$.
 In the whole paper, we take $r_\textup{in}=r_\textup{ISCO}(a)$.
 
-For $\alpha \lesssim H/R$, with $\alpha$ the Shakura-Sunyaev viscosity parameter and $H/R$ the aspect ratio of the flow, the warp is communicated by bending waves instead of diffusing \citep{FoucartLai2014}, and the flow precesses as a solid body at a frequency given by averaging the torque of each annulus on the neighbouring ones \citep[see e.g.][]{Lodato_solid}:
+For $\alpha \lesssim H/R$, with $\alpha$ the Shakura-Sunyaev viscosity parameter and $H/R$ the aspect ratio of the flow, the warp produced in the disc by the misalignment is communicated by bending waves instead of diffusing \citep{FoucartLai2014}, and the flow precesses as a solid body at a frequency given by averaging the torque of each annulus on the neighbouring ones \citep[see e.g.][]{Lodato_solid}:
 \begin{equation}
     \label{eq2:nusolid}
     \Omega_\textup{solid} = \frac{\int_{R_\textup{in}}^{R_\textup{out}}\Omega_\textup{LT}(R) \, L(R) \, R \, \textup{d}R}{\int_{R_\textup{in}}^{R_\textup{out}} L(R) \, R \, \textup{d}R},
@@ -79,10 +77,10 @@ where $L$ is the angular momentum surface density and $\Sigma$ the surface densi
     \Sigma(R)=\Sigma_0\,r^{-p}\left(1-\sqrt{r_\textup{in}/r}\right)^{p}, \qquad p=\tfrac35 ,
 \end{equation}
 which vanishes at $r_\textup{in}$.
-$\Sigma_0$ (and any dependence of it on $M$) multiplies numerator and denominator of Eq.~\eqref{eq2:nusolid} and cancels.
+$\Sigma_0$ multiplies numerator and denominator of Eq.~\eqref{eq2:nusolid} and cancels.
 The reasons and consequences of this choice on the precession frequency have been widely discussed in \citet{Motta2017}.
 
-With $R=rR_g$ and $\textup{d}R=R_g\,\textup{d}r$, all powers of $R_g$ in the weight $\Sigma R^3\Omega_\varphi\,\textup{d}R$ cancel between numerator and denominator, and only the factor $1/m$ of $\Omega_\textup{LT}=2\pi g_\textup{LT}/m$ is left:
+With $R=rR_g$ and $\textup{d}R=R_g\,\textup{d}r$, all powers of $R_g$ in the weight $\Sigma R^3\Omega_\varphi\,\textup{d}R$ cancel between numerator and denominator, and only the factor $1/m$ of $\Omega_\textup{LT}$ is left:
 \begin{equation}
     \label{eq2:gdef}
     \nu_\textup{solid}=\frac{g}{m},
@@ -92,31 +90,16 @@ With $R=rR_g$ and $\textup{d}R=R_g\,\textup{d}r$, all powers of $R_g$ in the wei
     g(a,r_\textup{out})=\left|\frac{\int_{r_\textup{in}}^{r_\textup{out}} g_\textup{LT}\,w\,\textup{d}r}{\int_{r_\textup{in}}^{r_\textup{out}}w\,\textup{d}r}\right|,
 \end{equation}
 where $g$ depends only on $(a,r_\textup{in},r_\textup{out},p)$.
-We take the modulus since the precession frequency has the same the sign as $\Omega_\textup{LT}$, so can be negative, for the convention introduced above.
+We take the modulus since the precession frequency has the same the sign as $\Omega_\textup{LT}$, so can be negative for the convention introduced above, but for observations we are interested in its absolute value.
+
+Given the mass scaling, a frequency $\nu_0$ observed in an AGN of mass $M_0$ corresponds, all else being equal, to $\nu_\textup{XRB}=(M_0/M_\textup{XRB})\,\nu_0$ in a binary; 
+e.g.\ for J1257 ($M_0=10^{6.3}\,M_\odot$, $\nu_0=3.3\times10^{-5}$~Hz) and $M_\textup{XRB}=10\,M_\odot$, $\nu_\textup{XRB}\simeq6.6$~Hz.
 
 
 %--------------------------------------------------------------------------
 \subsection{Timescales: wave propagation and alignment}
 \label{sec2:timescales}
 
-Equation~\eqref{eq2:nusolid} reproduces a signal at $\nu_0$ only if the flow can behave as a rigid body over a precession period $1/\nu_0$.
-According to \citet{Motta2017} two conditions are required: 
-(i) the bending waves must cross the flow in less than one period, $t_\textup{wave}<1/\nu_0$; 
-(ii) the flow must not align with the BH equatorial plane within one precession period, $t_\textup{align}>1/\nu_0$, otherwise the precession is damped before a single cycle is completed and no periodic modulation can arise\footnote{\citet{Motta2017} impose the stricter condition $t_\textup{align}>2/\nu_0$, arguing that QPOs have quality factor $Q>2$ and that $Q$ approximates the number of precession cycles within $t_\textup{align}$. Since $Q>2$ is a classification convention, and the relation between $Q$ and $\nu_0 t_\textup{align}$ holds only up to a factor of order unity, we adopt the minimal requirement of one complete cycle. The allowed regions found here are therefore upper envelopes, whereas the excluded regions hold a fortiori under the stricter criterion.}.
-
-Condition (ii) compares $t_\textup{align}$ with a timescale of the flow itself.
-For the second explanation of Sect.~\ref{sec:intro}, $t_\textup{align}$ must instead be compared with the times on which misaligned gas reaches the inner disc.
-Assume that such episodes occur as a stationary Poisson process of rate $\Gamma$, and that after each episode the flow precesses visibly for a time $t_\textup{align}$ (and only if conditions (i) and (ii) hold).
-At a random time $t$, the time $s$ elapsed since the last episode has the distribution of the waiting time of a Poisson process, $\textup{Pr}(s\le\tau)=1-e^{-\Gamma\tau}$ for $\tau\ge0$.
-A QPO is visible at $t$ if and only if $s<t_\textup{align}$, so the fraction of time during which it is visible is
-\begin{equation}
-    \label{eq2:duty}
-    f_\textup{QPO}=1-e^{-\Gamma t_\textup{align}}\simeq\Gamma\,t_\textup{align}\qquad(\Gamma t_\textup{align}\ll1).
-\end{equation}
-In XRBs the companion keeps supplying misaligned gas, which corresponds to $\Gamma t_\textup{align}\gtrsim1$ and $f_\textup{QPO}\simeq1$; in AGNs $\Gamma$ is unknown and may be small.
-Equation~\eqref{eq2:duty} also holds when overlapping episodes simply restart the precession, since visibility depends only on the time since the last episode.
-
-\paragraph{Sound speed and thickness.}
 In a thick flow warps propagate as bending waves at about half the sound speed.
 Following \citet{FoucartLai2014}, we define the sound speed through the vertically integrated pressure (their Eq.~3),
 \begin{equation}
@@ -126,21 +109,20 @@ Following \citet{FoucartLai2014}, we define the sound speed through the vertical
     c_s\doteq H\,\Omega_z ,
 \end{equation}
 where the vertical epicyclic frequency $\Omega_z$ is the restoring frequency of vertical hydrostatic equilibrium.
-This is the sound speed that enters the alignment rate of Eq.~\eqref{eq2:talign}, and we use it for the wave-propagation time as well.
-\citet{Motta2017} use instead $c_s=H\,\Omega_\textup{K}$, with $\Omega_\textup{K}\doteq t_g^{-1}r^{-3/2}$ the Newtonian Keplerian frequency.
-The two definitions coincide in Newtonian gravity, but around a spinning hole $\Omega_z<\Omega_\textup{K}$ for $a>0$ and $\Omega_z>\Omega_\textup{K}$ for $a<0$ at every $r\geq r_\textup{ISCO}$ (Appendix~\ref{appM:cs}).
-At fixed $H$, the Newtonian prescription therefore makes both conditions (i) and (ii) easier to satisfy for prograde spins and harder for retrograde ones.
-The difference is largest for compact flows around rapidly spinning holes (factors of about two in $t_\textup{wave}$ and four in $t_\textup{align}$ for $a=0.998$ and $r_\textup{out}=3\,r_\textup{ISCO}$) and becomes negligible at large radii (Fig.~\ref{fig:cs_choice}).
+\citet{Motta2017} use instead $c_s=H\,\Omega_\textup{K}$, with $\Omega_\textup{K}$ the Newtonian Keplerian frequency.
+The two definitions coincide in Newtonian gravity, but around a spinning hole $\Omega_z<\Omega_\textup{K}$ for $a>0$ and $\Omega_z>\Omega_\textup{K}$ for $a<0$ at every $r\geq r_\textup{ISCO}$.
+The effect of this difference on the timescales introduced below is assessed in App.~\ref{app:choices}.
 
-For the aspect ratio we keep the radial profile of \citet{Motta2017},
+To compute $c_s$, we reconstruct the thickness $H$ of the disc from the aspect ratio, assuming the radial profile of \citet{Motta2017},
 \begin{equation}
     \label{eq2:HR}
     \frac{H}{R}=h_\textup{ISCO}\left(\frac{r}{r_\textup{ISCO}}\right)^{1/2-q},
     \qquad q=\frac32 ,
 \end{equation}
 with $h_\textup{ISCO}\doteq(H/R)(r_\textup{ISCO})$.
-For $q=3/2$ the thickness, $H=h_\textup{ISCO}\,r_\textup{ISCO}\,R_g$, is independent of radius, the property of a radiation-pressure dominated flow \citep{accretion}.
-The values of $q$, $h_\textup{ISCO}$ and $\alpha$ used in the following are those adopted by \citet{Motta2017} for XRBs in the hard state; their origin, and the results for a flow of constant aspect ratio ($q=1/2$), are discussed in Appendix~\ref{app:params}.
+For $q=3/2$ the thickness, $H=h_\textup{ISCO}\,r_\textup{ISCO}\,R_g$, is independent of the radius, the property of a radiation-pressure dominated flow \citep{accretion}.
+Since $H$ is normalised at each spin's own ISCO, a retrograde flow, with its larger $r_\textup{ISCO}$, is thicker than a prograde one: for $|a|=0.9$, $H(-0.9)/H(0.9)=r_\textup{ISCO}(-0.9)/r_\textup{ISCO}(0.9)\simeq3.8$.
+
 For general $q$, writing $\Omega_z=f_z(r,a)/t_g$ with
 \begin{equation}
     f_z(r,a)\doteq\frac{1}{r^{3/2}+a}\sqrt{1-\frac{4a}{r^{3/2}}+\frac{3a^2}{r^2}},
@@ -149,8 +131,10 @@ Eq.~\eqref{eq2:HR} and $c_s=(H/R)\,R\,\Omega_z$ give
 \begin{equation}
     \label{eq2:cs}
     c_s=c\,h_\textup{ISCO}\,r_\textup{ISCO}^{\,q-1/2}\,r^{3/2-q}\,f_z(r,a).
-\end{equation}
-Since $H$ is normalised at each spin's own ISCO, a retrograde flow, with its larger $r_\textup{ISCO}$, is thicker than a prograde one: for $|a|=0.9$, $H(-0.9)/H(0.9)=r_\textup{ISCO}(-0.9)/r_\textup{ISCO}(0.9)\simeq3.8$.
+\end{equation}.
+
+The values of $q$, $h_\textup{ISCO}$ and $\alpha$ used in the following are those adopted by \citet{Motta2017} for XRBs in the hard state; in Appendix~\ref{app:params} we discuss why these parameters can be used for AGN as well and how changing them affects our results.
+
 
 \paragraph{Wave-propagation time.}
 The time bending waves take to cross the flow is \citep[][Eq.~5]{Motta2017}
@@ -164,15 +148,14 @@ Substituting $R=rR_g$, $\textup{d}R=R_g\,\textup{d}r$ and Eq.~\eqref{eq2:cs},
     t_\textup{wave}=\frac{2\,t_g}{h_\textup{ISCO}}\,r_\textup{ISCO}^{\,1/2-q}\int_{r_\textup{in}}^{r_\textup{out}}\frac{r^{\,q-3/2}}{f_z(r,a)}\,\textup{d}r ,
 \end{equation}
 which we evaluate numerically.
+For $a=1$ $f_z$ vanishes at $r_\textup{ISCO}(1)=1$, and the integral in Eq.~\eqref{eq2:twave} diverges.
 In the Newtonian limit $f_z\to r^{-3/2}$, the integrand reduces to $r^{q}$, and Eq.~\eqref{eq2:twave} becomes Eq.~(6) of \citet{Motta2017}.
-For $a=1$ the radicand of $f_z$ factorises as $\left(1-r^{-1/2}\right)^2\left(1+2r^{-1/2}+3r^{-1}\right)$.
-Hence $\Omega_z$ vanishes linearly at $r_\textup{ISCO}(1)=1$, and the integral in Eq.~\eqref{eq2:twave} diverges.
 
 
 \paragraph{Alignment time.}
 \citet{FoucartLai2014} write the linear bending-wave equations as an eigenvalue problem for modes $\propto e^{-i\omega t}$ (their Eqs.~17--18), with $\omega=\omega_\textup{p}-i\gamma$, where $\omega_\textup{p}$ is the precession rate and $\gamma$ the damping rate of the tilt (their Eq.~21).
 They solve it to lowest order in the perturbation from a flat, rigidly precessing disc.
-The internal stress is linear in the external torque and is given by (their Eq.~31)
+The internal stress is given by (their Eq.~31)
 \begin{equation}
     \label{eq2:G}
     \mathcal{G}(R)=\int_{R_\textup{in}}^{R}\Sigma x^3\,\Omega_\varphi\left(\omega_\textup{p}-\Omega_\textup{loc}\right)\textup{d}x ,
@@ -204,29 +187,51 @@ In this work we take
     \qquad
     \omega_\textup{p}=\Omega_\textup{solid},
 \end{equation}
-for three reasons, derived in Appendix~\ref{appM:omloc}.
+for three reasons, discussed in Appendix~\ref{appM:omloc}.
 First, Eq.~\eqref{eq2:BC} holds by construction for every $\Sigma$, $a$ and $r_\textup{out}$.
 Second, $\Omega_\textup{LT}$ and $\mathcal{Z}\Omega_\varphi$ coincide at first order in the deviation from Keplerian motion, and wherever the bending-wave equations hold their relative difference, $\Omega_\textup{LT}/(2\Omega_\varphi)$, is of the order of the terms in $H/R$ that those equations neglect: the linear theory cannot distinguish between them.
 Third, with $\Omega_\textup{loc}=\Omega_\textup{LT}$ a narrow ring precesses at the exact nodal frequency of its geodesics, so that the single-particle limit of Sect.~\ref{sec2:pif} is recovered, with the same rate, in the observable frequency and in the stress.
 With respect to the closure of \citet{Motta2017}, our $t_\textup{align}$ differs by less than $5\%$ for $|a|\leq0.2$ and $r_\textup{out}\geq3\,r_\textup{ISCO}$, and by up to a factor of about five for compact flows around rapidly spinning prograde holes (Fig.~\ref{fig:omloc_choice}).
-In the latter region the validity condition of the linear theory is itself violated, so that the choice of $\Omega_\textup{loc}$ is a systematic uncertainty that cannot be settled within it.
+In the latter region the validity condition of the linear theory is itself violated, so that the choice of $\Omega_\textup{loc}$ is actually a systematic uncertainty that cannot be settled within it.
 
 The first-order solution holds for a small warp and a small twist gradient, $\gamma\ll\alpha\Omega_\varphi$, and $\alpha\lesssim H/R$ \citep{FoucartLai2014}.
-With $H/R=h_\textup{ISCO}\,r_\textup{ISCO}/r$ for $q=3/2$, the last condition reads $r\lesssim r_\textup{ISCO}\,h_\textup{ISCO}/\alpha$: for the fiducial values $(h_\textup{ISCO} = 0.1,\,\alpha=0.01)$ the bending-wave regime extends to $\simeq10\,r_\textup{ISCO}$.
+With $H/R=h_\textup{ISCO}\,r_\textup{ISCO}/r$ for $q=3/2$, the last condition reads $r\lesssim r_\textup{ISCO}\,h_\textup{ISCO}/\alpha$: for our fiducial values $(h_\textup{ISCO} = 0.1,\,\alpha=0.01)$ the bending-wave regime extends to $\simeq10\,r_\textup{ISCO}$.
+
+
+% forse sposterie  la seconda parte direttamentre nella sezione di discussion, lasciando solo la definizione dei due constraint per poi introudrre lo scaling con la mssa qui
+\subsection{Conditions for precession and observation}
+\label{sec:cond}
+
+Equation~\eqref{eq2:nusolid} reproduces a signal at $\nu_0$ only if the flow can behave as a rigid body over a precession period $1/\nu_0$.
+According to \citet{Motta2017} two conditions are required: 
+(i) the bending waves must cross the flow in less than one period, $t_\textup{wave}<1/\nu_0$; 
+(ii) the flow must not align with the BH equatorial plane within one precession period, $t_\textup{align}>1/\nu_0$, otherwise the precession is damped before a single cycle is completed and no periodic modulation can arise\footnote{\citet{Motta2017} impose the stricter condition $t_\textup{align}>2/\nu_0$, arguing that QPOs have quality factor $Q>2$ and that $Q$ approximates the number of precession cycles within $t_\textup{align}$. Since $Q>2$ is a classification convention, and the relation between $Q$ and $\nu_0 t_\textup{align}$ holds only up to a factor of order unity, we adopt the minimal requirement of one complete cycle. The allowed regions found here are therefore upper envelopes, whereas the excluded regions hold a fortiori under the stricter criterion.}.
+
+Condition (ii) compares $t_\textup{align}$ with a timescale of the flow itself.
+For the second explanation of Sect.~\ref{sec:intro}, $t_\textup{align}$ must instead be compared with the times on which misaligned gas reaches the inner disc.
+Assume that such episodes occur as a stationary Poisson process of rate $\Gamma$, and that after each episode the flow precesses visibly for a time $t_\textup{align}$ (and only if conditions (i) and (ii) hold).
+At a random time $t$, the time $s$ elapsed since the last episode has the distribution of the waiting time of a Poisson process, $\textup{Pr}(s\le\tau)=1-e^{-\Gamma\tau}$ for $\tau\ge0$.
+A QPO is visible at $t$ if and only if $s<t_\textup{align}$, so the fraction of time during which it is visible is
+\begin{equation}
+    \label{eq2:duty}
+    f_\textup{QPO}=1-e^{-\Gamma t_\textup{align}}\simeq\Gamma\,t_\textup{align}\qquad(\Gamma t_\textup{align}\ll1).
+\end{equation}
+In XRBs the companion keeps supplying misaligned gas, which corresponds to $\Gamma t_\textup{align}\gtrsim1$ and $f_\textup{QPO}\simeq1$; in AGNs $\Gamma$ is unknown and may be small.
+Equation~\eqref{eq2:duty} also holds when overlapping episodes simply restart the precession, since visibility depends only on the time since the last episode.
 
 
 \subsection{Exact scalings and reduction to $P=M\nu_0$}
 \label{sec2:scaling}
 
 All three quantities of the model scale with the BH mass only through $t_g$.
-For fixed $h_\textup{ISCO}$ and $\alpha$, equations~\eqref{eq2:nusolid}, \eqref{eq2:twave} and \eqref{eq2:talign} can therefore be rewritten as
+For fixed $h_\textup{ISCO}$, $\alpha$ and $q$, equations~\eqref{eq2:nusolid}, \eqref{eq2:twave} and \eqref{eq2:talign} can therefore be rewritten as
 \begin{equation}
     \label{eq2:scalings}
     \nu_\textup{solid}=\frac{g(a,r_\textup{out})}{m},\ 
     t_\textup{wave}=m\,\tau_w(a,r_\textup{out}),\ 
     t_\textup{align}=m\,\tau_a(a,r_\textup{out}),
 \end{equation}
-where $g$ and $\tau_{w,a}$ are the values of $\nu_\textup{solid}$ and $t_\textup{wave,align}$ for $M=1\,M_\odot$, with $r_\textup{in}=r_\textup{ISCO}(a)$, $p$, and $q$ fixed.
+where $g$ and $\tau_{w,a}$ are the values of $\nu_\textup{solid}$ and $t_\textup{wave,align}$ for $M=1\,M_\odot$, with $r_\textup{in}=r_\textup{ISCO}(a)$.
 
 The observed frequency enters the model only through the requirement $\nu_\textup{solid}=\nu_0$, which by Eq.~\eqref{eq2:scalings} reads
 \begin{equation}
@@ -247,9 +252,9 @@ Whether a precessing flow of given spin and outer edge is rigid and long-lived e
 
 Equation~\eqref{eq2:Pcond} makes the question of Sect.~\ref{sec:intro} precise.
 Let $A(P)$ be the set of spins for which a valid $\bar r$ exists at a given $P$.
-At fixed $(h_\textup{ISCO},\alpha)$ it is the same for an XRB and for an AGN with the same $P$, whatever their masses.
+At fixed $(h_\textup{ISCO},\alpha, q)$ it is the same for an XRB and for an AGN with the same $P$, whatever their masses.
 A $10\,M_\odot$ BH with a QPO at $\nu_\textup{XRB}$ and an AGN of mass $M$ with a QPO at $\nu_0=\nu_\textup{XRB}\,(10\,M_\odot/M)$ are therefore equally allowed by the model.
-Differences in the occurrence of QPOs must come from the distribution of the two classes in $P$ (first explanation), from different values of $(h_\textup{ISCO},\alpha)$, or from quantities that do not enter Eqs.~\eqref{eq2:Ncond} and \eqref{eq2:Pcond}, such as $\Gamma$ in Eq.~\eqref{eq2:duty} (second explanation) or the duration of the observations (third explanation).
+Differences in the occurrence of QPOs must come from the distribution of the two classes in $P$ (first explanation), from different values of $(h_\textup{ISCO},\alpha, q)$, or from quantities that do not enter Eqs.~\eqref{eq2:Ncond} and \eqref{eq2:Pcond}, such as $\Gamma$ in Eq.~\eqref{eq2:duty} (second explanation) or the duration of the observations (third explanation).
 
 
 %--------------------------------------------------------------------------

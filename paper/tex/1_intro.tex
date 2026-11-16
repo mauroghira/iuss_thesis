@@ -7,15 +7,19 @@ Quasi-periodic oscillations (QPOs) are narrow peaks in the X-ray power spectra o
 They were first found in neutron-star and black-hole (BH) X-ray binaries (XRBs), where they are common, and have since been reported in a small number of active galactic nuclei (AGNs).
 
 AGNs are usually regarded as the supermassive counterparts of BH-XRBs: in both classes a BH accretes through a disc, and the relevant physics is expected to be the same.
-In particular, when gravitational units ($R_g \doteq GM/c^2$, $t_g \doteq R_g/c$) are adopted, the Kerr metric no longer contains the BH mass $M$, so every relativistic orbital frequency scales exactly as $M^{-1}$ at fixed dimensionless radius and spin (Sect.~\ref{sec2:kerr}).
-Any model that ties a QPO to these frequencies therefore predicts that a feature seen at frequency $\nu_\textup{XRB}$ around a BH of $10\,M_\odot$ appears around an AGN of mass $M$ at $\nu_0=\nu_\textup{XRB}\,(10\,M_\odot/M)$, i.e. in the $10^{-7}$--$10^{-3}$~Hz range for $M\sim10^{5}$--$10^{8}\,M_\odot$.
-The same invariance holds for other characteristic timescales of the flow, which also scale as $M$ once the disc parameters (aspect ratio, viscosity, surface-density profile) are fixed.
+In particular, the dependence of the Kerr metric on the BH mass can be absorbed by choosing gravitational units ($R_g \doteq GM/c^2$, $t_g \doteq R_g/c$), so that the description of motion becomes independent of $M$.
+
+However, the hidden mass scaling is important for observations:
+a vast group of QPO models binds the measured frequency to combinations of Kerr epyciclic frequencies, whose explicit mass dependece is $M^{-1}$.
+They therefore predict that a feature seen at frequency $\nu_\textup{XRB}$ around a BH of $10\,M_\odot$ appears around an AGN of mass $M$ at $\nu_0=\nu_\textup{XRB}\,(10\,M_\odot/M)$, i.e. in the $10^{-7}$-$10^{-3}$~Hz range for $M\sim10^{5}$-$10^{8}\,M_\odot$.
+
+The same situation holds for other characteristic timescales of the flow, since they are also obtained from Kerr frequencies and thus also scale as $M$ once the disc parameters (aspect ratio, viscosity, surface-density profile) are fixed.
 What does not scale is the comparison with timescales external to the flow: the duration of an X-ray observation, the time over which misaligned gas is supplied to the inner disc, and the lifetime of the active phase.
 
 %--------------------------------------------------------------------------
-\paragraph{Observations.}
+\subsection{Observations}
 Table~\ref{tab:catalog} collects the X-ray QPOs reported in AGNs so far, with the redshift of the host and the published BH mass estimates.
-The first robust detection, and still the best studied, is the $\sim1$~h QPO of RE~J1034+396 \citep{Gierlinski2008}, which has persisted for years \citep{Alston2014}.
+The first robust detection, and still the best studied, is the $\sim1$~h QPO of RE~J1034+396 \citep{Gierlinski2008, Alston2014}.
 Similar signals at $\nu_\textup{obs}\sim10^{-4}$~Hz were later reported in MS~2254.9-3712 \citep{Alston2015}, Mrk~766 \citep{Zhang2017}, MCG-06-30-15 \citep{Gupta2018}, 1H~0707-495 \citep{Pan2016,Zhang2018a}, ESO~113-G010 \citep{Zhang2020}, NGC~1365 \citep{Yan2024}, NGC~5506 \citep{Zhang2025}, Mrk~142 \citep{Zhong2024} and NGC~4151 \citep{Yan2025}.
 Longer periods, from hours to weeks, were found in XMMU~J134736.6+173403 \citep[J1347 hereafter;][]{Carpano2018}, 2XMM~J123103.2+110648 \citep[J1231;][]{Lin2013}, NGC~4945 \citep{Smith2020} and 2MASX~J12571076+2724177 \citep[J1257;][]{j1257}.
 At the other end, the changing-look AGN 1ES~1927+654 shows a millihertz QPO whose frequency drifted from 0.9 to 2.4~mHz within two years and then stabilised \citep{Masterson2025,Masterson2026}.
@@ -75,15 +79,14 @@ References:
 \end{table*}
 
 %--------------------------------------------------------------------------
-\paragraph{Model.}
+\subsection{The model}
 Many models have been proposed for QPOs in XRBs.
 We adopt the one most widely used for type-C QPOs, the Lense-Thirring precession of a geometrically thick inner flow misaligned with the BH spin \citep{PIF}.
 We remain agnostic on whether it is the correct description of AGN QPOs: we use it because its predictions follow from a few transparent assumptions and because it contains explicit conditions for the precession to be observable.
-Following \citet{Motta2017}, rigid precession at the observed frequency requires that bending waves cross the flow within one period and that the flow does not align with the BH equator within one period; the latter condition rests on the alignment rate of \citet{FoucartLai2014}, for which we adopt a local precession rate consistent with the zero-torque boundary conditions (Sect.~\ref{sec2:timescales}).
-Other classes of models are discussed in Sect.~\ref{sec:discussion}.
+According to \citet{Motta2017}, rigid precession at the observed frequency requires that bending waves cross the flow within one period and that the flow does not align with the BH equator within one period.
 
 %--------------------------------------------------------------------------
-\paragraph{The question.}
+\subsection{The question}
 Within this model the scaling with mass is exact: once the disc parameters are fixed, the observed frequency, the wave-crossing time and the alignment time depend on $M$ and $\nu_0$ only through the product $P=M\nu_0$ (Sect.~\ref{sec2:scaling}).
 A configuration that produces a QPO around a $10\,M_\odot$ BH has therefore an exact counterpart around any AGN with the same $P$, and the conditions for the QPO to exist are satisfied, or violated, in the same way.
 If QPOs are common in XRBs, why are so few observed in AGNs?
@@ -96,20 +99,19 @@ We consider three classes of explanations, which are not mutually exclusive.
     \item \textit{Alignment.}
     The flow aligns with the BH spin on the timescale $t_\textup{align}$.
     Even where both conditions above hold, $t_\textup{align}$ must also be compared with the time between successive episodes that bring misaligned gas to the inner disc and with the duration of the active phase.
-    In XRBs the companion continuously supplies gas \citep{Motta2017}, whereas in AGNs a misaligned inner flow may form only occasionally, for instance after a tidal disruption event or a change in the fuelling; the fraction of time during which a QPO is visible would then be of order $t_\textup{align}$ times the rate of such episodes.
+    In XRBs the companion continuously supplies gas \citep{Maccarone2002, Martin2008}, whereas in AGNs a misaligned inner flow may form only occasionally, for instance after a tidal disruption event or a change in the fuelling; the fraction of time during which a QPO is visible would then be of order $t_\textup{align}$ times the rate of such episodes.
     The QPO of 1ES~1927+654, which appeared after a major change of the accretion flow \citep{Masterson2025}, would fit this picture.
     \item \textit{Detectability.}
-    At fixed $P$ the period grows linearly with $M$, so for massive AGNs a QPO may exist but last too few cycles within an observation to be detected.
+    At fixed $P$ the period grows linearly with $M$, so for massive AGNs a QPO may exist but last too few cycles within an observation to be detected \citep{VaughanUttley2005}.
 \end{enumerate}
 
-%--------------------------------------------------------------------------
-\paragraph{This work.}
+\subsection{This work}
 We first use the model to constrain the BH spin and the extent of the precessing flow for each source of Table~\ref{tab:catalog}.
-We then map the valid region of the $(M,\nu_0)$ plane, identify which condition fails where no configuration is valid, and test how the results depend on the poorly known aspect ratio and viscosity of the flow.
+We then map the valid region of the $(M,\nu_0)$ plane, identify which condition fails where no configuration is valid, and test how the results depend on the poorly known parameters of the flow.
 Finally, we compare the allowed region with the observational window and estimate the alignment timescales, in order to assess the three explanations above.
-% TODO: modificare risultati
 
 The paper is organised as follows.
 Section~\ref{sec:model} describes the model and its exact scalings.
-Section~\ref{sec:results} presents the constraints on the individual sources, while Section~\ref{sec:general} generalises the analysis to a complete mass-frequency map.
-Section~\ref{sec:discussion} discusses the three explanations and summarises our conclusions.
+Section~\ref{sec:results} presents the constraints on the individual sources, while Section~\ref{sec:general} generalises the analysis to the complete mass-frequency space.
+Section~\ref{sec:discussion} finally discusses the three explanations and summarises our conclusions.
+Appendix~\ref{app:choices} discusses modelisation choices compared to previous works, and Appendix~\ref{app:params} tests the soundness of our results against variations of the disc's parameters.
