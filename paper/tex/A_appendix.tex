@@ -2,15 +2,10 @@
 \section{Comparison with previous prescriptions}
 \label{app:choices}
 %==========================================================================
-% Must be \input BEFORE appendix_params.tex: it is the first appendix cited
-% in the text (Sect. 2), so it becomes Appendix A and app:params Appendix B.
-% Figures: same files as before (2_model/t_cs_vgrav.pdf, produced by
-% t_cs_vgrav.py; 2_model/t_align_oloc.pdf, produced by t_align_oloc.py).
 
-The model of Sect.~\ref{sec:model} follows \citet{Motta2017} for the precession frequency and the wave-propagation time, and \citet{FoucartLai2014} for the alignment rate, with the three differences listed in Table~\ref{tab:choices}.
+The model of Sect.~\ref{sec:model} follows \citet{Motta2017} and \citet{FoucartLai2014} with the three differences listed in Table~\ref{tab:choices}.
 The first, the number of cycles required by condition (ii), is discussed in Sect.~\ref{sec2:timescales}.
 In this appendix we derive the statements made in Sect.~\ref{sec2:timescales} on the other two, the sound speed (Sect.~\ref{appM:cs}) and the local precession rate (Sect.~\ref{appM:omloc}), and quantify their effect on the timescales.
-The notation is that of Sect.~\ref{sec:model}.
 
 \begin{table}
 \caption{Prescriptions adopted in this work and in the reference papers.}
@@ -33,7 +28,7 @@ $\langle\cdot\rangle$ is the mean over $[R_\textup{in},R_\textup{out}]$ with the
 For FL14, $\omega_\textup{p}$ is the value required by Eq.~\eqref{eq2:BC}.
 }
 \end{table}
-% check the short labels FL14 / M18 against the years in biblio.bib
+
 
 %--------------------------------------------------------------------------
 \subsection{Sound speed}
@@ -99,7 +94,6 @@ At fixed $r$ the ratio of their sound speeds is larger than that of their thickn
     =\frac12\left[1-\left(\frac{g_z}{g_\varphi}\right)^{2}\right].
 \end{equation}
 
-\paragraph{The closure of \citet{Motta2017}.}
 \citet{Motta2017} adopt Eq.~\eqref{eq2:talign} with $\Omega_\textup{loc}=\mathcal{Z}\Omega_\varphi$, but take $\omega_\textup{p}=\Omega_\textup{solid}$ from Eq.~\eqref{eq2:nusolid}, i.e.\ the $\tilde w$-mean of $\Omega_\textup{LT}$ (their Eqs.~2 and 7).
 This violates Eq.~\eqref{eq2:BC}.
 Using $\Omega_z=\Omega_\varphi-\Omega_\textup{LT}$ (Eq.~\ref{eq2:omlt}), $\Omega_\varphi^2-\Omega_z^2=(\Omega_\varphi-\Omega_z)(\Omega_\varphi+\Omega_z)=\Omega_\textup{LT}\,(2\Omega_\varphi-\Omega_\textup{LT})$, hence, exactly,
@@ -122,7 +116,6 @@ Since $\Omega_\textup{solid}$ is the $\tilde w$-mean of $\Omega_\textup{LT}$, $\
 \end{equation}
 The stress then does not vanish at the outer edge, contrary to the boundary condition from which Eq.~\eqref{eq2:talign} is derived.
 
-\paragraph{Motivation of our choice.}
 We take $\Omega_\textup{loc}=\Omega_\textup{LT}$, together with $\Omega_\textup{solid}$ from Eq.~\eqref{eq2:nusolid} (Eq.~\ref{eq2:omloc}), for three reasons.
 
 First, Eq.~\eqref{eq2:BC} then holds by construction for every $\Sigma$, $a$ and $r_\textup{out}$, and the scheme is formally that of \citet{FoucartLai2014} with $\mathcal{Z}\Omega_\varphi$ replaced by $\Omega_\textup{LT}$.
@@ -141,16 +134,19 @@ With $\Omega_\textup{loc}=\mathcal{Z}\Omega_\varphi$ it would precess at $\Omega
 This underestimates the nodal frequency by $39\%$ at the ISCO of an $a=0.998$ hole, where $\Omega_\textup{LT}/\Omega_\varphi\simeq0.77$ (Eqs.~\ref{eq2:epiphi}--\ref{eq2:omlt}).
 Our choice thus uses the same rate in the observable frequency, Eq.~\eqref{eq2:nusolid}, and in the stress, and recovers the exact test-particle limit in both.
 
-\paragraph{Validity close to the ISCO.}
 The relative difference $\Omega_\textup{LT}/(2\Omega_\varphi)$ is $\simeq a\,r^{-3/2}$ for $r\gg1$ and vanishes for $a\to0$, but it becomes of order unity close to the ISCO of a fast-spinning hole.
-There, however, the validity condition above is violated anyway: $2\mathcal{Z}=-\varepsilon$ (Sect.~\ref{sec2:signs}) equals $\simeq0.57$ at $r_\textup{ISCO}$ for $a=0.9$ and $\simeq0.95$ for $a=0.998$, both well above $h_\textup{ISCO}$.
+There, however, the validity condition above is violated anyway: $2\mathcal{Z}=-\varepsilon$ (Sect.~\ref{sec2:kerr}) equals $\simeq0.57$ at $r_\textup{ISCO}$ for $a=0.9$ and $\simeq0.95$ for $a=0.998$, both well above $h_\textup{ISCO}$.
 The analogous condition on $\kappa$ fails close to the ISCO for every spin, since $\kappa(r_\textup{ISCO})=0$.
 However, $\kappa$ enters the first-order solution of \citet{FoucartLai2014} only through the periastron term in the warp profile and amplitude (their Eqs.~28 and 34), not through $\mathcal{G}$ or $\gamma$ (their Eqs.~31 and 35).
 In the innermost region of a fast-spinning hole, the choice of $\Omega_\textup{loc}$ is therefore a systematic uncertainty of the linear theory that cannot be settled within it.
 
 \paragraph{Size and sign of the difference.}
 Both closures share the denominator of Eq.~\eqref{eq2:talign}, $\Sigma$ and $c_s$, so they differ only through $\mathcal{G}^2$, with, by Eq.~\eqref{eqM:GM}, $\mathcal{G}_\textup{M}^2-\mathcal{G}_\textup{LT}^2=E\,(E+2\mathcal{G}_\textup{LT})$.
-By Eq.~\eqref{eq2:signLT}, $\mathcal{G}_\textup{LT}=s\,\mathcal{G}_\textup{abs}$ with $s\doteq\textup{sign}(a)$ (Sect.~\ref{sec2:retro}), while $E\geq0$ is even in $s$.
+
+By Eq.~\eqref{eq2:signLT}, $\Omega_\textup{LT}=s\,|\Omega_\textup{LT}|$ with $s\doteq\textup{sign}(a)$ uniform in $r$.
+Since $\tilde w>0$, it follows that $\Omega_\textup{solid}=s\,|\Omega_\textup{solid}|$, with $|\Omega_\textup{solid}|$ the $\tilde w$-mean of $|\Omega_\textup{LT}|$.
+With $\Omega_\textup{loc}=\Omega_\textup{LT}$, Eq.~\eqref{eq2:G} then gives $\mathcal{G}=s\,\mathcal{G}_\textup{abs}$, where $\mathcal{G}_\textup{abs}$ is obtained by replacing both rates with their moduli.
+$E\geq0$ is instead even in $s$.
 Moreover, $\mathcal{G}_\textup{abs}\leq0$ wherever $|\Omega_\textup{LT}|$ decreases with $r$, which we verified numerically on $r_\textup{ISCO}\leq r\leq500$ for all the spins considered.
 Indeed, $\textup{d}\mathcal{G}_\textup{abs}/\textup{d}R=\tilde w\,(|\Omega_\textup{solid}|-|\Omega_\textup{LT}|)$ changes sign once, from negative to positive, and $\mathcal{G}_\textup{abs}$ vanishes at both edges.
 For $a<0$, then, $E+2\mathcal{G}_\textup{LT}=E+2|\mathcal{G}_\textup{abs}|\geq0$ at every radius: the closure of \citet{Motta2017} overestimates $\gamma$, and our $t_\textup{align}$ is longer at every $r_\textup{out}$.
@@ -159,8 +155,6 @@ Figure~\ref{fig:omloc_choice} shows the result.
 For $a=-1$ our $t_\textup{align}$ is longer by a factor of 1.11 at $r_\textup{out}=3\,r_\textup{ISCO}$ and by $4\%$ at $r_\textup{out}=500$.
 For $a>0$ it is shorter, except in very compact flows around rapidly spinning holes ($r_\textup{out}\lesssim1.5\,r_\textup{ISCO}$ for $a=0.998$, $\lesssim1.1\,r_\textup{ISCO}$ for $a=0.8$).
 The difference reaches a factor of about five for $a=0.998$ at $r_\textup{out}\simeq2.3\,r_\textup{ISCO}$, and stays below $5\%$ for $|a|\leq0.2$ and $r_\textup{out}\geq3\,r_\textup{ISCO}$.
-
-The term $E$ also breaks the symmetry of Sect.~\ref{sec2:retro}: since $\mathcal{G}_\textup{M}=s\,\mathcal{G}_\textup{abs}+E$ with $E$ even in $s$, $\mathcal{G}_\textup{M}^2$ depends on the sign of the torque, whereas $\mathcal{G}_\textup{LT}^2=\mathcal{G}_\textup{abs}^2$ does not.
 
 \begin{figure}
     \centering

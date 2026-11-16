@@ -2,19 +2,6 @@
 \section{Discussion and conclusions}
 \label{sec:discussion}
 %==========================================================================
-% Version 2 (2026-11-15): all statements attributed to the new references were checked
-% against the papers (Reynolds 2021; Jin+2020; Yao+2023; Vaughan+2016; Vaughan & Uttley
-% 2005, 2006; Maccarone 2002; Martin+2008; Natarajan & Pringle 1998; King+2005;
-% King & Pringle 2006).
-%
-% Numbers from Sects. 3-4 and Appendix A: unchanged, from Tables 2-4 and A.1.
-% Numbers of Table 5 (N_a), of the reflection-spin comparison in Sect. 5.1 and of the
-% N_a thresholds: independent re-implementation of Eqs. (8), (17), (19) (it reproduces
-% r_max, P_min, g_max of Table 2 within ~3%). REGENERATE with pif_core.py / pif_constraints.py.
-%
-% New bib keys (not yet in biblio.bib): Jin2020, Yao2023, Vaughan2016, VaughanUttley2005,
-% VaughanUttley2006, XMMUHB, Maccarone2002, Martin2008, NatarajanPringle1998, King2005,
-% KingPringle2006, Reynolds2021.
 
 We now return to the question of Sect.~\ref{sec:intro}.
 Within the model, an XRB and an AGN with the same $P=m\,\nu_0$ and the same disc parameters are equivalent (Sect.~\ref{sec2:scaling}), so the rarity of QPOs in AGNs must come from one of the three explanations listed there.
@@ -38,7 +25,8 @@ Conversely, a hole of given spin can host a valid flow only for $P_\textup{min}(
 If the two classes had different spin distributions, they would populate different intervals of $P$.
 The available measurements, however, do not indicate such a difference.
 X-ray reflection gives $a>0.9$ for most of the AGNs with $M<3\times10^7\,M_\odot$ in which the spin has been measured, and the BH XRBs are also dominated by rapidly spinning objects \citep{Reynolds2021}.
-The AGN sample is moreover biased towards high spins, because it is selected in X-ray flux and the radiative efficiency increases with the spin \citep{Reynolds2021}.
+The AGN sample is moreover biased towards high spins, because it is selected in X-ray flux and the radiative efficiency increases with the spin \citep{Reynolds2021}, so the AGN population could actually be richer in slowly rotating objects, which would admit a wider range for $P$.
+The same bias is less relevant for the XRB measurements.
 Six sources of Table~\ref{tab:catalog} have a reflection spin in the compilation of \citet{Reynolds2021}: $a>0.92$ for Mrk~766, $a>0.97$ for NGC~1365, $a>0.94$ for 1H~0707-495, $a=0.91^{+0.06}_{-0.07}$ for MCG-06-30-15, $a=0.93\pm0.04$ for NGC~5506 and $a>0.9$ for NGC~4151.
 All six belong to the group that requires a fast prograde spin (Sect.~\ref{sec3:highP}), and for each of them the measured spin lies within the valid interval of the model for part of the published mass range, with $\bar r\lesssim8\,R_g$.
 The agreement constrains the mass: for the fiducial parameters, $a>0.92$ is valid for Mrk~766 only for $M\gtrsim3.3\times10^6\,M_\odot$, and $a>0.97$ for NGC~1365 only for $M\gtrsim1.1\times10^7\,M_\odot$.
@@ -56,9 +44,6 @@ The upper edge does not depend on $h_\textup{ISCO}$ and $\alpha$, but the extent
 If the inner flows of AGNs were thinner or more viscous than those of XRBs, a QPO would require a mass and a spin tuned to each other within a factor of two to three.
 This cannot be assessed at present, since the parameters of the inner flows are not constrained by observations in either class.
 
-The observed sample does not lie where type-C QPOs lie.
-Ten of the fifteen sources have $P>110$~Hz\,$M_\odot$ over their whole mass range and the median is $P\simeq10^3$~Hz\,$M_\odot$, which requires a prograde spin $a\gtrsim0.3$--$0.85$ and a flow of a few $R_g$ (Sects.~\ref{sec3:highP} and \ref{sec4:AP}).
-We show in Sect.~\ref{sec5:detect} that this is what detectability predicts.
 
 %--------------------------------------------------------------------------
 \subsection{Alignment}
@@ -73,49 +58,48 @@ The number of periods for which a flow precesses once the supply of misaligned g
 which does not depend on the mass: a freely precessing flow completes the same number of cycles around an XRB and around an AGN.
 Condition (ii) is $N_a>1$.
 At fixed spin, $N_a$ decreases monotonically from infinity at the ISCO to one at $r_\textup{max}$ (where alignment sets $r_\textup{max}$; Sect.~\ref{sec4:rmax}).
-Table~\ref{tab:Na} lists the precession radii, and the corresponding distance of $P$ from the upper edge, at which $N_a=10$, $10^2$ and $10^3$.
-For $|a|\geq0.3$, $N_a\geq10$ requires $\bar r\lesssim1.8$--$3\,r_\textup{ISCO}$ and $N_a\geq10^3$ requires $\bar r\lesssim1.2$--$1.4\,r_\textup{ISCO}$, i.e.\ $P$ within 0.1--0.3~dex of $g_\textup{max}(a)$.
-Over most of the valid region the flow thus aligns within a few to a few tens of periods.
+Table~\ref{tab:Na} lists the precession radii, and the corresponding distance of $P$ from the upper edge, at which $N_a=2$, 5, 10 and $10^2$; $N_a=1$ is the limit $r_\textup{max}$ of Table~\ref{tab:window}.
+Requiring two cycles instead of one, as in \citet{Motta2017}, reduces the largest valid radius by about 20\% and raises $P_\textup{min}$ by 0.15--0.2~dex for $|a|\geq0.3$.
+For the same spins, $N_a\geq5$ requires $\bar r\lesssim2.2$--$3.6\,r_\textup{ISCO}$ and $N_a\geq10^2$ requires $\bar r\lesssim1.4$--$1.9\,r_\textup{ISCO}$, i.e.\ $P$ within 0.3--0.5~dex of $g_\textup{max}(a)$.
+The flow thus aligns within ten periods in the lower 40--45\% of the valid interval of $\log P$, and within $10^2$ periods in the lower two thirds.
 
 \begin{table}
 \caption{Precession radius and distance from the upper edge of the valid region at which a freely precessing flow completes $N_a$ cycles before aligning, for the fiducial parameters.}
 \label{tab:Na}
 \centering
-\begin{tabular}{rcccccc}
+\begin{tabular}{rcccccccc}
 \hline\hline
- & \multicolumn{3}{c}{$\bar r/r_\textup{ISCO}$} & \multicolumn{3}{c}{$\log\left[g_\textup{max}(a)/P\right]$} \\
-$a$ & $10$ & $10^2$ & $10^3$ & $10$ & $10^2$ & $10^3$ \\
+ & \multicolumn{4}{c}{$\bar r/r_\textup{ISCO}$} & \multicolumn{4}{c}{$\log\left[g_\textup{max}(a)/P\right]$} \\
+$a$ & $2$ & $5$ & $10$ & $10^2$ & $2$ & $5$ & $10$ & $10^2$ \\
 \hline
-$-1$    & 2.6 & 1.7 & 1.4 & 0.80 & 0.46 & 0.26 \\
-$-0.5$  & 2.9 & 1.9 & 1.4 & 0.89 & 0.52 & 0.29 \\
-$0.1$   & 4.2 & 2.3 & 1.6 & 1.19 & 0.69 & 0.39 \\
-$0.3$   & 3.0 & 1.9 & 1.4 & 0.88 & 0.50 & 0.28 \\
-$0.5$   & 2.5 & 1.7 & 1.3 & 0.73 & 0.41 & 0.23 \\
-$0.7$   & 2.2 & 1.6 & 1.3 & 0.62 & 0.34 & 0.19 \\
-$0.9$   & 1.9 & 1.4 & 1.2 & 0.48 & 0.26 & 0.14 \\
-$0.95$  & 1.8 & 1.4 & 1.2 & 0.42 & 0.22 & 0.12 \\
+$-1$    & 4.0 & 3.1 & 2.6 & 1.7 & 1.16 & 0.94 & 0.80 & 0.46 \\
+$-0.5$  & 4.7 & 3.5 & 2.9 & 1.9 & 1.29 & 1.05 & 0.89 & 0.51 \\
+$0.1$   & 7.7 & 5.4 & 4.2 & 2.3 & 1.69 & 1.39 & 1.19 & 0.69 \\
+$0.3$   & 4.8 & 3.6 & 3.0 & 1.9 & 1.28 & 1.04 & 0.88 & 0.50 \\
+$0.5$   & 3.8 & 3.0 & 2.5 & 1.7 & 1.08 & 0.87 & 0.73 & 0.41 \\
+$0.7$   & 3.2 & 2.6 & 2.2 & 1.6 & 0.92 & 0.74 & 0.62 & 0.34 \\
+$0.9$   & 2.7 & 2.2 & 1.9 & 1.4 & 0.74 & 0.58 & 0.48 & 0.26 \\
+$0.95$  & --  & --  & 1.8 & 1.4 & --   & --   & 0.42 & 0.23 \\
 \hline
 \end{tabular}
 \tablefoot{
-Columns 2--4: precession radius at which $N_a=\nu_0\,t_\textup{align}$ (Eq.~\ref{eq5:Na}) equals the value in the header; $N_a$ is higher at smaller radii.
-Columns 5--7: corresponding $P$, in dex below $g_\textup{max}(a)$.
+Columns 2--5: precession radius at which $N_a=\nu_0\,t_\textup{align}$ (Eq.~\ref{eq5:Na}) equals the value in the header; $N_a$ is higher at smaller radii.
+Columns 6--9: corresponding $P$, in dex below $g_\textup{max}(a)$.
+For $a=0.95$ wave propagation limits the valid region to $\bar r<2.0\,r_\textup{ISCO}$, where $N_a>5$.
 By Eq.~\eqref{eqA:scal}, $N_a\propto h_\textup{ISCO}^2/\alpha$ at fixed $(a,\bar r)$.
 }
 \end{table}
 
 In physical units $t_\textup{align}=N_a/\nu_0$.
-For the sources with $\nu_0\simeq1$--$3\times10^{-4}$~Hz, $N_a=10$, $10^3$ and $10^5$ correspond to about 10--30~h, 40--120~d and 11--32~yr.
-The alignment time is therefore shorter, by many orders of magnitude, than any timescale of the fuelling of an AGN, and the fraction of time during which a QPO excited by an isolated episode is visible is small.
-As an illustration, we take for the rate of the episodes in Eq.~\eqref{eq2:duty} the rate of optically selected tidal disruption events, $\Gamma\simeq3\times10^{-5}$~yr$^{-1}$ per galaxy \citep{Yao2023}.
-For $\nu_0=2.8\times10^{-4}$~Hz and $N_a=10$, $10^3$ and $10^5$, Eq.~\eqref{eq2:duty} gives $f_\textup{QPO}\simeq4\times10^{-8}$, $4\times10^{-6}$ and $4\times10^{-4}$.
-Even the last value, which requires a ring within $1.1\,r_\textup{ISCO}$, is more than one order of magnitude below the one confirmed QPO among the 104 AGNs of \citet{GonzalezMartin2012}.
-% f_obs ~ 1e-2 is an order of magnitude from a heterogeneous archival sample, not a measured duty cycle.
+For the sources with $\nu_0\simeq1$--$3\times10^{-4}$~Hz, $N_a=10$ and $10^2$ correspond to about 10--30~h and 4--12~d.
+The alignment time is therefore shorter, by many orders of magnitude, than any timescale of the fuelling of an AGN, and the fraction of time during which a QPO excited by an isolated episode is visible is negligible.
+As an illustration, for episodes at the rate of optically selected tidal disruption events, $\Gamma\simeq3\times10^{-5}$~yr$^{-1}$ per galaxy \citep{Yao2023}, and $\nu_0=2.8\times10^{-4}$~Hz, Eq.~\eqref{eq2:duty} gives $f_\textup{QPO}\simeq4\times10^{-9}\,N_a$, i.e.\ less than $10^{-6}$ for $N_a\leq10^2$.
 
 The observations exclude a free decay more directly.
 The QPO of RE~J1034+396 is recurrent: it was detected in 2007 and in 2018, and in six of the eight observations in between that are suitable for the analysis, while it was absent in 2009 and in one of the three observations of 2011 \citep{Alston2014,Jin2020}.
 The interval of 11~yr corresponds to $\simeq10^5$ periods.
-A single freely precessing flow would need $N_a\gtrsim10^5$, hence $\bar r\lesssim1.06$--$1.17\,r_\textup{ISCO}$ and a value of $P$ within 0.04--0.12~dex of $g_\textup{max}(a)$, which is a coincidence between mass and spin at the 10--30\% level, and it would not explain the disappearance and return of the signal.
-In addition, the period in 2018 is $7\%$ shorter than in 2007, at the $98\%$ confidence level \citep{Jin2020}, which in the model is a change of $\bar r$, not a decay.
+A single freely precessing flow would need $N_a\gtrsim10^5$, hence $\bar r\lesssim1.06$--$1.17\,r_\textup{ISCO}$ and a value of $P$ within 0.04--0.12~dex of $g_\textup{max}(a)$; moreover, a free decay would not explain the disappearance and return of the signal.
+In addition, the period in 2018 is $7\%$ shorter than in 2007 \citep{Jin2020}, which in the model is a change of $\bar r$, not a decay.
 The QPO of 1ES~1927+654 has been present for more than two years, $\gtrsim6\times10^4$ cycles, while its precession radius contracted by a factor of $\simeq1.8$ (Sect.~\ref{sec3:pairs}).
 If the model applies, in both sources the tilt of the flow is maintained or repeatedly restored, and $t_\textup{align}$ is not the time for which the QPO is visible but the time for which it survives the end of the supply.
 
@@ -140,11 +124,6 @@ Each accretion event is expected to be initially misaligned with the spin \citep
 \end{equation}
 for $M=10^8\,M_\odot$, a luminosity of one tenth of the Eddington value and $\alpha=0.03$, with a negligible dependence on the mass, $t_\textup{al}\propto M^{-1/16}$ \citep{NatarajanPringle1998}; this is much shorter than the accretion time, $M/\dot M\sim10^8$~yr.
 A misaligned supply is then expected only for a time $t_\textup{sup}\sim t_\textup{al}$ at the beginning of each accretion event, or after a rearrangement of the inner disc such as that of 1ES~1927+654 \citep{Masterson2025}.
-If the hole is fed by a sequence of randomly oriented events \citep{KingPringle2006}, $\Gamma\,t_\textup{sup}$ is the ratio of $t_\textup{al}$ to the time between two events.
-For illustration, the $\sim100$ events per Eddington time ($4.5\times10^8$~yr) considered by \citet{KingPringle2006} correspond to one event every $\sim5\times10^6$~yr, and with $t_\textup{al}\sim10^5$--$10^6$~yr to $\Gamma\,t_\textup{sup}\sim0.02$--$0.2$.
-% Order of magnitude only: the number of events is that of a growth scenario at high redshift, not a
-% measurement for local Seyferts. King & Pringle (2006) quote t_al ~ a few 1e4 yr; Eq. (2-16) of
-% Natarajan & Pringle (1998) gives 5.6e5 yr for the fiducial values above and ~1e5 yr at L ~ L_Edd.
 A misaligned outer disc is moreover necessary but not sufficient: where the disc is thin and viscous, $\alpha>H/R$, the warp diffuses and the inner disc is forced into the equatorial plane of the hole \citep{BPC,King2005}, so that the tilt reaches the inner flow only if the latter is geometrically thick, in AGNs as in XRBs.
 We regard an intermittent supply as the most likely origin of an intrinsic rarity, but the model does not predict $\Gamma$ or $t_\textup{sup}$: it shows that the alignment of the inner flow is too fast to matter by itself, in both classes, and that the question is how often the inner flow of an AGN is fed out of the equatorial plane of the hole.
 
@@ -227,15 +206,13 @@ Since we require a single cycle before alignment, the valid regions are upper en
 \paragraph{The spin of XRBs.}
 For the fiducial parameters, a flow around a hole with $a\geq0.9$ is valid only for $P\gtrsim330$~Hz\,$M_\odot$, i.e.\ above $\simeq30$~Hz for $M=10\,M_\odot$ (Table~\ref{tab:window}).
 The spins $a>0.9$ measured by reflection in several XRBs \citep{Reynolds2021}, which show type-C QPOs at $0.1$--$10$~Hz, are therefore outside the valid region, and remain so for all the disc parameters of Appendix~\ref{app:params}, for which the largest valid spin at $P=1$~Hz\,$M_\odot$ is $0.35$--$0.66$.
-% That GX 339-4, GRS 1915+105 and V404 Cyg (a > 0.9 in Table 2 of Reynolds 2021) show type-C QPOs
-% is general knowledge, not taken from Reynolds (2021): add a reference (e.g. the review of Ingram & Motta).
+% That GX 339-4, GRS 1915+105 and V404 Cyg (a > 0.9 in Table 2 of Reynolds 2021) show type-C QPOs is general knowledge, not taken from Reynolds (2021): add a reference (e.g. the review of Ingram & Motta).
 Either these spins are overestimated, or the conditions of Sect.~\ref{sec2:timescales} are too restrictive for extended flows.
 The tension concerns the two classes alike and does not affect the comparison between them, but it shows that the lower edge of the valid region is the least secure result of the model.
 
 \paragraph{The extent of the flow.}
 The precessing flow is the region that emits the X-rays.
-Reverberation lags and microlensing locate this region within a few tens of $R_g$ of the hole \citep[e.g.][]{Cackett2013}, which is consistent with the compact flows of the sources with high $P$, but not with the largest valid radii, $\bar r\simeq46$ and $74\,R_g$, found for J1231 and NGC~4945 (Sect.~\ref{sec3:lowP}).
-% Replace Cackett2013 with the references chosen for the size of the X-ray region (same as for r_out = 200 in Sect. 2.5).
+Reverberation lags and microlensing locate this region within a few tens of $R_g$ of the hole \citep[e.g.][]{Uttley2014}, which is consistent with the compact flows of the sources with high $P$, but not with the largest valid radii, $\bar r\simeq46$ and $74\,R_g$, found for J1231 and NGC~4945 (Sect.~\ref{sec3:lowP}).
 If the flow cannot extend that far, the lower part of the valid band is lost, and with it the counterparts of the slowest type-C QPOs, independently of their detectability.
 
 \paragraph{Accretion state and other models.}
