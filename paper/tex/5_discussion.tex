@@ -21,7 +21,7 @@ A restricted parameter space therefore cannot, by itself, make QPOs rarer in AGN
 It could contribute in two indirect ways.
 The first is the spin.
 No value of $P$ is valid for all spins: at fixed $P$ the valid prograde spins cover an interval $\Delta a\simeq0.4$--$0.5$ for $P\simeq10$--$100$~Hz\,$M_\odot$, which narrows to $\Delta a\simeq0.05$ at $P=10^{3.5}$~Hz\,$M_\odot$ (Table~\ref{tab:AP}).
-Conversely, a hole of given spin can host a valid flow only for $P_\textup{min}(a)<P<g_\textup{max}(a)$ (Eq.~\ref{eq4:window}), an interval of 1--1.5~dex for $|a|\gtrsim0.3$ and of less than 0.5~dex for $a\geq0.95$ (Table~\ref{tab:window}).
+Conversely, a hole of given spin can host a valid flow only for $P_\textup{min}(a)<P<g_\textup{max}(a)$ (Eq.~\ref{eq4:window}), an interval of 0.9--1.6~dex for $0.3\leq|a|\leq0.9$ and of at most 0.5~dex for $a\geq0.95$ (Table~\ref{tab:window}).
 If the two classes had different spin distributions, they would populate different intervals of $P$.
 The available measurements, however, do not indicate such a difference.
 X-ray reflection gives $a>0.9$ for most of the AGNs with $M<3\times10^7\,M_\odot$ in which the spin has been measured, and the BH XRBs are also dominated by rapidly spinning objects \citep{Reynolds2021}.
@@ -44,6 +44,15 @@ The upper edge does not depend on $h_\textup{ISCO}$ and $\alpha$, but the extent
 If the inner flows of AGNs were thinner or more viscous than those of XRBs, a QPO would require a mass and a spin tuned to each other within a factor of two to three.
 This cannot be assessed at present, since the parameters of the inner flows are not constrained by observations in either class.
 
+The radial profile of the thickness has a larger effect than its normalisation (Appendix~\ref{appA:q}).
+The fiducial profile, $q=3/2$ in Eq.~\eqref{eq2:HR}, is that of a radiation-pressure dominated disc, whose thickness does not depend on radius \citep{accretion}, whereas a geometrically thick hot flow has a roughly constant aspect ratio, $q=1/2$.
+For $q=1/2$ and the same $h_\textup{ISCO}$ and $\alpha$, the valid interval at $a=0.5$ widens from 1.3 to 3.6~dex, with flows of up to $\simeq320\,R_g$, and at $P=1$~Hz\,$M_\odot$ the largest valid spin increases from $0.16$ to $0.61$.
+The two profiles belong to different accretion states, not to different masses.
+% That the hosts of AGN QPOs (mostly NLS1s) accrete close to the Eddington limit is general knowledge, not taken from the sources of this paper: add a reference.
+If the inner flows of the AGNs of Table~\ref{tab:catalog}, most of which are narrow-line Seyfert~1 galaxies accreting at a high fraction of the Eddington rate, were radiation-pressure dominated, and those of XRBs in the hard state were hot flows of constant aspect ratio, then for the same $h_\textup{ISCO}$ and $\alpha$ an AGN could host a QPO only within 0.9~dex of $g_\textup{max}(a)$ for $a=0.9$ and 1.3~dex for $a=0.5$, with a compact flow, whereas an XRB could host it over 1.6 and 3.6~dex for the same spins.
+A restricted parameter space would then contribute to the rarity of QPOs in AGNs, through the accretion state and not through the mass.
+The model allows this possibility but does not establish it, because the thickness profile of the inner flow is not known in either class.
+
 
 %--------------------------------------------------------------------------
 \subsection{Alignment}
@@ -59,9 +68,10 @@ which does not depend on the mass: a freely precessing flow completes the same n
 Condition (ii) is $N_a>1$.
 At fixed spin, $N_a$ decreases monotonically from infinity at the ISCO to one at $r_\textup{max}$ (where alignment sets $r_\textup{max}$; Sect.~\ref{sec4:rmax}).
 Table~\ref{tab:Na} lists the precession radii, and the corresponding distance of $P$ from the upper edge, at which $N_a=2$, 5, 10 and $10^2$; $N_a=1$ is the limit $r_\textup{max}$ of Table~\ref{tab:window}.
-Requiring two cycles instead of one, as in \citet{Motta2017}, reduces the largest valid radius by about 20\% and raises $P_\textup{min}$ by 0.15--0.2~dex for $|a|\geq0.3$.
-For the same spins, $N_a\geq5$ requires $\bar r\lesssim2.2$--$3.6\,r_\textup{ISCO}$ and $N_a\geq10^2$ requires $\bar r\lesssim1.4$--$1.9\,r_\textup{ISCO}$, i.e.\ $P$ within 0.3--0.5~dex of $g_\textup{max}(a)$.
+Requiring two cycles instead of one, as in \citet{Motta2017}, reduces the largest valid radius by about 20\% and raises $P_\textup{min}$ by 0.15--0.25~dex for $0.3\leq|a|\leq0.9$, where alignment sets $r_\textup{max}$.
+For the same spins, $N_a\geq5$ requires $\bar r\lesssim2.2$--$4.0\,r_\textup{ISCO}$ and $N_a\geq10^2$ requires $\bar r\lesssim1.4$--$2.0\,r_\textup{ISCO}$, i.e.\ $P$ within 0.3--0.6~dex of $g_\textup{max}(a)$.
 The flow thus aligns within ten periods in the lower 40--45\% of the valid interval of $\log P$, and within $10^2$ periods in the lower two thirds.
+For a flow of constant aspect ratio ($q=1/2$; Appendix~\ref{appA:q}) with the same $h_\textup{ISCO}$ and $\alpha$ the radii are larger, but the conclusion is the same: for the same spins, $N_a\geq10^2$ requires $\bar r\lesssim1.5$--$2.4\,r_\textup{ISCO}$ and $N_a\geq10$ requires $\bar r\lesssim2.3$--$7.4\,r_\textup{ISCO}$.
 
 \begin{table}
 \caption{Precession radius and distance from the upper edge of the valid region at which a freely precessing flow completes $N_a$ cycles before aligning, for the fiducial parameters.}
@@ -77,9 +87,9 @@ $-0.5$  & 4.7 & 3.5 & 2.9 & 1.9 & 1.29 & 1.05 & 0.89 & 0.51 \\
 $0.1$   & 7.7 & 5.4 & 4.2 & 2.3 & 1.69 & 1.39 & 1.19 & 0.69 \\
 $0.3$   & 4.8 & 3.6 & 3.0 & 1.9 & 1.28 & 1.04 & 0.88 & 0.50 \\
 $0.5$   & 3.8 & 3.0 & 2.5 & 1.7 & 1.08 & 0.87 & 0.73 & 0.41 \\
-$0.7$   & 3.2 & 2.6 & 2.2 & 1.6 & 0.92 & 0.74 & 0.62 & 0.34 \\
+$0.7$   & 3.2 & 2.6 & 2.2 & 1.6 & 0.92 & 0.73 & 0.62 & 0.34 \\
 $0.9$   & 2.7 & 2.2 & 1.9 & 1.4 & 0.74 & 0.58 & 0.48 & 0.26 \\
-$0.95$  & --  & --  & 1.8 & 1.4 & --   & --   & 0.42 & 0.23 \\
+$0.95$  & --  & --  & 1.8 & 1.4 & --   & --   & 0.42 & 0.22 \\
 \hline
 \end{tabular}
 \tablefoot{
@@ -93,12 +103,12 @@ By Eq.~\eqref{eqA:scal}, $N_a\propto h_\textup{ISCO}^2/\alpha$ at fixed $(a,\bar
 In physical units $t_\textup{align}=N_a/\nu_0$.
 For the sources with $\nu_0\simeq1$--$3\times10^{-4}$~Hz, $N_a=10$ and $10^2$ correspond to about 10--30~h and 4--12~d.
 The alignment time is therefore shorter, by many orders of magnitude, than any timescale of the fuelling of an AGN, and the fraction of time during which a QPO excited by an isolated episode is visible is negligible.
-As an illustration, for episodes at the rate of optically selected tidal disruption events, $\Gamma\simeq3\times10^{-5}$~yr$^{-1}$ per galaxy \citep{Yao2023}, and $\nu_0=2.8\times10^{-4}$~Hz, Eq.~\eqref{eq2:duty} gives $f_\textup{QPO}\simeq4\times10^{-9}\,N_a$, i.e.\ less than $10^{-6}$ for $N_a\leq10^2$.
+As an illustration, for episodes at the rate of optically selected tidal disruption events, $\Gamma\simeq3\times10^{-5}$~yr$^{-1}$ per galaxy \citep{Yao2023}, and $\nu_0=2.8\times10^{-4}$~Hz, Eq.~\eqref{eq2:duty} gives $f_\textup{QPO}\simeq3\times10^{-9}\,N_a$, i.e.\ less than $10^{-6}$ for $N_a\leq10^2$.
 
 The observations exclude a free decay more directly.
 The QPO of RE~J1034+396 is recurrent: it was detected in 2007 and in 2018, and in six of the eight observations in between that are suitable for the analysis, while it was absent in 2009 and in one of the three observations of 2011 \citep{Alston2014,Jin2020}.
 The interval of 11~yr corresponds to $\simeq10^5$ periods.
-A single freely precessing flow would need $N_a\gtrsim10^5$, hence $\bar r\lesssim1.06$--$1.17\,r_\textup{ISCO}$ and a value of $P$ within 0.04--0.12~dex of $g_\textup{max}(a)$; moreover, a free decay would not explain the disappearance and return of the signal.
+A single freely precessing flow would need $N_a\gtrsim10^5$, hence, for the spins allowed for this source ($a\geq0.29$; Sect.~\ref{sec3:highP}), $\bar r\lesssim1.04$--$1.12\,r_\textup{ISCO}$ and a value of $P$ within 0.02--0.09~dex of $g_\textup{max}(a)$; moreover, a free decay would not explain the disappearance and return of the signal.
 In addition, the period in 2018 is $7\%$ shorter than in 2007 \citep{Jin2020}, which in the model is a change of $\bar r$, not a decay.
 The QPO of 1ES~1927+654 has been present for more than two years, $\gtrsim6\times10^4$ cycles, while its precession radius contracted by a factor of $\simeq1.8$ (Sect.~\ref{sec3:pairs}).
 If the model applies, in both sources the tilt of the flow is maintained or repeatedly restored, and $t_\textup{align}$ is not the time for which the QPO is visible but the time for which it survives the end of the supply.
@@ -122,7 +132,7 @@ Each accretion event is expected to be initially misaligned with the spin \citep
     \label{eq5:tNP}
     t_\textup{al}\simeq6\times10^5~\textup{yr}
 \end{equation}
-for $M=10^8\,M_\odot$, a luminosity of one tenth of the Eddington value and $\alpha=0.03$, with a negligible dependence on the mass, $t_\textup{al}\propto M^{-1/16}$ \citep{NatarajanPringle1998}; this is much shorter than the accretion time, $M/\dot M\sim10^8$~yr.
+for $M=10^8\,M_\odot$, a luminosity of one tenth of the Eddington value and $\alpha=0.03$, with a negligible dependence on the mass, $t_\textup{al}\propto M^{-1/16}$ \citep{NatarajanPringle1998}; this is much shorter than the accretion time, $M/\dot M\simeq4.5\times10^8$~yr at the same luminosity for a radiative efficiency of 0.1.
 A misaligned supply is then expected only for a time $t_\textup{sup}\sim t_\textup{al}$ at the beginning of each accretion event, or after a rearrangement of the inner disc such as that of 1ES~1927+654 \citep{Masterson2025}.
 A misaligned outer disc is moreover necessary but not sufficient: where the disc is thin and viscous, $\alpha>H/R$, the warp diffuses and the inner disc is forced into the equatorial plane of the hole \citep{BPC,King2005}, so that the tilt reaches the inner flow only if the latter is geometrically thick, in AGNs as in XRBs.
 We regard an intermittent supply as the most likely origin of an intrinsic rarity, but the model does not predict $\Gamma$ or $t_\textup{sup}$: it shows that the alignment of the inner flow is too fast to matter by itself, in both classes, and that the question is how often the inner flow of an AGN is fed out of the equatorial plane of the hole.
@@ -167,7 +177,7 @@ which is empty for
 Below these masses, the condition $P\geq m\,\nu_\textup{min}\,(1+z)$ removes the lower part of the valid band, and the part that is left requires a spin that increases with the mass (Table~\ref{tab:AP}).
 For $M=10^6\,M_\odot$, $P\geq37$~Hz\,$M_\odot$, which leaves most of the interval of type-C QPOs and all spins with $a\gtrsim0.1$.
 For $M=10^7\,M_\odot$, $P\geq370$~Hz\,$M_\odot$: the whole interval of type-C QPOs is lost, and only flows with $a\gtrsim0.5$ and $\bar r\lesssim7\,R_g$ remain.
-For $M=10^8\,M_\odot$, $P\geq3.7\times10^3$~Hz\,$M_\odot$, which is valid only for $a\gtrsim0.94$ and $\bar r\lesssim2.4\,R_g$, in an interval of frequencies 0.6~dex wide.
+For $M=10^8\,M_\odot$, $P\geq3.7\times10^3$~Hz\,$M_\odot$, which is valid only for $a\gtrsim0.94$ and $\bar r\lesssim2.2\,R_g$, in an interval of frequencies 0.6~dex wide.
 The counterparts of type-C QPOs ($P\leq300$~Hz\,$M_\odot$) can be detected in a single exposure only for $M\leq8\times10^6\,M_\odot$, and those at $P\leq10$~Hz\,$M_\odot$, i.e.\ below 1~Hz in a $10\,M_\odot$ binary, only for $M\leq2.7\times10^5\,M_\odot$.
 For $N_\textup{min}=100$ all these masses are lower by a factor of 20: no valid configuration is detectable above $2.2\times10^7\,M_\odot$, and the counterparts of type-C QPOs only below $4\times10^5\,M_\odot$.
 
@@ -186,8 +196,8 @@ Equation~\eqref{eq5:numin} is thus a necessary condition, and the masses above a
 
 Detectability also interacts with alignment.
 A QPO that is not sustained must last $N_\textup{min}$ cycles to be recognised, which replaces condition (ii) with $N_a>N_\textup{min}$.
-Since $g\,\tau_a\propto h_\textup{ISCO}^2/\alpha$ (Eq.~\ref{eqA:scal}), this is exactly condition (ii) for a flow with $h_\textup{ISCO}^2/\alpha$ lower by a factor of $N_\textup{min}$, and the result can be read in Appendix~\ref{app:params}: for $N_\textup{min}=10$, at $a=0.5$ the largest valid radius decreases from 20 to $\simeq10\,R_g$ and $P_\textup{min}$ increases from 19 to $\simeq65$~Hz\,$M_\odot$ (Table~\ref{tab:hr_alpha}; cf.\ Table~\ref{tab:Na}).
-For $a\gtrsim0.95$, where wave propagation sets $r_\textup{max}$, the valid region is almost unchanged.
+Since $g\,\tau_a\propto h_\textup{ISCO}^2/\alpha$ (Eq.~\ref{eqA:scal}), this is exactly condition (ii) for a flow with $h_\textup{ISCO}^2/\alpha$ lower by a factor of $N_\textup{min}$, and the result can be read in Appendix~\ref{app:params}: for $N_\textup{min}=10$, at $a=0.5$ the largest valid radius decreases from 20 to $\simeq11\,R_g$ and $P_\textup{min}$ increases from 19 to $\simeq64$~Hz\,$M_\odot$ (Table~\ref{tab:hr_alpha}; cf.\ Table~\ref{tab:Na}).
+For $a\geq0.965$, where wave propagation sets $r_\textup{max}$ and $N_a>10$ at all the valid radii, the valid region does not change.
 This is the quantitative form of the criterion $Q>2$ of \citet{Motta2017} (Sect.~\ref{sec2:timescales}).
 
 %--------------------------------------------------------------------------
@@ -200,19 +210,32 @@ The constraints of Sect.~\ref{sec:results} are conditional on the QPO being real
 
 \paragraph{The model.}
 The alignment rate is a first-order result of the linear theory of bending waves, which is not satisfied close to the ISCO of a rapidly spinning hole (Sect.~\ref{sec2:timescales}), where most of the configurations required by the sources with high $P$ lie; there the choice of $\Omega_\textup{loc}$ changes $t_\textup{align}$ by up to a factor of five.
-The lower edge of the valid region, $P_\textup{min}(a)$, and the values of $N_a$ carry this uncertainty and that on $(h_\textup{ISCO},\alpha)$, whereas the upper edge and all the results that follow from it (minimum spins, maximum masses, Eq.~\ref{eq5:Mdet}) depend only on the Kerr metric and on the surface-density profile.
+The lower edge of the valid region, $P_\textup{min}(a)$, and the values of $N_a$ carry this uncertainty and those on $(h_\textup{ISCO},\alpha)$ and on the thickness profile (Appendix~\ref{app:params}), whereas the upper edge and all the results that follow from it (minimum spins, maximum masses, Eq.~\ref{eq5:Mdet}) depend only on the Kerr metric and on the surface-density profile.
 Since we require a single cycle before alignment, the valid regions are upper envelopes.
 
 \paragraph{The spin of XRBs.}
 For the fiducial parameters, a flow around a hole with $a\geq0.9$ is valid only for $P\gtrsim330$~Hz\,$M_\odot$, i.e.\ above $\simeq30$~Hz for $M=10\,M_\odot$ (Table~\ref{tab:window}).
-The spins $a>0.9$ measured by reflection in several XRBs \citep{Reynolds2021}, which show type-C QPOs at $0.1$--$10$~Hz, are therefore outside the valid region, and remain so for all the disc parameters of Appendix~\ref{app:params}, for which the largest valid spin at $P=1$~Hz\,$M_\odot$ is $0.35$--$0.66$.
+The spins $a>0.9$ measured by reflection in several XRBs \citep{Reynolds2021}, which show type-C QPOs at $0.1$--$10$~Hz, are therefore outside the valid region.
 % That GX 339-4, GRS 1915+105 and V404 Cyg (a > 0.9 in Table 2 of Reynolds 2021) show type-C QPOs is general knowledge, not taken from Reynolds (2021): add a reference (e.g. the review of Ingram & Motta).
-Either these spins are overestimated, or the conditions of Sect.~\ref{sec2:timescales} are too restrictive for extended flows.
-The tension concerns the two classes alike and does not affect the comparison between them, but it shows that the lower edge of the valid region is the least secure result of the model.
+The values of $h_\textup{ISCO}$ and $\alpha$ remove the tension only for the fastest of these QPOs.
+At fixed $a$ and $P$ the precession radius is fixed, and by Eq.~\eqref{eqA:scal} the two conditions of Eq.~\eqref{eq2:Ncond} become a lower limit on $h_\textup{ISCO}$ and an upper limit on $\alpha$ (Table~\ref{tab:xrb}).
+For $a=0.9$ and $M=10\,M_\odot$, a QPO at 10~Hz ($\bar r=14\,R_g$) requires $h_\textup{ISCO}>0.13$, and $\alpha<1.4\times10^{-2}$ if $h_\textup{ISCO}=0.3$; one at 1~Hz ($\bar r=46\,R_g$) requires $h_\textup{ISCO}>0.25$ and $\alpha<1.1\times10^{-3}$; one at 0.1~Hz ($\bar r=151\,R_g$) requires $h_\textup{ISCO}>0.48$ and, at that thickness, $\alpha<3\times10^{-4}$.
+For $a=0.998$ wave propagation alone requires $h_\textup{ISCO}>0.46$ at 10~Hz and $h_\textup{ISCO}>0.86$ at 1~Hz.
+
+The tension originates in the thickness profile.
+For $q=3/2$ the thickness is $H=h_\textup{ISCO}\,r_\textup{ISCO}\,R_g$ at all radii, i.e.\ $0.23\,R_g$ for $a=0.9$ and $h_\textup{ISCO}=0.1$.
+At $\bar r=46\,R_g$ the aspect ratio is then $H/R=5\times10^{-3}$, that of a thin disc and not of a hot flow, and the radius is beyond the limit of the bending-wave regime, $10\,r_\textup{ISCO}=23\,R_g$ (Sect.~\ref{sec2:timescales}).
+The sound speed is correspondingly low, so that bending waves are slow and alignment is fast.
+For a flow of constant aspect ratio ($q=1/2$; Appendix~\ref{appA:q}) wave propagation is not a constraint at these radii, and for $a=0.9$ and $h_\textup{ISCO}=0.2$ alignment requires $\alpha<1.2\times10^{-2}$, $1.9\times10^{-2}$ and $5.1\times10^{-2}$ at 0.1, 1 and 10~Hz ($\alpha<0.5$, $0.6$ and $1.0\times10^{-2}$ for $a=0.998$).
+With $h_\textup{ISCO}=0.2$ and $\alpha=0.01$, $a=0.9$ is valid down to $P=0.15$~Hz\,$M_\odot$ and $a=0.95$ down to $2.2$~Hz\,$M_\odot$.
+The tension is thus removed for a thick flow of constant aspect ratio and low viscosity: for $h_\textup{ISCO}=0.2$--$0.3$, $\alpha\lesssim0.01$--$0.03$ at $a=0.9$--$0.95$ and $\alpha\lesssim0.005$--$0.01$ at $a=0.998$ (Table~\ref{tab:xrb}).
+It is not removed for $\alpha=0.1$, for which $a=0.9$ is valid only for $P\gtrsim230$ and $80$~Hz\,$M_\odot$ for $h_\textup{ISCO}=0.2$ and $0.3$; in that case either the spins are overestimated, or the conditions of Sect.~\ref{sec2:timescales} are too restrictive for extended flows.
+The lower edge of the valid region is therefore the least secure result of the model, and it depends on the thickness profile more than on $h_\textup{ISCO}$ and $\alpha$.
 
 \paragraph{The extent of the flow.}
 The precessing flow is the region that emits the X-rays.
 Reverberation lags and microlensing locate this region within a few tens of $R_g$ of the hole \citep[e.g.][]{Uttley2014}, which is consistent with the compact flows of the sources with high $P$, but not with the largest valid radii, $\bar r\simeq46$ and $74\,R_g$, found for J1231 and NGC~4945 (Sect.~\ref{sec3:lowP}).
+For a flow of constant aspect ratio the valid radii of the same two sources reach $71$ and $234\,R_g$ (Appendix~\ref{appA:q}), so that this limit matters more.
 If the flow cannot extend that far, the lower part of the valid band is lost, and with it the counterparts of the slowest type-C QPOs, independently of their detectability.
 
 \paragraph{Accretion state and other models.}
@@ -237,9 +260,10 @@ Our conclusions are the following.
     \item All the sources admit valid configurations.
     Ten require a prograde spin $a\gtrsim0.3$--$0.85$ and a flow within $\simeq9\,R_g$, in agreement with the reflection spins available for six of them; the upper limit on $P$ gives a maximal mass, $M<1.62\times10^4\,M_\odot\,(\nu_0/\textup{Hz})^{-1}$, which excludes part of the published mass estimates of NGC~4151 and 1H~0707-495, and of four more sources if $a\leq0.998$.
     \item The restricted parameter space does not explain the rarity of QPOs in AGNs: the valid region is the same for the two classes and includes the counterparts of type-C QPOs.
-    It could contribute only if AGNs differed from XRBs in spin, which the available measurements do not indicate, or in the thickness and viscosity of the inner flow.
+    It could contribute only if AGNs differed from XRBs in spin, which the available measurements do not indicate, or in the thickness, its radial profile and the viscosity of the inner flow.
+    The radial profile matters most: with a constant aspect ratio instead of a constant thickness, the lower limit $P_\textup{min}(a)$ decreases by 0.7~dex at $a=0.9$ and by more than two decades for $a\leq0.5$, which also reconciles the model with the high spins measured in XRBs, e.g.\ for $h_\textup{ISCO}=0.3$ and $\alpha\lesssim10^{-2}$ at all spins up to $0.998$.
     \item Alignment is fast in both classes.
-    The number of cycles completed by a freely precessing flow does not depend on the mass, and is below $10^2$ unless the flow is a ring within $1.4$--$1.9\,r_\textup{ISCO}$.
+    The number of cycles completed by a freely precessing flow does not depend on the mass, and is below $10^2$ unless the flow is a ring within $1.4$--$2.0\,r_\textup{ISCO}$ ($1.5$--$2.4\,r_\textup{ISCO}$ for a flow of constant aspect ratio).
     The QPOs of RE~J1034+396 and 1ES~1927+654 are observed over $\sim10^5$ cycles, so their tilt must be maintained or restored, as in XRBs.
     The duty cycle of QPOs is then set by how often, and for how long, the inner flow is fed out of the equatorial plane of the hole: permanently in XRBs, where the orbital plane fixes the orientation of the disc, and only at the beginning of an accretion event in AGNs, where hole and disc align in less than $\sim10^6$~yr.
     \item Detectability is the only explanation that follows from the model without further assumptions.

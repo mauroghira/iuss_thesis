@@ -42,10 +42,10 @@ from matplotlib.patches import Patch
 
 from setup import r_isco, g_LT, set_style, fix_spines
 from catalog import CATALOG, select_sources
-from pif_core import ALPHA, HR_ISCO_DEFAULT, g_solid
+from pif_core import ALPHA, HR_ISCO_DEFAULT, Q_SOUND, g_solid
 from pif_mass_freq_map import (
     make_spins, build_spin_curves, classify_on_P, VALID, FAIL_COLORS,
-    FAIL_LABELS, R_OUT_GRID, VALID_COLOR,
+    fail_labels, R_OUT_GRID, VALID_COLOR,
 )
 from pif_timescales import A_VALS, resolve_mass_reference, _match_from_curves
 from pif_plots import _plot_precession_markers, safe_filename
@@ -82,9 +82,12 @@ def _codes(curves, spins, P, hr, al):
 
 
 # ------------------------------------------------------------- computation
-def compute(output_file=DATA_FILE):
+def compute(output_file=DATA_FILE, q=Q_SOUND, r_out_grid=R_OUT_GRID):
+    """q, r_out_grid: see pif_mass_freq_map.build_spin_curves (defaults:
+    fiducial model). The rescaling by (k_w, k_a) is exact for every q."""
     spins = make_spins()
-    curves = build_spin_curves(np.concatenate([spins, A_VALS]))
+    curves = build_spin_curves(np.concatenate([spins, A_VALS]), q=q,
+                               r_out_grid=r_out_grid)
     print(f'Geometric curves computed for {len(curves)} spins')
 
     n_P = int(round(np.log10(P_MAX / P_MIN) * P_PER_DECADE)) + 1
@@ -112,7 +115,8 @@ def compute(output_file=DATA_FILE):
         output_file, combos=np.array(COMBOS), hr_vals=HR_VALS,
         alpha_vals=ALPHA_VALS, spins=spins, P=P, codes_P=codes_P,
         frac=frac, source_idx=[s['idx'] for s in sources],
-        m_ranges=m_ranges, hr_ref=HR_ISCO_DEFAULT, alpha_ref=ALPHA)
+        m_ranges=m_ranges, hr_ref=HR_ISCO_DEFAULT, alpha_ref=ALPHA,
+        q=q, r_out_max=r_out_grid[-1])
     print(f'Saved: {output_file}')
     return curves
 
@@ -142,23 +146,28 @@ BW_COLOR = '#D55E00'     # limit of the bending-wave regime
 P_LIM = (1e-4, 1e5)      # y-range of the panels
 
 
-def bending_wave_limit(spins, hr, al):
+def bending_wave_limit(spins, hr, al, q=Q_SOUND, r_out_max=R_OUT_GRID[-1]):
     """
-    P = g(a, r_bw) with r_bw = r_isco * hr / al, the outer radius of the
-    bending-wave regime (alpha < H/R, with H/R = hr * r_isco / r for q = 3/2):
-    configurations BELOW this curve (larger r_bar) are outside the regime in
-    which t_align is derived. For hr <= al no radius is inside the regime and
-    the curve coincides with g_max = |g_LT(r_isco)|. NaN where r_bw lies
+    P = g(a, r_bw), with r_bw the outer radius of the bending-wave regime
+    (alpha < H/R). With H/R = hr (r / r_isco)^(1/2 - q),
+        r_bw = r_isco (hr / al)^(1 / (q - 1/2))        (q > 1/2),
+    i.e. r_isco * hr / al for q = 3/2: configurations BELOW this curve
+    (larger r_bar) are outside the regime in which t_align is derived.
+    For q = 1/2, H/R = hr at every radius: the whole flow is inside the
+    regime if al < hr (no curve). For hr <= al no radius is inside the regime
+    and the curve coincides with g_max = |g_LT(r_isco)|. NaN where r_bw lies
     beyond the r_out grid (the whole computed region is inside the regime).
     """
     spins = np.asarray(spins, dtype=float)
     r_in = r_isco(spins)
-    r_bw = r_in * hr / al
     if hr <= al:
         g = np.abs(g_LT(r_in, spins))
-    else:
-        g = np.abs(g_solid(spins, r_bw, r_in=r_in))
-    g = np.where((r_bw <= R_OUT_GRID[-1]) & (g > 0), g, np.nan)
+        return np.where(g > 0, g, np.nan)
+    if q <= 0.5:
+        return np.full(spins.shape, np.nan)
+    r_bw = r_in * (hr / al) ** (1.0 / (q - 0.5))
+    g = np.abs(g_solid(spins, r_bw, r_in=r_in))
+    g = np.where((r_bw <= r_out_max) & (g > 0), g, np.nan)
     return g
 
 
@@ -176,6 +185,10 @@ def plot_P_map(data, outfile=None, overlay_sources=False, show_bw_limit=True):
     hr_vals, al_vals = list(data['hr_vals']), list(data['alpha_vals'])
     combos = [tuple(c) for c in data['combos']]
     nr, nc = len(al_vals), len(hr_vals)
+    # archives written before q was a parameter are fiducial (q = 3/2)
+    q = float(data['q']) if 'q' in data else Q_SOUND
+    r_out_max = float(data['r_out_max']) if 'r_out_max' in data else R_OUT_GRID[-1]
+    labels = fail_labels(r_out_max)
 
     n_extra = 1 if overlay_sources else 0
     fig = plt.figure(figsize=(7.0 + 0.5 * n_extra, 0.4 + 2.0 * nr),
@@ -197,7 +210,8 @@ def plot_P_map(data, outfile=None, overlay_sources=False, show_bw_limit=True):
             ax.pcolormesh(spins, P, z, cmap=cmap, norm=norm,
                           shading='nearest', rasterized=True)
             if show_bw_limit:
-                g_bw = np.where(nz, bending_wave_limit(spins, hr, al), np.nan)
+                g_bw = np.where(
+                    nz, bending_wave_limit(spins, hr, al, q, r_out_max), np.nan)
                 ax.plot(spins, g_bw, color=BW_COLOR, lw=0.8)
             ax.set_yscale('log')
             ax.set_xlim(spins[0], spins[-1])
@@ -224,11 +238,13 @@ def plot_P_map(data, outfile=None, overlay_sources=False, show_bw_limit=True):
     handles = [Patch(facecolor=VALID_COLOR, edgecolor='k', linewidth=0.3,
                      label='valid')] + [
         Patch(facecolor=FAIL_COLORS[k], edgecolor='k', linewidth=0.3,
-              label=FAIL_LABELS[k]) for k in present if k > 0]
+              label=labels[k]) for k in present if k > 0]
     if show_bw_limit:
-        handles.append(Line2D(
-            [], [], color=BW_COLOR, lw=0.8,
-            label=r'$\bar r=r_\mathrm{ISCO}\,(H/R)_\mathrm{isco}/\alpha$'))
+        if np.isclose(q, 1.5):
+            bw_label = r'$\bar r=r_\mathrm{ISCO}\,(H/R)_\mathrm{isco}/\alpha$'
+        else:
+            bw_label = r'limit of the bending-wave regime ($\alpha<H/R$)'
+        handles.append(Line2D([], [], color=BW_COLOR, lw=0.8, label=bw_label))
     leg = fig.legend(handles=handles, loc='upper center', ncol=4, fontsize=6,
                      bbox_to_anchor=(0.5, 0.0))
 

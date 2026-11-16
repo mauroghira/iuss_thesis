@@ -32,7 +32,8 @@ C, Rg_SUN, r_isco, g_phi, g_theta, g_LT.
 Sound speed: c_s = H Omega_z, with Omega_z the Kerr vertical epicyclic
 frequency (vertical hydrostatic equilibrium in Kerr) and the scale height a
 power law normalised at the ISCO,
-    H / R = HR_isco (R / R_isco)^(3/2 - q)       (H = const for q = 3/2),
+    H / R = HR_isco (R / R_isco)^(1/2 - q)
+(H = const for q = 3/2, H / R = const for q = 1/2),
 i.e. c_s = c_s^K Omega_z / Omega_K, where c_s^K = c HR_isco r_isco^(q-1/2) r^-q
 is the Newtonian profile of Motta+17 (Omega_K = c / (R_g r^{3/2})). The two
 coincide for r >> r_isco and differ near the ISCO of rapidly spinning holes.
@@ -63,7 +64,7 @@ _trapz = getattr(np, 'trapezoid', None) or np.trapz
 # Disc prescriptions (Motta et al. 2017)
 # --------------------------------------------------------------------------
 P_TORQUE = 3.0 / 5.0      # Sigma ~ R^-p (1 - sqrt(r_in/R))^p, zero torque
-Q_SOUND = 3.0 / 2.0       # H/R ~ R^(3/2-q): H = const, radiation-pressure dominated disc
+Q_SOUND = 3.0 / 2.0       # H/R ~ R^(1/2-q): H = const, radiation-pressure dominated disc
 HR_ISCO_DEFAULT = 0.1     # (H/R) at the ISCO, fixed by hand (not derived)
 ALPHA = 0.01              # Shakura-Sunyaev viscosity parameter (fixed here)
 
@@ -84,7 +85,7 @@ def sigma_torque_zero(R, r_in, p=P_TORQUE):
 def sound_speed(R, a, q=Q_SOUND, HR_ref=HR_ISCO_DEFAULT, gth=None):
     """
     c_s = H Omega_z [cm/s] at M = 1 (R in R_g; c_s does not depend on M),
-    with H / R = HR_ref (R / R_isco)^(3/2 - q). R and a must broadcast;
+    with H / R = HR_ref (R / R_isco)^(1/2 - q). R and a must broadcast;
     gth = g_theta(R, a) can be passed to avoid recomputing it.
     """
     R = np.asarray(R, dtype=float)

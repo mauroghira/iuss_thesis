@@ -54,7 +54,8 @@ from matplotlib.patches import Patch
 from typing import NamedTuple
 
 from setup import r_isco, set_style, fix_spines
-from pif_core import ALPHA, HR_ISCO_DEFAULT, pif_geometric, PIFGeometric
+from pif_core import (ALPHA, HR_ISCO_DEFAULT, Q_SOUND, N_RAD, pif_geometric,
+                      PIFGeometric)
 from catalog import CATALOG
 
 M_MIN, M_MAX = 1e0, 1e10
@@ -96,6 +97,14 @@ R_OUT_GRID = np.concatenate([
     np.logspace(1, np.log10(200.0), N_R_OUT_OUTER),
 ])
 R_IN_MARGIN = 1.001      # only r_out > R_IN_MARGIN * r_in is used
+# Extended grid for thickness profiles flatter than q = 3/2 (pif_q.py), for
+# which the valid region reaches much larger radii: the same nodes up to 200,
+# then the same logarithmic density up to R_OUT_EXT_MAX.
+R_OUT_EXT_MAX = 1000.0
+R_OUT_GRID_EXT = np.concatenate([
+    R_OUT_GRID,
+    np.logspace(np.log10(R_OUT_GRID[-1]), np.log10(R_OUT_EXT_MAX), 55)[1:],
+])
 
 VALID, NOCROSS_HI, NOCROSS_LO, T_WAVE, T_ALIGN, BOTH = range(6)
 FAIL_COLORS = {
@@ -106,14 +115,19 @@ FAIL_COLORS = {
     BOTH: '1',
 }
 VALID_COLOR = '#009E73'      # valid configurations (plot_P_spin)
-FAIL_LABELS = {
-    NOCROSS_HI: r'no $r_\mathrm{out}$ ($\nu_0$ too high)',
-    NOCROSS_LO: (r'no $r_\mathrm{out}\leq$ ' + f'{R_OUT_GRID[-1]:.0f}'
-                 + r'$\,r_g$ ($\nu_0$ too low)'),
-    T_WAVE: r'$t_\mathrm{wave}<1/\nu_0$ fails',
-    T_ALIGN: r'$1/\nu_0<t_\mathrm{align}$ fails',
-    BOTH: 'both fail',
-}
+def fail_labels(r_out_max=R_OUT_GRID[-1]):
+    """Legend labels of the failure codes, for a grid ending at r_out_max."""
+    return {
+        NOCROSS_HI: r'no $r_\mathrm{out}$ ($\nu_0$ too high)',
+        NOCROSS_LO: (r'no $r_\mathrm{out}\leq$ ' + f'{r_out_max:.0f}'
+                     + r'$\,r_g$ ($\nu_0$ too low)'),
+        T_WAVE: r'$t_\mathrm{wave}<1/\nu_0$ fails',
+        T_ALIGN: r'$1/\nu_0<t_\mathrm{align}$ fails',
+        BOTH: 'both fail',
+    }
+
+
+FAIL_LABELS = fail_labels()
 
 OUT_DIR = os.path.join(os.path.dirname(__file__), 'output_catalog')
 DATA_FILE = os.path.join(OUT_DIR, 'pif_mass_frequency_map.npz')
@@ -139,24 +153,47 @@ def make_spins():
     return np.concatenate([-pos[::-1], [0.0], pos])
 
 
-def build_spin_curves(spins, hr_isco=HR_ISCO_DEFAULT):
+def radial_nodes(r_out):
+    """
+    Number of radial nodes of the integrals for an outer radius r_out: N_RAD
+    up to the last node of R_OUT_GRID, doubled for every factor of two in
+    r_out beyond it, so that the radial step never exceeds that of the
+    default grid (0.1 R_g). The nodes are linear in r, and with a fixed
+    number the inner region would be under-resolved for a wide flow.
+    """
+    ratio = np.maximum(np.asarray(r_out, dtype=float) / R_OUT_GRID[-1], 1.0)
+    return (N_RAD * 2 ** np.ceil(np.log2(ratio) - 1e-9)).astype(int)
+
+
+def build_spin_curves(spins, hr_isco=HR_ISCO_DEFAULT, q=Q_SOUND,
+                      r_out_grid=R_OUT_GRID):
     """
     Compute the geometric curves once for every unique spin in `spins`.
     Returns {float(spin): SpinCurves}; spins with no valid r_out are omitted.
+    q is the exponent of the sound-speed profile (pif_core.sound_speed) and
+    r_out_grid the outer radii; the defaults reproduce the fiducial model.
     """
     spins = np.unique(np.asarray(spins, dtype=float))
+    r_out_grid = np.asarray(r_out_grid, dtype=float)
     r_in = r_isco(spins)
-    geo = pif_geometric(spins[:, None], R_OUT_GRID[None, :],
-                        r_in=r_in[:, None], HR_ref=hr_isco)
+    n_nodes = radial_nodes(r_out_grid)
+    g, tau_w, tau_a = (np.empty((spins.size, r_out_grid.size))
+                       for _ in range(3))
+    for n_rad in np.unique(n_nodes):
+        sel = n_nodes == n_rad
+        geo = pif_geometric(spins[:, None], r_out_grid[None, sel],
+                            r_in=r_in[:, None], q=q, HR_ref=hr_isco,
+                            n_rad=int(n_rad))
+        g[:, sel], tau_w[:, sel], tau_a[:, sel] = geo.g, geo.tau_w, geo.tau_a
     curves = {}
     for i, spin in enumerate(spins):
-        keep = R_OUT_GRID > R_IN_MARGIN * r_in[i]
+        keep = r_out_grid > R_IN_MARGIN * r_in[i]
         if not keep.any():
             continue
         curves[float(spin)] = SpinCurves(
-            R_OUT_GRID[keep],
-            PIFGeometric(geo.g[i, keep], geo.tau_w[i, keep],
-                         geo.tau_a[i, keep], geo.HR_ref, geo.alpha_ref),
+            r_out_grid[keep],
+            PIFGeometric(g[i, keep], tau_w[i, keep], tau_a[i, keep],
+                         geo.HR_ref, geo.alpha_ref),
         )
     return curves
 
@@ -255,14 +292,16 @@ def panel_category(codes):
     return cat.astype(np.int8)
 
 
-def compute_map(alpha=None, hr_isco=None):
+def compute_map(alpha=None, hr_isco=None, q=Q_SOUND, r_out_grid=R_OUT_GRID,
+                data_file=DATA_FILE):
+    """q, r_out_grid: see build_spin_curves (defaults: fiducial model)."""
     hr = HR_ISCO_DEFAULT if hr_isco is None else hr_isco
     al = ALPHA if alpha is None else alpha
     k_w = HR_ISCO_DEFAULT / hr
     k_a = (hr / HR_ISCO_DEFAULT) ** 2 * (ALPHA / al)
 
     spins = make_spins()
-    curves = build_spin_curves(spins)
+    curves = build_spin_curves(spins, q=q, r_out_grid=r_out_grid)
     print(f'{spins.size} spins, geometric curves computed for {len(curves)}')
 
     logP_lo, logP_hi = np.log10(M_MIN * NU_MIN), np.log10(M_MAX * NU_MAX)
@@ -285,7 +324,7 @@ def compute_map(alpha=None, hr_isco=None):
     idx = np.add.outer(np.arange(N_NU), np.arange(N_M))   # exact node i + j
 
     np.savez_compressed(
-        DATA_FILE, spins=spins, P_grid=P_grid, codes_P=codes, valid_P=valid,
+        data_file, spins=spins, P_grid=P_grid, codes_P=codes, valid_P=valid,
         a_min_pos_P=a_min_pos_P, a_max_neg_P=a_max_neg_P,
         a_max_pos_P=a_max_pos_P, a_min_neg_P=a_min_neg_P,
         cat_pos_P=cat_pos_P, cat_neg_P=cat_neg_P,
@@ -293,8 +332,8 @@ def compute_map(alpha=None, hr_isco=None):
         a_min_pos=a_min_pos_P[idx], a_max_neg=a_max_neg_P[idx],
         a_max_pos=a_max_pos_P[idx], a_min_neg=a_min_neg_P[idx],
         cat_pos=cat_pos_P[idx], cat_neg=cat_neg_P[idx],
-        r_out_max=R_OUT_GRID[-1], alpha=al, hr_isco=hr)
-    print(f'Saved: {DATA_FILE}')
+        r_out_max=r_out_grid[-1], alpha=al, hr_isco=hr, q=q)
+    print(f'Saved: {data_file}')
     return (
         M, nu, a_min_pos_P[idx], a_max_neg_P[idx],
         a_max_pos_P[idx], a_min_neg_P[idx], cat_pos_P[idx], cat_neg_P[idx],
@@ -468,6 +507,7 @@ def plot_P_spin(data_file=DATA_FILE, overlay_sources=True,
     set_style()
     with np.load(data_file) as data:
         spins, P, codes = data['spins'], data['P_grid'], data['codes_P']
+        labels = fail_labels(float(data['r_out_max']))
 
     if overlay_sources:
         fig, (ax, sx) = plt.subplots(
@@ -491,7 +531,7 @@ def plot_P_spin(data_file=DATA_FILE, overlay_sources=True,
     legends = [dict(
         handles=[Patch(facecolor=VALID_COLOR if k == VALID else FAIL_COLORS[k],
                        edgecolor='k', linewidth=0.3,
-                       label='valid' if k == VALID else FAIL_LABELS[k])
+                       label='valid' if k == VALID else labels[k])
                  for k in present],
         ncol=2)]
 
